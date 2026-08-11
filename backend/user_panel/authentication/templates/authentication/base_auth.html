@@ -1,0 +1,268 @@
+{% load static %}
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+    <title>
+
+        {% block title %}
+
+            AURA
+
+        {% endblock %}
+
+    </title>
+
+    <!-- Google Fonts -->
+
+    <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com">
+
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+
+        tailwind.config = {
+
+            theme: {
+
+                extend: {
+
+                    fontFamily: {
+
+                        serif: ["Cormorant Garamond", "serif"],
+
+                        sans: ["Inter", "sans-serif"],
+
+                    },
+
+                    colors: {
+
+                        auraBlack: "#111111",
+
+                        auraGray: "#6B7280",
+
+                        auraBorder: "#D1D5DB",
+
+                    }
+
+                }
+
+            }
+
+        }
+
+    </script>
+
+    {% block extra_css %}
+
+    {% endblock %}
+
+</head>
+
+<body
+    class="bg-[#EDE8DE]
+           text-[#171717]
+           font-sans
+           min-h-screen
+           flex
+           flex-col">
+
+    <!-- ================================= -->
+    <!-- Header -->
+    <!-- ================================= -->
+
+    <header
+        class="border-b
+               border-[#C8C0B2]
+               bg-[#F7F4EE]">
+
+        <div
+            class="max-w-7xl
+                   mx-auto
+                   px-6
+                   py-4">
+
+            <div
+                class="flex
+                       justify-center
+                       items-center">
+
+                <a
+                    href="/"
+                    class="font-serif
+                           text-3xl
+                           md:text-4xl
+                           tracking-[0.35em]
+                           text-[#171717]
+                           transition
+                           duration-300
+                           hover:opacity-70">
+
+                    AURA
+
+                </a>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- ================================= -->
+    <!-- Main Content -->
+    <!-- ================================= -->
+
+    <main
+        class="flex-grow
+               bg-[#EDE8DE]">
+
+        {% block content %}
+
+        {% endblock %}
+
+    </main>
+
+
+    <!-- ================================= -->
+    <!-- Footer -->
+    <!-- ================================= -->
+
+    <footer
+        class="border-t
+               border-[#C8C0B2]
+               bg-[#DCD5C8]">
+
+        <div
+            class="max-w-7xl
+                   mx-auto
+                   px-6
+                   py-7">
+
+            <div
+                class="flex
+                       flex-col
+                       lg:flex-row
+                       justify-between
+                       items-center
+                       gap-6">
+
+                <!-- Brand -->
+
+                <div>
+
+                    <h2
+                        class="font-serif
+                               text-2xl
+                               tracking-[0.25em]
+                               text-[#171717]">
+
+                        AURA
+
+                    </h2>
+
+                </div>
+
+
+                <!-- Links -->
+
+                <div
+                    class="flex
+                           flex-wrap
+                           justify-center
+                           gap-6
+                           text-sm
+                           text-[#4F4A42]">
+
+                    <a
+                        href="#"
+                        class="hover:text-black
+                               transition
+                               duration-300">
+
+                        About
+
+                    </a>
+
+                    <a
+                        href="#"
+                        class="hover:text-black
+                               transition
+                               duration-300">
+
+                        Contact
+
+                    </a>
+
+                    <a
+                        href="#"
+                        class="hover:text-black
+                               transition
+                               duration-300">
+
+                        Privacy
+
+                    </a>
+
+                    <a
+                        href="#"
+                        class="hover:text-black
+                               transition
+                               duration-300">
+
+                        Terms
+
+                    </a>
+
+                </div>
+
+
+                <!-- Copyright -->
+
+                <div
+                    class="text-xs
+                           text-[#625D54]
+                           text-center">
+
+                    © 2026 AURA Perfumery.
+
+                    All rights reserved.
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </footer>
+
+
+    {% block extra_js %}
+
+    {% endblock %}
+
+</body>
+
+</html>
