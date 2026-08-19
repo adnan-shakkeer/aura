@@ -1,5 +1,17 @@
-from django.shortcuts import render
-from django.contrib import messages
+import random
+from datetime import timedelta
+
+from django.shortcuts import redirect, render
+from django.core.mail import send_mail
+from django.contrib.auth.models import User
+from django.utils import timezone
+from django.db import transaction
+
+
+
+from .models import SignupOTP
+from user_panel.user_profile.models import UserProfile
+
 from .validators.signup_validator import (
     validate_full_name,
     validate_email,
@@ -7,6 +19,156 @@ from .validators.signup_validator import (
     validate_confirm_password,
     validate_terms,
 )     
+
+
+def generate_signup_otp(email):
+    """
+    Generate, store, and send a new signup OTP.
+    """
+
+    otp = str(random.randint(100000, 999999))
+
+    expires_at = (
+        timezone.now() + timedelta(minutes=5)
+    )
+
+    SignupOTP.objects.filter(
+        email=email,
+        is_verified=False,
+    ).delete()
+
+    SignupOTP.objects.create(
+        email=email,
+        code=otp,
+        expires_at=expires_at,
+    )
+
+    send_mail(
+        subject="AURA | Email Verification",
+        message=(
+            f"Your AURA verification code is: {otp}\n\n"
+            "This code will expire in 5 minutes."
+        ),
+        from_email=None,
+        recipient_list=[email],
+    )
+
+def signup_otp(request):
+    """
+    Display and process the signup OTP verification page.
+    """
+
+    signup_data = request.session.get("signup_data")
+
+    if not signup_data:
+        return redirect("signup")
+
+    email = signup_data["email"]
+
+    error = None
+
+    if request.method == "POST":
+
+        entered_otp = request.POST.get(
+            "otp",
+            "",
+        ).strip()
+
+        if not entered_otp:
+
+            error = "Please enter the OTP."
+
+        elif not entered_otp.isdigit():
+
+            error = "OTP must contain only numbers."
+
+        elif len(entered_otp) != 6:
+
+            error = "OTP must contain exactly 6 digits."
+
+        else:
+
+            otp_record = SignupOTP.objects.filter(
+                email=email,
+                is_verified=False,
+            ).first()
+
+            if not otp_record:
+
+                error = "OTP not found. Please request a new OTP."
+
+            elif timezone.now() > otp_record.expires_at:
+
+                error = "This OTP has expired. Please request a new OTP."
+
+            elif entered_otp != otp_record.code:
+
+                error = "Invalid OTP. Please enter the correct OTP."
+
+            else:
+
+                if User.objects.filter(
+                    email__iexact=signup_data["email"]
+                ).exists():
+
+                    error = "An account with this email already exists."
+
+                else:
+
+                    with transaction.atomic():
+
+                        user = User.objects.create_user(
+                            username=signup_data["email"],
+                            email=signup_data["email"],
+                            password=signup_data["password"],
+                        )
+
+                        UserProfile.objects.create(
+                            user=user,
+                            full_name=signup_data["full_name"],
+                        )
+
+                        otp_record.is_verified = True
+                        otp_record.save()
+
+                        otp_record.delete()
+
+                    request.session.pop(
+                        "signup_data",
+                        None,
+                    )
+
+                    return redirect("signup")
+
+    context = {
+        "email": email,
+        "error": error,
+    }
+
+    return render(
+        request,
+        "authentication/signup_otp.html",
+        context,
+    )
+
+def resend_signup_otp(request):
+    """
+    Generate and send a new OTP for signup email verification.
+    """
+
+    signup_data = request.session.get("signup_data")
+
+    if not signup_data:
+        return redirect("signup")
+
+    email = signup_data["email"]
+
+    generate_signup_otp(email)
+
+    return redirect("signup_otp")
+
+
+
 
 
 def signup(request):
@@ -54,11 +216,22 @@ def signup(request):
         if terms_error:
             errors["terms"] = terms_error
 
+        if not errors:
+            if User.objects.filter(
+                email__iexact=signup_data["email"]
+            ).exists():
+
+                errors["email"] = "An account with this email already exists."
+
         if errors:
-            
+
             context = {
-            "signup_data": signup_data,
-            "errors": errors,
+                "signup_data": {
+                    "full_name": signup_data["full_name"],
+                    "email": signup_data["email"],
+                    "terms": signup_data["terms"],
+                },
+                "errors": errors,
             }
 
             return render(
@@ -67,10 +240,18 @@ def signup(request):
                 context,
             )
 
-        
+        request.session["signup_data"] = {
+            "full_name": signup_data["full_name"],
+            "email": signup_data["email"],
+            "password": signup_data["password"],
+        }
+
+        generate_signup_otp(
+            signup_data["email"]
+        )
+
+        return redirect("signup_otp")
+
+                
     return render(request, "authentication/signup.html",context)
-
-
-    
-
 

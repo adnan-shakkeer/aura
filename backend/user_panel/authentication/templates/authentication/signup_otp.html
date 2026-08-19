@@ -1,0 +1,145 @@
+{% extends "authentication/base_auth.html" %}
+
+
+{% block title %}
+AURA | Verify Email
+{% endblock %}
+
+
+{% block content %}
+
+<main
+    class="min-h-[70vh]
+           flex
+           items-center
+           justify-center
+           px-5
+           py-12">
+
+    <div
+        class="w-full
+               max-w-lg
+               text-center">
+
+        <h1
+            class="font-serif
+                   text-4xl
+                   md:text-5xl
+                   text-black
+                   mb-5">
+
+            Verify Your Email
+
+        </h1>
+
+        <p
+            class="text-gray-600
+                   leading-7">
+
+            Enter the verification code sent to
+
+        </p>
+
+
+        <p
+            class="mt-2
+                   font-medium
+                   text-black
+                   break-all">
+
+            {{ email }}
+
+        </p>
+
+
+        <form
+    method="POST"
+    class="mt-10">
+
+    {% csrf_token %}
+
+    {% if error %}
+
+    <p class="mb-5 text-sm text-red-600">
+        {{ error }}
+    </p>
+
+    {% endif %}
+
+    {% if success %}
+
+    <p class="mb-5 text-sm text-green-600">
+        {{ success }}
+    </p>
+
+    {% endif %}
+
+    <input
+        type="text"
+        name="otp"
+        maxlength="6"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        required
+        placeholder="ENTER OTP"
+        class="w-full
+               border-0
+               border-b
+               border-black
+               bg-transparent
+               py-3
+               text-center
+               tracking-[0.4em]
+               focus:outline-none
+               focus:ring-0">
+
+    <button
+        type="submit"
+        class="w-full
+               h-14
+               mt-8
+               bg-black
+               text-white
+               uppercase
+               tracking-[0.18em]
+               text-sm
+               font-medium
+               transition-all
+               duration-300
+               hover:bg-gray-900">
+
+        Verify Email
+
+    </button>
+
+    <div class="mt-6 text-center">
+
+    <p class="text-sm text-gray-500">
+        Didn't receive the code?
+    </p>
+
+    <a
+        href="{% url 'resend_signup_otp' %}"
+        class="mt-2
+               inline-block
+               text-sm
+               uppercase
+               tracking-[0.15em]
+               border-b
+               border-black
+               hover:opacity-70
+               transition">
+
+        Resend OTP
+
+    </a>
+
+</div>
+
+</form>
+
+    </div>
+
+</main>
+
+{% endblock %}
