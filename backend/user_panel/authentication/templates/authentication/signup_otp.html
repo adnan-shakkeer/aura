@@ -1,145 +1,158 @@
 {% extends "authentication/base_auth.html" %}
 
-
 {% block title %}
 AURA | Verify Email
 {% endblock %}
 
-
 {% block content %}
-
-<main
-    class="min-h-[70vh]
-           flex
-           items-center
-           justify-center
-           px-5
-           py-12">
-
-    <div
-        class="w-full
-               max-w-lg
-               text-center">
-
-        <h1
-            class="font-serif
-                   text-4xl
-                   md:text-5xl
-                   text-black
-                   mb-5">
-
-            Verify Your Email
-
-        </h1>
-
-        <p
-            class="text-gray-600
-                   leading-7">
-
-            Enter the verification code sent to
-
-        </p>
-
-
-        <p
-            class="mt-2
-                   font-medium
-                   text-black
-                   break-all">
-
-            {{ email }}
-
-        </p>
-
-
-        <form
-    method="POST"
-    class="mt-10">
-
-    {% csrf_token %}
-
-    {% if error %}
-
-    <p class="mb-5 text-sm text-red-600">
-        {{ error }}
+<!-- ========================================================= -->
+<!-- OTP HEADER -->
+<!-- ========================================================= -->
+<div class="text-center mb-8 sm:mb-9">
+    <h1 class="font-serif text-3xl sm:text-[2.25rem] font-medium text-auraBlack tracking-tight">
+        Verify Your Email
+    </h1>
+    <p class="mt-3 text-xs sm:text-[13px] text-auraMuted font-light leading-relaxed max-w-sm mx-auto">
+        We've sent a verification code to your email address to complete your account registration.
     </p>
-
-    {% endif %}
-
-    {% if success %}
-
-    <p class="mb-5 text-sm text-green-600">
-        {{ success }}
+    <p class="mt-2 text-xs sm:text-[13px] font-medium text-auraBlack break-all">
+        {{ email }}
     </p>
-
-    {% endif %}
-
-    <input
-        type="text"
-        name="otp"
-        maxlength="6"
-        inputmode="numeric"
-        autocomplete="one-time-code"
-        required
-        placeholder="ENTER OTP"
-        class="w-full
-               border-0
-               border-b
-               border-black
-               bg-transparent
-               py-3
-               text-center
-               tracking-[0.4em]
-               focus:outline-none
-               focus:ring-0">
-
-    <button
-        type="submit"
-        class="w-full
-               h-14
-               mt-8
-               bg-black
-               text-white
-               uppercase
-               tracking-[0.18em]
-               text-sm
-               font-medium
-               transition-all
-               duration-300
-               hover:bg-gray-900">
-
-        Verify Email
-
-    </button>
-
-    <div class="mt-6 text-center">
-
-    <p class="text-sm text-gray-500">
-        Didn't receive the code?
-    </p>
-
-    <a
-        href="{% url 'resend_signup_otp' %}"
-        class="mt-2
-               inline-block
-               text-sm
-               uppercase
-               tracking-[0.15em]
-               border-b
-               border-black
-               hover:opacity-70
-               transition">
-
-        Resend OTP
-
-    </a>
-
 </div>
 
-</form>
+<!-- ========================================================= -->
+<!-- ERROR / SUCCESS ALERTS -->
+<!-- ========================================================= -->
+{% if error %}
+    <div class="mb-6 p-3.5 rounded-lg bg-red-50/90 border border-red-200 text-red-700 text-xs font-medium text-center tracking-wide">
+        {{ error }}
+    </div>
+{% endif %}
 
+{% if success %}
+    <div class="mb-6 p-3.5 rounded-lg bg-emerald-50/90 border border-emerald-200 text-emerald-800 text-xs font-medium text-center tracking-wide">
+        {{ success }}
+    </div>
+{% endif %}
+
+<!-- ========================================================= -->
+<!-- OTP FORM -->
+<!-- ========================================================= -->
+<form method="POST" action="" id="otpForm" novalidate class="space-y-7">
+    {% csrf_token %}
+
+    <!-- 6-Digit Segmented Luxury Underline Slots -->
+    <div class="flex flex-col items-center">
+        <div class="relative w-full max-w-[320px] sm:max-w-[360px]">
+            <!-- Native input for accessibility, keyboard, paste, and SMS autofill -->
+            <input
+                type="text"
+                id="otp"
+                name="otp"
+                maxlength="6"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                autocomplete="one-time-code"
+                required
+                class="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer caret-transparent"
+                aria-label="6-digit verification code"
+            >
+
+            <!-- 6 Visual Underline Slots (Figma-inspired luxury minimalist dashes) -->
+            <div id="otpSlotsContainer" class="flex items-center justify-between gap-2.5 sm:gap-3.5 py-2 cursor-pointer z-10 select-none" aria-hidden="true">
+                <div class="otp-slot flex-1 h-12 sm:h-14 flex items-center justify-center text-xl sm:text-2xl font-serif font-medium text-auraBlack border-b-2 border-auraBorder transition-all duration-200" data-index="0"></div>
+                <div class="otp-slot flex-1 h-12 sm:h-14 flex items-center justify-center text-xl sm:text-2xl font-serif font-medium text-auraBlack border-b-2 border-auraBorder transition-all duration-200" data-index="1"></div>
+                <div class="otp-slot flex-1 h-12 sm:h-14 flex items-center justify-center text-xl sm:text-2xl font-serif font-medium text-auraBlack border-b-2 border-auraBorder transition-all duration-200" data-index="2"></div>
+                <div class="otp-slot flex-1 h-12 sm:h-14 flex items-center justify-center text-xl sm:text-2xl font-serif font-medium text-auraBlack border-b-2 border-auraBorder transition-all duration-200" data-index="3"></div>
+                <div class="otp-slot flex-1 h-12 sm:h-14 flex items-center justify-center text-xl sm:text-2xl font-serif font-medium text-auraBlack border-b-2 border-auraBorder transition-all duration-200" data-index="4"></div>
+                <div class="otp-slot flex-1 h-12 sm:h-14 flex items-center justify-center text-xl sm:text-2xl font-serif font-medium text-auraBlack border-b-2 border-auraBorder transition-all duration-200" data-index="5"></div>
+            </div>
+        </div>
     </div>
 
-</main>
+    <!-- Resend Section (Pure backend-driven action) -->
+    <div class="text-center text-xs text-auraMuted pt-1">
+        <span>Didn't receive the code?</span>
+        <a
+            href="{% url 'resend_signup_otp' %}"
+            class="ml-1 text-auraBlack font-semibold underline underline-offset-4 decoration-auraBorder hover:decoration-auraBlack transition-colors duration-200"
+        >
+            Resend Code
+        </a>
+    </div>
 
+    <!-- Primary CTA Button -->
+    <button
+        type="submit"
+        class="w-full h-12 sm:h-13 bg-auraBlack text-auraIvory text-xs uppercase tracking-[0.22em] font-semibold rounded-lg hover:bg-black active:scale-[0.99] transition-all duration-300 shadow-sm hover:shadow-aura-button"
+    >
+        Verify Code
+    </button>
+</form>
+
+<!-- ========================================================= -->
+<!-- SECONDARY NAVIGATION -->
+<!-- ========================================================= -->
+<div class="mt-8 text-center">
+    <a
+        href="{% url 'login' %}"
+        class="inline-flex items-center justify-center gap-2 text-xs font-light text-auraMuted hover:text-auraBlack transition-colors duration-200 group"
+    >
+        <span class="transform transition-transform duration-200 group-hover:-translate-x-1">&larr;</span>
+        <span>Back to Login</span>
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const otpInput = document.getElementById("otp");
+        const slots = document.querySelectorAll(".otp-slot");
+
+        // Sync native input with visual slots
+        function updateSlots() {
+            const val = otpInput.value.replace(/[^0-9]/g, "").slice(0, 6);
+            otpInput.value = val;
+
+            slots.forEach((slot, idx) => {
+                if (idx < val.length) {
+                    slot.textContent = val[idx];
+                    slot.classList.remove("border-auraBorder", "border-auraChampagneDark");
+                    slot.classList.add("border-auraBlack");
+                } else if (idx === val.length && document.activeElement === otpInput) {
+                    slot.textContent = "";
+                    slot.classList.remove("border-auraBorder", "border-auraBlack");
+                    slot.classList.add("border-auraChampagneDark");
+                } else {
+                    slot.textContent = "";
+                    slot.classList.remove("border-auraBlack", "border-auraChampagneDark");
+                    slot.classList.add("border-auraBorder");
+                }
+            });
+        }
+
+        if (otpInput && slots.length) {
+            otpInput.focus();
+            updateSlots();
+
+            otpInput.addEventListener("input", updateSlots);
+            otpInput.addEventListener("focus", updateSlots);
+            otpInput.addEventListener("blur", function () {
+                slots.forEach((slot, idx) => {
+                    if (idx >= otpInput.value.length) {
+                        slot.classList.remove("border-auraChampagneDark");
+                        slot.classList.add("border-auraBorder");
+                    }
+                });
+            });
+
+            // Focus on input when clicking slot container
+            const container = document.getElementById("otpSlotsContainer");
+            if (container) {
+                container.addEventListener("click", () => otpInput.focus());
+            }
+        }
+    });
+</script>
 {% endblock %}

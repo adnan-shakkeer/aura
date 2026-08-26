@@ -5,591 +5,248 @@ AURA | Create Account
 {% endblock %}
 
 {% block content %}
+<!-- ========================================================= -->
+<!-- SIGNUP HEADER -->
+<!-- ========================================================= -->
+<div class="text-center mb-8">
+    <h1 class="font-serif text-3xl sm:text-[2.2rem] font-medium text-auraBlack tracking-tight">
+        Create Account
+    </h1>
+    <p class="mt-2 text-xs sm:text-[13px] text-auraMuted font-light tracking-wide">
+        Join AURA and discover curated bespoke fragrances
+    </p>
+</div>
 
-<main
-    class="flex
-           items-center
-           justify-center
-           py-8
-           px-5">
-           
-    <div class="w-full max-w-xl">
+<!-- ========================================================= -->
+<!-- SIGNUP FORM -->
+<!-- ========================================================= -->
+<form method="POST" action="" novalidate class="space-y-4">
+    {% csrf_token %}
 
-        <!-- Page Heading -->
-        <div class="text-center mb-8">
-
-            <h1 class="font-serif text-4xl md:text-5xl text-black mb-3">
-
-                Create Your Account
-
-            </h1>
-
-            <p class="text-gray-500 text-base leading-7 max-w-md mx-auto">
-
-                Join AURA and discover a curated collection of premium fragrances.
-
+    <!-- Full Name Field -->
+    <div>
+        <label for="full_name" class="block text-[11px] uppercase tracking-[0.16em] font-medium text-auraBlack mb-2">
+            Full Name
+        </label>
+        <input
+            type="text"
+            id="full_name"
+            name="full_name"
+            value="{{ signup_data.full_name|default:'' }}"
+            autocomplete="name"
+            required
+            placeholder="e.g. Eleanor Vance"
+            class="w-full h-12 px-4 bg-white/70 border {% if errors.full_name %}border-red-400 focus:border-red-500 focus:ring-red-200{% else %}border-auraBorder focus:border-auraBlack focus:ring-auraBlack/5{% endif %} rounded-lg text-sm text-auraBlack placeholder:text-auraMuted/50 outline-none transition-all duration-200 focus:ring-2 focus:bg-white"
+        >
+        {% if errors.full_name %}
+            <p class="mt-1.5 text-xs text-red-600 font-medium tracking-wide">
+                {{ errors.full_name }}
             </p>
-
-        </div>
-
-        <!-- Signup Form -->
-        <form
-            method="POST"
-            autocomplete="off"
-            class="space-y-6">
-
-            {% csrf_token %}
-
-            <!-- ================================================= -->
-            <!-- Full Name -->
-            <!-- ================================================= -->
-
-            <div>
-
-                <label
-                    for="full_name"
-                    class="block text-xs font-medium uppercase tracking-[0.18em] mb-2">
-
-                    Full Name
-
-                    <span class="text-red-500">*</span>
-
-                </label>
-
-                <input
-                    type="text"
-                    id="full_name"
-                    name="full_name"
-                    autocomplete="name"
-                    value="{{ signup_data.full_name }}"
-                    placeholder="Giovanni Rossi"
-
-                    class="w-full
-                           border-0
-                           border-b
-                           border-gray-400
-                           bg-transparent
-                           py-2.5
-                           px-0
-                           text-base
-                           placeholder:text-gray-400
-                           focus:outline-none
-                           focus:border-black
-                           transition-all
-                           duration-300">
-
-                {% if errors.full_name %}
-
-                    <p class="mt-2 text-sm text-red-600">
-
-                        {{ errors.full_name }}
-
-                    </p>
-
-                {% endif %}
-
-            </div>
-
-            <!-- ================================================= -->
-            <!-- Email -->
-            <!-- ================================================= -->
-
-            <div>
-
-                <label
-                    for="email"
-                    class="block text-xs font-medium uppercase tracking-[0.18em] mb-2">
-
-                    Email Address
-
-                    <span class="text-red-500">*</span>
-
-                </label>
-
-                <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    autocomplete="email"
-                    value="{{ signup_data.email }}"
-                    placeholder="your@email.com"
-
-                    class="w-full
-                           border-0
-                           border-b
-                           border-gray-400
-                           bg-transparent
-                           py-2.5
-                           px-0
-                           text-base
-                           placeholder:text-gray-400
-                           focus:outline-none
-                           focus:border-black
-                           transition-all
-                           duration-300">
-
-                {% if errors.email %}
-
-                    <p class="mt-2 text-sm text-red-600">
-
-                        {{ errors.email }}
-
-                    </p>
-
-                {% endif %}
-
-            </div>
-
-            <!-- ================================================= -->
-            <!-- Password -->
-            <!-- ================================================= -->
-                        <div>
-
-                <label
-                    for="password"
-                    class="block text-xs font-medium uppercase tracking-[0.18em] mb-2">
-
-                    Password
-
-                    <span class="text-red-500">*</span>
-
-                </label>
-
-                <div class="relative">
-
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        autocomplete="new-password"
-                        placeholder="Enter your password"
-
-                        class="w-full
-                               border-0
-                               border-b
-                               border-gray-400
-                               bg-transparent
-                               py-2.5
-                               pr-10
-                               px-0
-                               text-base
-                               placeholder:text-gray-400
-                               focus:outline-none
-                               focus:border-black
-                               transition-all
-                               duration-300">
-
-                    <button
-                        type="button"
-                        id="togglePassword"
-                        aria-label="Toggle password visibility"
-                        class="absolute right-0 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black transition duration-300">
-
-                        <!-- Eye Slash (Default) -->
-                        <svg
-                            id="passwordEyeSlash"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke-width="1.8"
-                            stroke="currentColor"
-                            class="w-5 h-5">
-
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c1.998 0 3.87-.556 5.466-1.523M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.774 3.162 10.066 7.5a10.523 10.523 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m0 0a3 3 0 1 0 4.243 4.243m-4.243-4.243L9.88 9.88m4.243 4.243L21 21"/>
-
-                        </svg>
-
-                        <!-- Eye -->
-                        <svg
-                            id="passwordEye"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke-width="1.8"
-                            stroke="currentColor"
-                            class="w-5 h-5 hidden">
-
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5s8.577 3.01 9.964 7.183a1.01 1.01 0 0 1 0 .639C20.577 16.49 16.64 19.5 12 19.5S3.423 16.49 2.036 12.322ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
-
-                        </svg>
-
-                    </button>
-
-                </div>
-
-                {% if errors.password %}
-
-                    <p class="mt-2 text-sm text-red-600">
-
-                        {{ errors.password }}
-
-                    </p>
-
-                {% endif %}
-
-            </div>
-
-            <!-- ================================================= -->
-            <!-- Confirm Password -->
-            <!-- ================================================= -->
-
-            <div>
-
-                <label
-                    for="confirm_password"
-                    class="block text-xs font-medium uppercase tracking-[0.18em] mb-2">
-
-                    Confirm Password
-
-                    <span class="text-red-500">*</span>
-
-                </label>
-
-                <div class="relative">
-
-                    <input
-                        type="password"
-                        id="confirm_password"
-                        name="confirm_password"
-                        autocomplete="new-password"
-                        placeholder="Re-enter your password"
-
-                        class="w-full
-                               border-0
-                               border-b
-                               border-gray-400
-                               bg-transparent
-                               py-2.5
-                               pr-10
-                               px-0
-                               text-base
-                               placeholder:text-gray-400
-                               focus:outline-none
-                               focus:border-black
-                               transition-all
-                               duration-300">
-
-                    <button
-                        type="button"
-                        id="toggleConfirmPassword"
-                        aria-label="Toggle confirm password visibility"
-                        class="absolute right-0 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black transition duration-300">
-
-                        <!-- Eye Slash -->
-                        <svg
-                            id="confirmPasswordEyeSlash"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke-width="1.8"
-                            stroke="currentColor"
-                            class="w-5 h-5">
-
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c1.998 0 3.87-.556 5.466-1.523M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.774 3.162 10.066 7.5a10.523 10.523 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m0 0a3 3 0 1 0 4.243 4.243m-4.243-4.243L9.88 9.88m4.243 4.243L21 21"/>
-
-                        </svg>
-
-                        <!-- Eye -->
-                        <svg
-                            id="confirmPasswordEye"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke-width="1.8"
-                            stroke="currentColor"
-                            class="w-5 h-5 hidden">
-
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5s8.577 3.01 9.964 7.183a1.01 1.01 0 0 1 0 .639C20.577 16.49 16.64 19.5 12 19.5S3.423 16.49 2.036 12.322ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
-
-                        </svg>
-
-                    </button>
-
-                </div>
-
-                {% if errors.confirm_password %}
-
-                    <p class="mt-2 text-sm text-red-600">
-
-                        {{ errors.confirm_password }}
-
-                    </p>
-
-                {% endif %}
-
-            </div>
-
-            <!-- ================================================= -->
-            <!-- Terms & Conditions -->
-            <!-- ================================================= -->
-
-            <div>
-
-                <label class="flex items-start gap-3 cursor-pointer">
-
-                    <input
-                        type="checkbox"
-                        id="terms"
-                        name="terms"
-
-                        {% if signup_data.terms %}
-                            checked
-                        {% endif %}
-
-                        class="mt-1 h-4 w-4 rounded border-gray-400 text-black focus:ring-black">
-
-                    <span class="text-sm text-gray-600 leading-6">
-
-                        I agree to the
-
-                        <a
-                            href="#"
-                            class="underline hover:text-black">
-
-                            Terms & Conditions
-
-                        </a>
-
-                        and
-
-                        <a
-                            href="#"
-                            class="underline hover:text-black">
-
-                            Privacy Policy
-
-                        </a>
-
-                    </span>
-
-                </label>
-
-                {% if errors.terms %}
-
-                    <p class="mt-2 text-sm text-red-600">
-
-                        {{ errors.terms }}
-
-                    </p>
-
-                {% endif %}
-
-            </div>
-
-            <!-- ================================================= -->
-            <!-- Action Buttons -->
-            <!-- ================================================= -->
-                        <div class="pt-3 space-y-4">
-
-                <!-- Create Account Button -->
-
-                <button
-                    type="submit"
-                    id="signupButton"
-
-                    class="w-full
-                           h-12
-                           bg-black
-                           text-white
-                           text-sm
-                           font-medium
-                           uppercase
-                           tracking-[0.18em]
-                           rounded-md
-                           transition-all
-                           duration-300
-                           hover:bg-gray-900
-                           disabled:opacity-70
-                           disabled:cursor-not-allowed">
-
-                    <span id="signupButtonText">
-
-                        Create Account
-
-                    </span>
-
-                </button>
-
-                <!-- Divider -->
-
-                <div class="relative flex items-center">
-
-                    <div class="flex-grow border-t border-gray-300"></div>
-
-                    <span
-                        class="px-4
-                               text-xs
-                               uppercase
-                               tracking-[0.2em]
-                               text-gray-500
-                               bg-white">
-
-                        OR
-
-                    </span>
-
-                    <div class="flex-grow border-t border-gray-300"></div>
-
-                </div>
-
-                <!-- Google Button -->
-
-                <button
-                    type="button"
-
-                    class="w-full
-                           h-12
-                           border
-                           border-black
-                           rounded-md
-                           flex
-                           items-center
-                           justify-center
-                           gap-3
-                           text-sm
-                           font-medium
-                           transition-all
-                           duration-300
-                           hover:bg-black
-                           hover:text-white">
-
-                    <svg
-                        class="w-5 h-5"
-                        viewBox="0 0 24 24"
-                        fill="currentColor">
-
-                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-
-                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-
-                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
-
-                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1C7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-
-                    </svg>
-
-                    Continue with Google
-
-                </button>
-
-            </div>
-
-            <!-- Sign In -->
-
-            <div class="pt-5 text-center">
-
-                <p class="text-sm text-gray-600">
-
-                    Already have an account?
-
-                    <a
-                        href=""
-                        class="ml-1
-                               uppercase
-                               tracking-[0.15em]
-                               text-black
-                               border-b
-                               border-black
-                               hover:opacity-70
-                               transition">
-
-                        Sign In
-
-                    </a>
-
-                </p>
-
-            </div>
-
-        </form>
-
+        {% endif %}
     </div>
 
-</main>
+    <!-- Email Field -->
+    <div>
+        <label for="email" class="block text-[11px] uppercase tracking-[0.16em] font-medium text-auraBlack mb-2">
+            Email Address
+        </label>
+        <input
+            type="email"
+            id="email"
+            name="email"
+            value="{{ signup_data.email|default:'' }}"
+            autocomplete="email"
+            required
+            placeholder="name@example.com"
+            class="w-full h-12 px-4 bg-white/70 border {% if errors.email %}border-red-400 focus:border-red-500 focus:ring-red-200{% else %}border-auraBorder focus:border-auraBlack focus:ring-auraBlack/5{% endif %} rounded-lg text-sm text-auraBlack placeholder:text-auraMuted/50 outline-none transition-all duration-200 focus:ring-2 focus:bg-white"
+        >
+        {% if errors.email %}
+            <p class="mt-1.5 text-xs text-red-600 font-medium tracking-wide">
+                {{ errors.email }}
+            </p>
+        {% endif %}
+    </div>
 
+    <!-- Password Field -->
+    <div>
+        <label for="password" class="block text-[11px] uppercase tracking-[0.16em] font-medium text-auraBlack mb-2">
+            Password
+        </label>
+        <div class="relative">
+            <input
+                type="password"
+                id="password"
+                name="password"
+                autocomplete="new-password"
+                required
+                placeholder="Create a strong password"
+                class="w-full h-12 pl-4 pr-11 bg-white/70 border {% if errors.password %}border-red-400 focus:border-red-500 focus:ring-red-200{% else %}border-auraBorder focus:border-auraBlack focus:ring-auraBlack/5{% endif %} rounded-lg text-sm text-auraBlack placeholder:text-auraMuted/50 outline-none transition-all duration-200 focus:ring-2 focus:bg-white"
+            >
+            <button
+                type="button"
+                id="togglePassword"
+                aria-label="Show password"
+                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-auraMuted hover:text-auraBlack focus:outline-none transition-colors duration-200"
+            >
+                <!-- Eye Icon (shown when password is visible) -->
+                <svg id="passwordEye" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5s8.577 3.01 9.964 7.183a1.01 1.01 0 0 1 0 .639C20.577 16.49 16.64 19.5 12 19.5S3.423 16.49 2.036 12.322ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+                <!-- Eye Slash Icon (shown when password is hidden) -->
+                <svg id="passwordEyeSlash" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c1.998 0 3.87-.556 5.466-1.523M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.774 3.162 10.066 7.5a10.523 10.523 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m0 0a3 3 0 1 0 4.243 4.243m-4.243-4.243L9.88 9.88m4.243 4.243L21 21" />
+                </svg>
+            </button>
+        </div>
+        {% if errors.password %}
+            <p class="mt-1.5 text-xs text-red-600 font-medium tracking-wide">
+                {{ errors.password }}
+            </p>
+        {% endif %}
+    </div>
+
+    <!-- Confirm Password Field -->
+    <div>
+        <label for="confirm_password" class="block text-[11px] uppercase tracking-[0.16em] font-medium text-auraBlack mb-2">
+            Confirm Password
+        </label>
+        <div class="relative">
+            <input
+                type="password"
+                id="confirm_password"
+                name="confirm_password"
+                autocomplete="new-password"
+                required
+                    placeholder="Re-enter your password"
+                class="w-full h-12 pl-4 pr-11 bg-white/70 border {% if errors.confirm_password %}border-red-400 focus:border-red-500 focus:ring-red-200{% else %}border-auraBorder focus:border-auraBlack focus:ring-auraBlack/5{% endif %} rounded-lg text-sm text-auraBlack placeholder:text-auraMuted/50 outline-none transition-all duration-200 focus:ring-2 focus:bg-white"
+            >
+            <button
+                type="button"
+                id="toggleConfirmPassword"
+                aria-label="Show confirm password"
+                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-auraMuted hover:text-auraBlack focus:outline-none transition-colors duration-200"
+            >
+                <!-- Eye Icon (shown when password is visible) -->
+                <svg id="confirmPasswordEye" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5s8.577 3.01 9.964 7.183a1.01 1.01 0 0 1 0 .639C20.577 16.49 16.64 19.5 12 19.5S3.423 16.49 2.036 12.322ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+                <!-- Eye Slash Icon (shown when password is hidden) -->
+                <svg id="confirmPasswordEyeSlash" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c1.998 0 3.87-.556 5.466-1.523M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.774 3.162 10.066 7.5a10.523 10.523 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m0 0a3 3 0 1 0 4.243 4.243m-4.243-4.243L9.88 9.88m4.243 4.243L21 21" />
+                </svg>
+            </button>
+        </div>
+        {% if errors.confirm_password %}
+            <p class="mt-1.5 text-xs text-red-600 font-medium tracking-wide">
+                {{ errors.confirm_password }}
+            </p>
+        {% endif %}
+    </div>
+
+    <!-- Terms & Conditions Checkbox -->
+    <div class="pt-1">
+        <label class="flex items-start gap-2.5 cursor-pointer select-none">
+            <input
+                type="checkbox"
+                id="terms"
+                name="terms"
+                {% if signup_data.terms %}checked{% endif %}
+                class="mt-0.5 h-4 w-4 shrink-0 rounded border-auraBorder text-auraBlack focus:ring-auraBlack/20 cursor-pointer accent-auraBlack"
+            >
+            <span class="text-xs leading-tight text-auraMuted font-light">
+                I agree to the
+                <a href="#" class="text-auraBlack font-medium underline underline-offset-2 hover:opacity-75">Terms & Conditions</a>
+                and
+                <a href="#" class="text-auraBlack font-medium underline underline-offset-2 hover:opacity-75">Privacy Policy</a>
+            </span>
+        </label>
+        {% if errors.terms %}
+            <p class="mt-1.5 text-xs text-red-600 font-medium tracking-wide">
+                {{ errors.terms }}
+            </p>
+        {% endif %}
+    </div>
+
+    <!-- Create Account Button -->
+    <button
+        type="submit"
+        id="signupButton"
+        class="w-full h-12 mt-5 bg-auraBlack text-auraIvory text-xs uppercase tracking-[0.2em] font-semibold rounded-lg hover:bg-black active:scale-[0.99] transition-all duration-300 shadow-sm hover:shadow-aura-button"
+    >
+        <span id="signupButtonText">Create Account</span>
+    </button>
+</form>
+
+<!-- ========================================================= -->
+<!-- SOCIAL LOGIN DIVIDER -->
+<!-- ========================================================= -->
+<div class="relative my-7">
+    <div class="absolute inset-0 flex items-center">
+        <div class="w-full border-t border-auraBorder"></div>
+    </div>
+    <div class="relative flex justify-center">
+        <span class="px-3 bg-white text-[10px] uppercase tracking-[0.2em] text-auraMuted font-medium">
+            Or continue with
+        </span>
+    </div>
+</div>
+
+<!-- ========================================================= -->
+<!-- GOOGLE AUTHENTICATION BUTTON -->
+<!-- ========================================================= -->
+<button
+    type="button"
+    class="w-full h-12 flex items-center justify-center gap-3 bg-white hover:bg-auraCream border border-auraBorder hover:border-auraChampagneDark rounded-lg text-xs uppercase tracking-[0.14em] font-medium text-auraBlack transition-all duration-200 shadow-sm"
+>
+    <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+    </svg>
+    <span>Google</span>
+</button>
+
+<!-- ========================================================= -->
+<!-- SIGN IN LINK -->
+<!-- ========================================================= -->
+<div class="mt-8 text-center text-xs text-auraMuted">
+    <span>Already have an account?</span>
+    <a href="{% url 'login' %}" class="ml-1 text-auraBlack font-semibold underline underline-offset-4 decoration-auraBorder hover:decoration-auraBlack transition-colors duration-200">
+        Sign In
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        function setupToggle(buttonId, inputId, eyeId, eyeSlashId) {
+            const button = document.getElementById(buttonId);
+            const input = document.getElementById(inputId);
+            const eye = document.getElementById(eyeId);
+            const eyeSlash = document.getElementById(eyeSlashId);
 
-document.addEventListener("DOMContentLoaded", function () {
+            if (button && input && eye && eyeSlash) {
+                button.addEventListener("click", function () {
+                    const isPassword = input.type === "password";
+                    input.type = isPassword ? "text" : "password";
 
-    function setupPasswordToggle(
-        inputId,
-        buttonId,
-        eyeId,
-        eyeSlashId
-    ) {
-
-        const input = document.getElementById(inputId);
-        const button = document.getElementById(buttonId);
-
-        const eye = document.getElementById(eyeId);
-        const eyeSlash = document.getElementById(eyeSlashId);
-
-        button.addEventListener("click", function () {
-
-            if (input.type === "password") {
-
-                input.type = "text";
-
-                eye.classList.remove("hidden");
-                eyeSlash.classList.add("hidden");
-
-            } else {
-
-                input.type = "password";
-
-                eye.classList.add("hidden");
-                eyeSlash.classList.remove("hidden");
-
+                    if (isPassword) {
+                        eye.classList.remove("hidden");
+                        eyeSlash.classList.add("hidden");
+                        button.setAttribute("aria-label", "Hide password");
+                    } else {
+                        eye.classList.add("hidden");
+                        eyeSlash.classList.remove("hidden");
+                        button.setAttribute("aria-label", "Show password");
+                    }
+                });
             }
+        }
 
-        });
-
-    }
-
-    setupPasswordToggle(
-        "password",
-        "togglePassword",
-        "passwordEye",
-        "passwordEyeSlash"
-    );
-
-    setupPasswordToggle(
-        "confirm_password",
-        "toggleConfirmPassword",
-        "confirmPasswordEye",
-        "confirmPasswordEyeSlash"
-    );
-
-    const signupForm = document.querySelector("form");
-
-    const signupButton =
-        document.getElementById("signupButton");
-
-    const signupButtonText =
-        document.getElementById("signupButtonText");
-
-    signupForm.addEventListener("submit", function () {
-
-        signupButton.disabled = true;
-
-        signupButtonText.textContent = "Creating Account...";
-
+        setupToggle("togglePassword", "password", "passwordEye", "passwordEyeSlash");
+        setupToggle("toggleConfirmPassword", "confirm_password", "confirmPasswordEye", "confirmPasswordEyeSlash");
     });
-
-});
-
 </script>
-
 {% endblock %}

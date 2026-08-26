@@ -4,10 +4,9 @@ from datetime import timedelta
 from django.shortcuts import redirect, render
 from django.core.mail import send_mail
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.utils import timezone
 from django.db import transaction
-
-
 
 from .models import SignupOTP
 from user_panel.user_profile.models import UserProfile
@@ -20,6 +19,10 @@ from .validators.signup_validator import (
     validate_terms,
 )     
 
+from .validators.login_validator import (
+    validate_email as validate_login_email,
+    validate_password as validate_login_password,
+)
 
 def generate_signup_otp(email):
     """
@@ -138,7 +141,7 @@ def signup_otp(request):
                         None,
                     )
 
-                    return redirect("signup")
+                    return redirect("login")
 
     context = {
         "email": email,
@@ -255,3 +258,107 @@ def signup(request):
                 
     return render(request, "authentication/signup.html",context)
 
+
+def login(request):
+    """
+    Display the user login page.
+
+    """
+
+    context = {
+        "login_data": {},
+        "errors": {},
+    }
+
+    if request.method == "POST":
+
+        login_data = {
+            "email" : request.POST.get(
+                "email",
+                ""
+            ).strip().lower(),
+
+            "password" : request.POST.get(
+                "password",
+                "",
+            )
+        }
+
+        errors = {}
+
+        # =============================================
+        # Validate Email
+        # =============================================
+
+        email_error = validate_login_email(
+            login_data["email"]
+        )
+
+        if email_error:
+            errors["email"] = email_error
+
+        # =============================================
+        # Validate Password
+        # =============================================
+
+        password_error = validate_login_password(
+            login_data["password"]
+        )
+
+        if password_error:
+            errors["password"] = password_error
+
+        # =============================================
+        # Authenticate User
+        # =============================================
+
+        if not errors:
+
+            user = authenticate(
+                request,
+                username = login_data["email"],
+                password = login_data["password"]
+            )
+
+            if user is None:
+
+                errors["login"] = (
+                    "Invalid email or password."
+                )
+
+            else:
+
+                auth_login(
+                    request,
+                    user,
+                )
+
+                return redirect("home")
+
+        # =============================================
+        # Return Login Page With Errors
+        # =============================================
+
+        context = {
+            "login_data": {
+                "email": login_data["email"],
+            },
+
+            "errors": errors,
+        }
+
+        
+    return render(
+        request,
+        "authentication/login.html",
+        context,
+    )
+
+def logout(request):
+    """
+    Log out the currently authenticated user.
+    """
+
+    auth_logout(request)
+
+    return redirect("login")

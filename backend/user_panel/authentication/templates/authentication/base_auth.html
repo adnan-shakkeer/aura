@@ -1,269 +1,139 @@
 {% load static %}
-
 <!DOCTYPE html>
-
-<html lang="en">
-
+<html lang="en" class="h-full">
 <head>
-
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0">
-
-    <title>
-
-        {% block title %}
-
-            AURA
-
-        {% endblock %}
-
-    </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AURA | Haute Parfumerie{% endblock %}</title>
 
     <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-    <link
-        rel="preconnect"
-        href="https://fonts.googleapis.com">
-
-    <link
-        rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossorigin>
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
-        rel="stylesheet">
-
-    <!-- Tailwind CSS -->
-
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-
     <script>
-
         tailwind.config = {
-
             theme: {
-
                 extend: {
-
                     fontFamily: {
-
-                        serif: ["Cormorant Garamond", "serif"],
-
-                        sans: ["Inter", "sans-serif"],
-
+                        serif: ["Playfair Display", "Georgia", "serif"],
+                        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
                     },
-
                     colors: {
-
-                        auraBlack: "#111111",
-
-                        auraGray: "#6B7280",
-
-                        auraBorder: "#D1D5DB",
-
+                        auraBlack: "#1A1A1A",
+                        auraDark: "#111111",
+                        auraIvory: "#F8F5F0",
+                        auraCream: "#FAF7F2",
+                        auraChampagne: "#D4C5B0",
+                        auraChampagneDark: "#BFA98F",
+                        auraBorder: "#E5E0D8",
+                        auraBorderLight: "#EFEBE4",
+                        auraMuted: "#6B6A65",
+                        auraMutedLight: "#8E8D88",
+                    },
+                    boxShadow: {
+                        'aura-card': '0 10px 40px -15px rgba(26, 26, 26, 0.05), 0 0 1px 1px rgba(229, 224, 216, 0.6)',
+                        'aura-button': '0 4px 20px rgba(26, 26, 26, 0.15)',
                     }
-
                 }
-
             }
-
-        }
-
+        };
     </script>
 
-    {% block extra_css %}
+    <style>
+        /* Base typography smoothing */
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-color: #F8F5F0;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(212, 197, 176, 0.18) 0%, transparent 60%),
+                radial-gradient(circle at 100% 100%, rgba(212, 197, 176, 0.1) 0%, transparent 40%);
+        }
 
-    {% endblock %}
+        /* Selection styling */
+        ::selection {
+            background-color: #D4C5B0;
+            color: #1A1A1A;
+        }
 
+        /* Custom luxury input autofill reset */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+            -webkit-text-fill-color: #1A1A1A !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+
+        /* Smooth transitions */
+        .aura-transition {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
 </head>
 
-<body
-    class="bg-[#EDE8DE]
-           text-[#171717]
-           font-sans
-           min-h-screen
-           flex
-           flex-col">
+<body class="min-h-full flex flex-col justify-between text-auraBlack font-sans antialiased overflow-x-hidden">
 
-    <!-- ================================= -->
-    <!-- Header -->
-    <!-- ================================= -->
-
-    <header
-        class="border-b
-               border-[#C8C0B2]
-               bg-[#F7F4EE]">
-
-        <div
-            class="max-w-7xl
-                   mx-auto
-                   px-6
-                   py-4">
-
-            <div
-                class="flex
-                       justify-center
-                       items-center">
-
-                <a
-                    href="/"
-                    class="font-serif
-                           text-3xl
-                           md:text-4xl
-                           tracking-[0.35em]
-                           text-[#171717]
-                           transition
-                           duration-300
-                           hover:opacity-70">
-
-                    AURA
-
-                </a>
-
-            </div>
-
-        </div>
-
+    <!-- ===================================================== -->
+    <!-- AUTHENTICATION HEADER / LOGO -->
+    <!-- ===================================================== -->
+    <header class="w-full pt-8 pb-4 sm:pt-12 sm:pb-6 text-center z-10">
+        <a href="/" aria-label="AURA Home" class="inline-block group focus:outline-none">
+            <span class="font-serif text-2xl sm:text-3xl tracking-[0.32em] pl-[0.32em] font-medium uppercase text-auraBlack group-hover:text-auraMuted aura-transition">
+                A U R A
+            </span>
+            <span class="block text-[9px] tracking-[0.38em] uppercase text-auraMuted mt-1 font-light opacity-80">
+                Haute Parfumerie
+            </span>
+        </a>
     </header>
 
+    <!-- ===================================================== -->
+    <!-- MAIN AUTHENTICATION CONTAINER -->
+    <!-- ===================================================== -->
+    <main class="flex-grow flex items-center justify-center px-4 sm:px-6 py-6 sm:py-10 z-10">
+        <div class="w-full max-w-[460px]">
 
-    <!-- ================================= -->
-    <!-- Main Content -->
-    <!-- ================================= -->
-
-    <main
-        class="flex-grow
-               bg-[#EDE8DE]">
-
-        {% block content %}
-
-        {% endblock %}
-
-    </main>
-
-
-    <!-- ================================= -->
-    <!-- Footer -->
-    <!-- ================================= -->
-
-    <footer
-        class="border-t
-               border-[#C8C0B2]
-               bg-[#DCD5C8]">
-
-        <div
-            class="max-w-7xl
-                   mx-auto
-                   px-6
-                   py-7">
-
-            <div
-                class="flex
-                       flex-col
-                       lg:flex-row
-                       justify-between
-                       items-center
-                       gap-6">
-
-                <!-- Brand -->
-
-                <div>
-
-                    <h2
-                        class="font-serif
-                               text-2xl
-                               tracking-[0.25em]
-                               text-[#171717]">
-
-                        AURA
-
-                    </h2>
-
+            <!-- Django Messages Toast / Alert Container -->
+            {% if messages %}
+                <div class="mb-6 space-y-2">
+                    {% for message in messages %}
+                        <div class="px-4 py-3 rounded-lg text-xs tracking-wider uppercase font-medium {% if message.tags == 'error' %}bg-red-50 border border-red-200 text-red-800{% elif message.tags == 'success' %}bg-emerald-50 border border-emerald-200 text-emerald-800{% else %}bg-amber-50 border border-amber-200 text-amber-800{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
                 </div>
+            {% endif %}
 
-
-                <!-- Links -->
-
-                <div
-                    class="flex
-                           flex-wrap
-                           justify-center
-                           gap-6
-                           text-sm
-                           text-[#4F4A42]">
-
-                    <a
-                        href="#"
-                        class="hover:text-black
-                               transition
-                               duration-300">
-
-                        About
-
-                    </a>
-
-                    <a
-                        href="#"
-                        class="hover:text-black
-                               transition
-                               duration-300">
-
-                        Contact
-
-                    </a>
-
-                    <a
-                        href="#"
-                        class="hover:text-black
-                               transition
-                               duration-300">
-
-                        Privacy
-
-                    </a>
-
-                    <a
-                        href="#"
-                        class="hover:text-black
-                               transition
-                               duration-300">
-
-                        Terms
-
-                    </a>
-
-                </div>
-
-
-                <!-- Copyright -->
-
-                <div
-                    class="text-xs
-                           text-[#625D54]
-                           text-center">
-
-                    © 2026 AURA Perfumery.
-
-                    All rights reserved.
-
-                </div>
-
+            <!-- Auth Card Shell -->
+            <div class="bg-white/90 backdrop-blur-sm border border-auraBorder rounded-2xl p-7 sm:p-10 shadow-aura-card aura-transition">
+                {% block content %}
+                {% endblock %}
             </div>
 
         </div>
+    </main>
 
+    <!-- ===================================================== -->
+    <!-- MINIMAL LUXURY FOOTER -->
+    <!-- ===================================================== -->
+    <footer class="w-full py-6 text-center text-[11px] tracking-wider text-auraMuted font-light z-10">
+        <div class="max-w-md mx-auto px-4 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6">
+            <span>&copy; {% now "Y" %} AURA. All rights reserved.</span>
+            <div class="flex items-center gap-4 text-auraMuted">
+                <a href="#" class="hover:text-auraBlack transition-colors duration-200">Privacy Policy</a>
+                <span>&bull;</span>
+                <a href="#" class="hover:text-auraBlack transition-colors duration-200">Terms of Service</a>
+            </div>
+        </div>
     </footer>
 
-
-    {% block extra_js %}
-
-    {% endblock %}
-
+    {% block extra_js %}{% endblock %}
 </body>
-
 </html>
-
