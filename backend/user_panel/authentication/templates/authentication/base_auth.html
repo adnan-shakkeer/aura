@@ -73,6 +73,92 @@
         .aura-transition {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        /* =====================================================
+           AURA PREMIUM NOTIFICATION COMPONENT
+           Single source of truth for all Django messages.
+           Supports: success | error | warning | info
+        ===================================================== */
+        @keyframes aura-notice-in {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .aura-notice {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 13px 16px;
+            border-radius: 6px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            line-height: 1.55;
+            animation: aura-notice-in 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
+        }
+
+        /* SUCCESS — warm ivory surface, champagne left rule, AURA black text */
+        .aura-notice--success {
+            background-color: #FDFBF7;
+            border: 1px solid #E5E0D8;
+            border-left: 2px solid #BFA98F;
+            color: #1A1A1A;
+        }
+        .aura-notice--success .aura-notice__icon {
+            color: #BFA98F;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* ERROR — very light warm blush, refined warm-red rule */
+        .aura-notice--error {
+            background-color: #FDF8F6;
+            border: 1px solid #EAD8D0;
+            border-left: 2px solid #A05A44;
+            color: #1A1A1A;
+        }
+        .aura-notice--error .aura-notice__icon {
+            color: #A05A44;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* WARNING — ivory with a warm amber left rule */
+        .aura-notice--warning {
+            background-color: #FDFAF4;
+            border: 1px solid #E8DEC8;
+            border-left: 2px solid #9E7D3A;
+            color: #1A1A1A;
+        }
+        .aura-notice--warning .aura-notice__icon {
+            color: #9E7D3A;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* INFO — cool ivory with a slate left rule */
+        .aura-notice--info {
+            background-color: #F9F8F6;
+            border: 1px solid #DDDAD5;
+            border-left: 2px solid #6B6A65;
+            color: #1A1A1A;
+        }
+        .aura-notice--info .aura-notice__icon {
+            color: #6B6A65;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .aura-notice__text {
+            flex: 1;
+        }
     </style>
 
     {% block extra_css %}{% endblock %}
@@ -100,13 +186,48 @@
     <main class="flex-grow flex items-center justify-center px-4 sm:px-6 py-6 sm:py-10 z-10">
         <div class="w-full max-w-[460px]">
 
-            <!-- Django Messages Toast / Alert Container -->
+            <!-- =================================================
+                 AURA NOTIFICATION ZONE
+                 Rendered ONCE here in the base template.
+                 Child templates must NOT independently iterate
+                 over messages — doing so causes duplication.
+            ================================================= -->
             {% if messages %}
-                <div class="mb-6 space-y-2">
+                <div class="mb-5 space-y-2" role="alert" aria-live="polite">
                     {% for message in messages %}
-                        <div class="px-4 py-3 rounded-lg text-xs tracking-wider uppercase font-medium {% if message.tags == 'error' %}bg-red-50 border border-red-200 text-red-800{% elif message.tags == 'success' %}bg-emerald-50 border border-emerald-200 text-emerald-800{% else %}bg-amber-50 border border-amber-200 text-amber-800{% endif %}">
-                            {{ message }}
-                        </div>
+                        {% if message.tags == 'error' %}
+                            <div class="aura-notice aura-notice--error">
+                                <svg class="aura-notice__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="9"/>
+                                    <path stroke-linecap="round" d="M15 9l-6 6M9 9l6 6"/>
+                                </svg>
+                                <span class="aura-notice__text">{{ message }}</span>
+                            </div>
+                        {% elif message.tags == 'warning' %}
+                            <div class="aura-notice aura-notice--warning">
+                                <svg class="aura-notice__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 3.5h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
+                                </svg>
+                                <span class="aura-notice__text">{{ message }}</span>
+                            </div>
+                        {% elif message.tags == 'info' %}
+                            <div class="aura-notice aura-notice--info">
+                                <svg class="aura-notice__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="9"/>
+                                    <path stroke-linecap="round" d="M12 11v5m0-8.5h.01"/>
+                                </svg>
+                                <span class="aura-notice__text">{{ message }}</span>
+                            </div>
+                        {% else %}
+                            <!-- Default / success -->
+                            <div class="aura-notice aura-notice--success">
+                                <svg class="aura-notice__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="9"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4"/>
+                                </svg>
+                                <span class="aura-notice__text">{{ message }}</span>
+                            </div>
+                        {% endif %}
                     {% endfor %}
                 </div>
             {% endif %}

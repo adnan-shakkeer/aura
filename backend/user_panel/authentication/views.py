@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.shortcuts import redirect, render
 from django.core.mail import send_mail
 from django.contrib.auth.models import User
+from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.utils import timezone
 from django.db import transaction
@@ -67,6 +68,11 @@ def signup_otp(request):
         return redirect("signup")
 
     email = signup_data["email"]
+
+    otp_record = SignupOTP.objects.filter(
+        email=email,
+        is_verified=False,
+    ).first()
 
     error = None
 
@@ -136,6 +142,11 @@ def signup_otp(request):
 
                         otp_record.delete()
 
+                    messages.success(
+                        request,
+                        "Your account has been created successfully. Please log in.",
+                    )    
+
                     request.session.pop(
                         "signup_data",
                         None,
@@ -146,6 +157,7 @@ def signup_otp(request):
     context = {
         "email": email,
         "error": error,
+        "otp_expires_at": otp_record.expires_at if otp_record else None,
     }
 
     return render(
@@ -167,6 +179,11 @@ def resend_signup_otp(request):
     email = signup_data["email"]
 
     generate_signup_otp(email)
+
+    messages.success(
+        request,
+        "A new OTP has been sent to your email address.",
+    )
 
     return redirect("signup_otp")
 
@@ -360,5 +377,10 @@ def logout(request):
     """
 
     auth_logout(request)
+
+    messages.success(
+        request,
+        "You have been logged out successfully.",
+    )
 
     return redirect("login")

@@ -18,17 +18,23 @@ AURA | Sign In
 </div>
 
 <!-- ========================================================= -->
-<!-- GENERAL LOGIN ERROR ALERT -->
+<!-- GENERAL LOGIN ERROR ALERT (template context var, not Django messages) -->
 <!-- ========================================================= -->
 {% if errors.login %}
-<div
-    class="mb-6 p-3.5 rounded-lg bg-red-50/90 border border-red-200 text-red-700 text-xs font-medium text-center tracking-wide">
-    {{ errors.login }}
+<div class="aura-notice aura-notice--error mb-5">
+    <svg class="aura-notice__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/>
+        <path stroke-linecap="round" d="M15 9l-6 6M9 9l6 6"/>
+    </svg>
+    <span class="aura-notice__text">{{ errors.login }}</span>
 </div>
 {% elif errors.general %}
-<div
-    class="mb-6 p-3.5 rounded-lg bg-red-50/90 border border-red-200 text-red-700 text-xs font-medium text-center tracking-wide">
-    {{ errors.general }}
+<div class="aura-notice aura-notice--error mb-5">
+    <svg class="aura-notice__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/>
+        <path stroke-linecap="round" d="M15 9l-6 6M9 9l6 6"/>
+    </svg>
+    <span class="aura-notice__text">{{ errors.general }}</span>
 </div>
 {% endif %}
 
