@@ -22,3 +22,21 @@ class SignupOTP(models.Model):
         return f"Signup OTP for {self.email}"
 
 
+class PasswordResetOTP(models.Model):
+    """
+    Store OTP information for password reset verification.
+    """
+
+    email = models.EmailField()
+
+    code = models.CharField(max_length=6)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Password Reset OTP for {self.email}"

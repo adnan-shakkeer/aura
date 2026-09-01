@@ -9,7 +9,7 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.utils import timezone
 from django.db import transaction
 
-from .models import SignupOTP
+from .models import SignupOTP, PasswordResetOTP
 from user_panel.user_profile.models import UserProfile
 
 from .validators.signup_validator import (
@@ -23,6 +23,11 @@ from .validators.signup_validator import (
 from .validators.login_validator import (
     validate_email as validate_login_email,
     validate_password as validate_login_password,
+)
+
+from .validators.password_validator import (
+    validate_new_password,
+    validate_confirm_password,
 )
 
 def generate_signup_otp(email):
@@ -56,6 +61,42 @@ def generate_signup_otp(email):
         from_email=None,
         recipient_list=[email],
     )
+
+def generate_password_reset_otp(email):
+    """
+    Generate, store, and send a new password reset OTP.
+    """
+
+    otp = str(random.randint(100000, 999999))
+
+    expires_at = (
+        timezone.now() + timedelta(minutes=5)
+    )
+
+    PasswordResetOTP.objects.filter(
+        email=email,
+    ).delete()
+
+    PasswordResetOTP.objects.create(
+        email=email,
+        code=otp,
+        expires_at=expires_at,
+    )
+
+    send_mail(
+        subject="AURA | Password Reset",
+        message=(
+            f"Your AURA password reset code is: {otp}\n\n"
+            "This code will expire in 5 minutes."
+        ),
+        from_email=None,
+        recipient_list=[email],
+    )
+
+
+
+
+
 
 def signup_otp(request):
     """
@@ -371,6 +412,303 @@ def login(request):
         context,
     )
 
+def forgot_password(request):
+    """
+    Display and process the forgot password email form.
+    """
+
+    context = {
+        "email" : "",
+        "error" : None,
+
+    }
+
+    if request.method == "POST":
+
+        email = request.POST.get(
+            "email",
+            "",
+        ).strip().lower()
+
+        error = validate_email(email)
+
+        if error:
+
+            context = {
+                "email" : email,
+                "error" : error,
+            }
+
+            return render(
+                request,
+                "authentication/forgot_password.html",
+                context,
+            )
+
+        user_exists = User.objects.filter(
+            email__iexact=email,
+            is_active=True,
+        ).exists()
+
+        if user_exists:
+
+            generate_password_reset_otp(email)
+
+        request.session["password_reset_email"] = email
+
+        messages.success(
+            request,
+            "If an account exists for this email, a verification code has been sent.",
+        )
+
+        return redirect("forgot_password_otp")
+
+    return render(
+        request,
+        "authentication/forgot_password.html",
+        context,
+    )
+
+def forgot_password_otp(request):
+    """
+    Display and process the password reset OTP verification page.
+    """
+
+    email = request.session.get("password_reset_email")
+
+    if not email:
+        return redirect("forgot_password")
+
+    otp_record = PasswordResetOTP.objects.filter(
+        email=email,
+    ).first()
+
+    error = None
+
+    if request.method == "POST":
+
+        entered_otp = request.POST.get(
+            "otp",
+            ""
+        ).strip()
+
+        if not entered_otp:
+
+            error = "Please enter the OTP."
+
+        elif not entered_otp.isdigit():
+
+            error = "OTP must contain only numbers."
+
+        elif len(entered_otp) != 6:
+
+            error = "OTP must contain exactly 6 digits."
+
+        else:
+
+            otp_record = PasswordResetOTP.objects.filter(
+                email=email,
+            ).first()
+
+            if not otp_record:
+
+                error = "OTP not found. Please request a new OTP."
+
+            elif timezone.now() > otp_record.expires_at:
+
+                error = "This OTP has expired. Please request a new OTP."
+
+            elif entered_otp != otp_record.code:
+
+                error = "Invalid OTP. Please enter the correct OTP."
+
+
+            else:
+
+                otp_record.delete()
+
+                request.session["password_reset_verified"] = True
+
+                return redirect("reset_password")
+
+    context = {
+        "email" : email,
+        "error" : error,
+        "otp_expires_at" : (
+            otp_record.expires_at
+            if otp_record
+            else None
+        ),
+    }
+
+    return render(
+        request,
+        "authentication/forgot_password_otp.html",
+        context,
+    )
+
+def reset_password(request):
+    """
+    Display and process the password reset page.
+    """
+
+    email = request.session.get("password_reset_email")
+    otp_verified = request.session.get("password_reset_verified")
+
+    # User must have a valid password-reset session.
+    if not email or not otp_verified:
+        return redirect("forgot_password")
+
+    context = {
+        "errors" : {},
+    }
+
+    if request.method == "POST":
+
+        password = request.POST.get(
+            "password",
+            "",
+        )
+
+        confirm_password = request.POST.get(
+            "confirm_password",
+            "",
+        )
+
+        errors = {}
+
+        password_error = validate_new_password(password)
+
+        if password_error:
+            errors["password"] = password_error
+
+        confirm_password_error = validate_confirm_password(
+            password,
+            confirm_password
+        )
+
+        if confirm_password_error:
+            errors["confirm_password"] = confirm_password_error
+
+        if errors:
+
+            context = {
+                "errors" : errors
+            }
+
+            return render(
+                request,
+                "authentication/reset_password.html",
+                context
+            )
+
+        user = User.objects.filter(
+            email__iexact=email,
+            is_active = True
+        ).first()
+
+        if not user:
+
+            request.session.pop(
+                "password_reset_email",
+                None,
+            )
+
+            request.session.pop(
+                "password_reset_verified",
+                None,
+            )
+
+            messages.error(
+                request,
+                "We couldn't complete your password reset. Please try again.",
+            )
+
+            return redirect("forgot_password")
+
+        # Update password securely using Django's password hashing.
+        user.set_password(password)
+        user.save()
+
+        # Clear password-reset session data.
+        request.session.pop(
+            "password_reset_email",
+            None,
+        )
+
+        request.session.pop(
+            "password_reset_verified",
+            None,
+        )
+
+        messages.success(
+            request,
+            "Your password has been reset successfully. Please log in."
+        )
+
+        return redirect("login")
+
+    return render(
+        request,
+        "authentication/reset_password.html",
+        context
+    )
+
+
+
+          
+
+
+
+def resend_password_reset_otp(request):
+    """
+    Generate and send a new password reset OTP.
+
+    If an unexpired OTP already exists, do NOT create a new one.
+    Instruct the user to wait until the current OTP expires.
+    """
+
+    email = request.session.get("password_reset_email")
+
+    if not email:
+        return redirect("forgot_password")
+
+    user_exists = User.objects.filter(
+        email__iexact=email,
+        is_active=True,
+    ).exists()
+
+    if not user_exists:
+        return redirect("forgot_password")
+
+    # ─── Throttle guard ───────────────────────────────────────────
+    # If a PasswordResetOTP record exists and has NOT expired yet,
+    # refuse to generate another one so we don't spam the user.
+    existing_otp = PasswordResetOTP.objects.filter(
+        email=email,
+    ).first()
+
+    if existing_otp and timezone.now() < existing_otp.expires_at:
+        messages.warning(
+            request,
+            "A verification code was already sent to your email. "
+            "Please wait until it expires before requesting a new one.",
+        )
+        return redirect("forgot_password_otp")
+    # ─────────────────────────────────────────────────────────────
+
+    generate_password_reset_otp(email)
+
+    messages.success(
+        request,
+        "A new verification code has been sent to your email address.",
+    )
+
+    return redirect("forgot_password_otp")
+
+
+
+    
 def logout(request):
     """
     Log out the currently authenticated user.
