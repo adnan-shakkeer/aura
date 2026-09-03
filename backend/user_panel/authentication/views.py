@@ -1,6 +1,8 @@
 import random
 from datetime import timedelta
 
+from allauth.account.models import EmailAddress
+
 from django.shortcuts import redirect, render
 from django.core.mail import send_mail
 from django.contrib.auth.models import User
@@ -176,6 +178,13 @@ def signup_otp(request):
                         UserProfile.objects.create(
                             user=user,
                             full_name=signup_data["full_name"],
+                        )
+
+                        EmailAddress.objects.create(
+                            user=user,
+                            email=user.email,
+                            verified=True,
+                            primary=True
                         )
 
                         otp_record.is_verified = True
