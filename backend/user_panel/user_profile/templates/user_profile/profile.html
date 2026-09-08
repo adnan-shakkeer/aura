@@ -1,0 +1,189 @@
+{% extends "user_panel/account_base.html" %}
+
+{% block title %}My Profile | AURA{% endblock %}
+
+{% block breadcrumb_active %}My Profile{% endblock %}
+
+{% block page_title %}My Profile{% endblock %}
+
+{% block page_description %}View and manage your personal information.{% endblock %}
+
+{% block account_content %}
+
+    <!-- ========================================================= -->
+    <!-- 1. PROFILE SUMMARY CARD -->
+    <!-- ========================================================= -->
+    <div class="bg-white border border-auraBorder rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-10 shadow-aura-subtle">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 lg:gap-8">
+
+            <!-- Left: Avatar + Details Group -->
+            <div class="flex flex-col sm:flex-row items-center sm:items-start md:items-center gap-6 sm:gap-8 text-center sm:text-left">
+                
+                <!-- Avatar -->
+                <div class="flex-shrink-0">
+                    
+                    <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border border-auraBorder bg-[#F4F1EC] flex items-center justify-center shadow-inner">
+                        {% if profile.profile_image %}
+                            <img
+                                src="{{ profile.profile_image.url }}"
+                                alt="{{ profile.full_name }}"
+                                class="w-full h-full object-cover"
+                            >
+                        {% else %}
+                            <span class="font-serif text-3xl sm:text-4xl text-auraMuted/80 select-none">
+                                {{ profile.full_name|first|upper }}
+                            </span>
+                        {% endif %}
+                    </div>
+
+                </div>
+
+                <!-- Profile Identity & Metadata -->
+                <div>
+                    
+                    <h2 class="font-serif text-2xl sm:text-3xl text-auraBlack font-normal tracking-tight">
+                        {{ profile.full_name }}
+                    </h2>
+
+                    <p class="text-xs sm:text-sm text-auraMuted font-light mt-1 mb-4">
+                        {{ user.email }}
+                    </p>
+
+                    <!-- Mobile & Member Since Metadata -->
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-[10px] sm:text-[11px] uppercase tracking-[0.16em]">
+                        <div>
+                            <span class="text-auraMuted font-normal">MOBILE:</span>
+                            <span class="text-auraBlack font-semibold ml-1.5">
+                                {% if profile.mobile_number %}
+                                    +91 {{ profile.mobile_number }}
+                                {% else %}
+                                    Not added
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="hidden sm:block text-auraBorder select-none">•</div>
+                        <div>
+                            <span class="text-auraMuted font-normal">MEMBER SINCE:</span>
+                            <span class="text-auraBlack font-semibold ml-1.5">
+                                {{ user.date_joined|date:"F Y" }}
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Right: Edit Profile Action Button -->
+            <div class="flex items-center justify-center sm:justify-start md:justify-end flex-shrink-0">
+                <a 
+                    href="{% url 'edit_profile' %}"
+                    class="inline-flex items-center justify-center border border-auraBlack px-7 py-3 text-[11px] uppercase tracking-[0.2em] font-medium text-auraBlack hover:bg-auraBlack hover:text-white transition-all duration-200 whitespace-nowrap"
+                >
+                    Edit Profile
+                </a>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- 2. PERSONAL INFORMATION SECTION (2x2 Grid) -->
+    <!-- ========================================================= -->
+    <div class="mt-12 sm:mt-14">
+        
+        <h2 class="font-serif text-xl sm:text-2xl text-auraBlack font-normal mb-6 tracking-tight">
+            Personal Information
+        </h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+
+            <!-- Card 1: Full Name -->
+            <div class="bg-white border border-auraBorder rounded-xl p-6 sm:p-7 shadow-aura-subtle flex flex-col justify-between transition-shadow duration-200 hover:shadow-aura-card">
+                <span class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-3">
+                    Full Name
+                </span>
+                <p class="font-serif text-lg sm:text-xl text-auraBlack font-normal leading-snug">
+                    {{ profile.full_name }}
+                </p>
+            </div>
+
+            <!-- Card 2: Email Address -->
+            <div class="bg-white border border-auraBorder rounded-xl p-6 sm:p-7 shadow-aura-subtle flex flex-col justify-between transition-shadow duration-200 hover:shadow-aura-card">
+                <span class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-3">
+                    Email Address
+                </span>
+                <p class="font-serif text-lg sm:text-xl text-auraBlack font-normal leading-snug break-all">
+                    {{ user.email }}
+                </p>
+            </div>
+
+            <!-- Card 3: Mobile Number -->
+            <div class="bg-white border border-auraBorder rounded-xl p-6 sm:p-7 shadow-aura-subtle flex flex-col justify-between transition-shadow duration-200 hover:shadow-aura-card">
+                <span class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-3">
+                    Mobile Number
+                </span>
+                <p class="font-serif text-lg sm:text-xl text-auraBlack font-normal leading-snug">
+                    {% if profile.mobile_number %}
+                        +91 {{ profile.mobile_number }}
+                    {% else %}
+                        Not added
+                    {% endif %}
+                </p>
+            </div>
+
+            <!-- Card 4: Member Since -->
+            <div class="bg-white border border-auraBorder rounded-xl p-6 sm:p-7 shadow-aura-subtle flex flex-col justify-between transition-shadow duration-200 hover:shadow-aura-card">
+                <span class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-3">
+                    Member Since
+                </span>
+                <p class="font-serif text-lg sm:text-xl text-auraBlack font-normal leading-snug">
+                    {{ user.date_joined|date:"F Y" }}
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- 3. SECURITY SECTION -->
+    <!-- ========================================================= -->
+    <div class="mt-12 sm:mt-14 mb-8">
+        
+        <h2 class="font-serif text-xl sm:text-2xl text-auraBlack font-normal mb-6 tracking-tight">
+            Security
+        </h2>
+
+        <div class="bg-white border border-auraBorder rounded-xl p-6 sm:p-8 shadow-aura-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-shadow duration-200 hover:shadow-aura-card">
+            
+            <div>
+                <span class="block text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-2">
+                    Password
+                </span>
+                <p class="text-xl sm:text-2xl tracking-[0.3em] text-auraBlack font-semibold mb-2 select-none">
+                    ••••••••••••
+                </p>
+                <p class="text-xs text-auraMuted font-light leading-relaxed">
+                    Keep your account secure by updating your password regularly.
+                </p>
+            </div>
+
+            <div class="flex-shrink-0">
+                <a 
+                    href="#change-password"
+                    class="inline-flex items-center justify-center border border-auraBlack px-6 py-3 text-[11px] uppercase tracking-[0.2em] font-medium text-auraBlack hover:bg-auraBlack hover:text-white transition-all duration-200 whitespace-nowrap self-start sm:self-center"
+                >
+                    Change Password
+                </a>
+            </div>
+
+        </div>
+
+    </div>
+
+{% endblock %}

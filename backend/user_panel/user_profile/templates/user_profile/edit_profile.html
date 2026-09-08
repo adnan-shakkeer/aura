@@ -1,0 +1,375 @@
+{% extends "user_panel/account_base.html" %}
+{% load static %}
+
+{% block title %}Edit Profile | AURA{% endblock %}
+
+{% block breadcrumb_active %}
+    <a href="{% url 'profile' %}" class="hover:text-auraBlack transition-colors">My Profile</a>
+    <span class="text-auraBorder select-none">/</span>
+    <span class="text-auraBlack font-semibold">Edit Profile</span>
+{% endblock %}
+
+{% block page_title %}Edit Profile{% endblock %}
+
+{% block page_description %}Update your personal information and profile image.{% endblock %}
+
+{% block account_content %}
+
+<!-- Edit Profile Form -->
+<form
+    method="post"
+    enctype="multipart/form-data"
+    class="space-y-8 sm:space-y-10"
+>
+    {% csrf_token %}
+
+    <!-- Pending Profile Image Removal Hidden Input -->
+    <input
+        type="hidden"
+        name="remove_profile_image"
+        id="remove-profile-image-input"
+        value=""
+    >
+
+    <!-- ========================================================= -->
+    <!-- 1. PROFILE IMAGE EDITOR CARD -->
+    <!-- ========================================================= -->
+    <div class="bg-white border border-auraBorder rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-10 shadow-aura-subtle">
+        
+        <span class="block text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-6">
+            Profile Image
+        </span>
+
+        <div class="flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-8">
+
+            <!-- Profile Image / Avatar Preview Container -->
+            <div class="flex-shrink-0">
+                <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border border-auraBorder bg-[#F4F1EC] flex items-center justify-center shadow-inner relative">
+                    
+                    <!-- Saved / Selected Profile Image -->
+                    <img
+                        id="profile-image-preview"
+                        {% if profile.profile_image %}
+                            src="{{ profile.profile_image.url }}"
+                        {% endif %}
+                        alt="Profile image"
+                        class="w-full h-full object-cover {% if not profile.profile_image %}hidden{% endif %}"
+                    >
+
+                    <!-- Default First-Letter Avatar Fallback -->
+                    <div
+                        id="profile-image-placeholder"
+                        class="w-full h-full items-center justify-center {% if profile.profile_image %}hidden{% else %}flex{% endif %}"
+                    >
+                        <span class="font-serif text-3xl sm:text-4xl text-auraMuted/80 select-none">
+                            {{ full_name|default:profile.full_name|first|upper }}
+                        </span>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Upload Controls & Actions -->
+            <div class="flex-1 space-y-3">
+
+                <!-- File Input Control -->
+                <div class="relative">
+                    <input
+                        type="file"
+                        id="profile_image"
+                        name="profile_image"
+                        accept=".jpg,.jpeg,.png"
+                        class="block w-full text-xs text-auraMuted
+                               file:mr-4
+                               file:py-2.5
+                               file:px-5
+                               file:border
+                               file:border-auraBlack
+                               file:bg-transparent
+                               file:text-auraBlack
+                               file:text-[11px]
+                               file:uppercase
+                               file:tracking-[0.18em]
+                               file:font-medium
+                               hover:file:bg-auraBlack
+                               hover:file:text-white
+                               file:transition-all
+                               file:duration-200
+                               file:cursor-pointer
+                               cursor-pointer"
+                    >
+                </div>
+
+                <p class="text-xs text-auraMuted font-light">
+                    JPG, JPEG or PNG · Maximum size 2 MB
+                </p>
+
+                <!-- Profile Image Validation Error -->
+                {% if errors.profile_image %}
+                    <p class="text-xs text-[#A05A44] font-medium flex items-center gap-1.5 pt-1">
+                        <svg class="w-4 h-4 text-[#A05A44] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+                        </svg>
+                        {{ errors.profile_image }}
+                    </p>
+                {% endif %}
+
+                <!-- Dynamic Action Triggers (Clear & Remove) -->
+                <div class="flex items-center gap-5 pt-2">
+
+                    <!-- Clear Newly Selected Image Button -->
+                    <button
+                        type="button"
+                        id="clear-image-selection"
+                        class="hidden inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] font-medium text-auraMuted hover:text-auraBlack transition-colors duration-200"
+                    >
+                        <svg class="w-3.5 h-3.5 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        Clear Selection
+                    </button>
+
+                    <!-- Remove Saved Profile Image Button -->
+                    {% if profile.profile_image %}
+                        <button
+                            type="button"
+                            id="remove-profile-image"
+                            class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] font-medium text-[#A05A44] hover:text-auraBlack transition-colors duration-200"
+                        >
+                            <svg class="w-3.5 h-3.5 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
+                            </svg>
+                            Remove Photo
+                        </button>
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- 2. PERSONAL DETAILS FORM CARD -->
+    <!-- ========================================================= -->
+    <div class="bg-white border border-auraBorder rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-10 shadow-aura-subtle space-y-8">
+        
+        <h2 class="font-serif text-xl sm:text-2xl text-auraBlack font-normal tracking-tight">
+            Personal Details
+        </h2>
+
+        <!-- Full Name Field -->
+        <div>
+            <label
+                for="full_name"
+                class="block text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-2.5"
+            >
+                Full Name <span class="text-[#A05A44]">*</span>
+            </label>
+
+            <input
+                type="text"
+                id="full_name"
+                name="full_name"
+                value="{{ full_name }}"
+                placeholder="Enter your full name"
+                maxlength="100"
+                required
+                class="w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 focus:outline-none focus:border-auraBlack transition-all duration-200 rounded-lg {% if errors.full_name %}border-[#A05A44] focus:border-[#A05A44]{% endif %}"
+            >
+
+            {% if errors.full_name %}
+                <p class="mt-2 text-xs text-[#A05A44] font-medium flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-[#A05A44] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+                    </svg>
+                    {{ errors.full_name }}
+                </p>
+            {% else %}
+                <p class="mt-2 text-xs text-auraMuted font-light">
+                    Use letters and spaces only.
+                </p>
+            {% endif %}
+        </div>
+
+        <!-- Mobile Number Field -->
+        <div>
+            <label
+                for="mobile_number"
+                class="block text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-2.5"
+            >
+                Mobile Number
+            </label>
+
+            <input
+                type="tel"
+                id="mobile_number"
+                name="mobile_number"
+                value="{{ mobile_number }}"
+                placeholder="Enter your 10-digit mobile number"
+                maxlength="10"
+                inputmode="numeric"
+                class="w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 focus:outline-none focus:border-auraBlack transition-all duration-200 rounded-lg {% if errors.mobile_number %}border-[#A05A44] focus:border-[#A05A44]{% endif %}"
+            >
+
+            {% if errors.mobile_number %}
+                <p class="mt-2 text-xs text-[#A05A44] font-medium flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-[#A05A44] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+                    </svg>
+                    {{ errors.mobile_number }}
+                </p>
+            {% else %}
+                <p class="mt-2 text-xs text-auraMuted font-light">
+                    Optional · Enter a valid 10-digit Indian mobile number.
+                </p>
+            {% endif %}
+        </div>
+
+        <!-- Email Address (Read Only Information) -->
+        <div>
+            <label class="block text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-2.5">
+                Email Address
+            </label>
+            <input
+                type="email"
+                value="{{ user.email }}"
+                disabled
+                class="w-full border border-auraBorder/60 bg-[#F9F7F4] px-4 py-3.5 text-sm text-auraMuted cursor-not-allowed rounded-lg"
+            >
+            <p class="mt-2 text-xs text-auraMuted/70 font-light">
+                Email address cannot be changed from profile settings.
+            </p>
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- 3. FORM ACTION BAR -->
+    <!-- ========================================================= -->
+    <div class="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 pt-2">
+        
+        <button
+            type="submit"
+            class="inline-flex items-center justify-center bg-auraBlack text-white px-8 py-3.5 text-[11px] uppercase tracking-[0.2em] font-medium hover:bg-black/80 transition-all duration-200 shadow-aura-button"
+        >
+            Save Changes
+        </button>
+
+        <a
+            href="{% url 'profile' %}"
+            class="inline-flex items-center justify-center text-xs uppercase tracking-[0.18em] font-medium text-auraMuted hover:text-auraBlack underline underline-offset-4 transition-colors py-2"
+        >
+            Cancel
+        </a>
+
+    </div>
+
+</form>
+
+
+<!-- Image Preview & Action Handler Script -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const imageInput = document.getElementById("profile_image");
+        const imagePreview = document.getElementById("profile-image-preview");
+        const imagePlaceholder = document.getElementById("profile-image-placeholder");
+        const clearButton = document.getElementById("clear-image-selection");
+        const removeButton = document.getElementById("remove-profile-image");
+        const removeImageInput = document.getElementById("remove-profile-image-input");
+
+        // Original saved profile image URL if present
+        const originalImage = "{% if profile.profile_image %}{{ profile.profile_image.url }}{% endif %}";
+
+        // Select a new image from input
+        if (imageInput) {
+            imageInput.addEventListener("change", function () {
+                const file = imageInput.files[0];
+
+                if (!file) {
+                    return;
+                }
+
+                const reader = new FileReader();
+
+                reader.onload = function (event) {
+                    imagePreview.src = event.target.result;
+                    imagePreview.classList.remove("hidden");
+
+                    imagePlaceholder.classList.add("hidden");
+                    imagePlaceholder.classList.remove("flex");
+
+                    if (clearButton) {
+                        clearButton.classList.remove("hidden");
+                    }
+
+                    // Selecting a new image cancels pending removal
+                    if (removeImageInput) {
+                        removeImageInput.value = "";
+                    }
+                };
+
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Clear newly selected image
+        if (clearButton) {
+            clearButton.addEventListener("click", function () {
+                if (imageInput) {
+                    imageInput.value = "";
+                }
+
+                clearButton.classList.add("hidden");
+
+                // Cancel pending removal
+                if (removeImageInput) {
+                    removeImageInput.value = "";
+                }
+
+                // Restore saved image if exists
+                if (originalImage) {
+                    imagePreview.src = originalImage;
+                    imagePreview.classList.remove("hidden");
+                    imagePlaceholder.classList.add("hidden");
+                    imagePlaceholder.classList.remove("flex");
+                } else {
+                    imagePreview.src = "";
+                    imagePreview.classList.add("hidden");
+                    imagePlaceholder.classList.remove("hidden");
+                    imagePlaceholder.classList.add("flex");
+                }
+            });
+        }
+
+        // Remove saved profile image
+        if (removeButton) {
+            removeButton.addEventListener("click", function () {
+                if (imageInput) {
+                    imageInput.value = "";
+                }
+
+                imagePreview.src = "";
+                imagePreview.classList.add("hidden");
+
+                imagePlaceholder.classList.remove("hidden");
+                imagePlaceholder.classList.add("flex");
+
+                if (clearButton) {
+                    clearButton.classList.add("hidden");
+                }
+
+                // Mark image for removal upon Save Changes submission
+                if (removeImageInput) {
+                    removeImageInput.value = "1";
+                }
+            });
+        }
+    });
+</script>
+
+{% endblock %}

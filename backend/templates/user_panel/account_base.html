@@ -1,0 +1,162 @@
+{% extends "user_panel/base.html" %}
+{% load static %}
+
+{% block title %}My Account | AURA{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Subtle scrollbar for horizontal mobile navigation */
+    .account-nav-scroll::-webkit-scrollbar {
+        height: 4px;
+    }
+    .account-nav-scroll::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .account-nav-scroll::-webkit-scrollbar-thumb {
+        background: #E5E0D8;
+        border-radius: 2px;
+    }
+
+    /* Notification toast for account feedback */
+    #aura-account-toast {
+        animation: toast-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes toast-slide-in {
+        from {
+            opacity: 0;
+            transform: translateY(-12px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-auraIvory min-h-[calc(100vh-80px)] text-auraBlack">
+
+    <!-- Toast Notification Container -->
+    {% if messages %}
+    <div id="aura-toast-container" class="fixed top-24 right-6 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+        {% for message in messages %}
+        <div id="aura-account-toast" class="aura-toast flex items-start gap-3 p-4 rounded-lg bg-auraCream border border-auraBorder border-l-4 border-l-auraChampagneDark shadow-aura-card pointer-events-auto transition-all duration-300">
+            <svg class="w-5 h-5 text-auraChampagneDark flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+            <div class="flex-1 text-xs font-medium text-auraBlack tracking-wide leading-relaxed">
+                {{ message }}
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" class="text-auraMuted hover:text-auraBlack text-xs p-1" aria-label="Close notification">
+                ✕
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Account Layout Container -->
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 xl:px-16 py-8 sm:py-12">
+        
+        <!-- Mobile/Tablet Horizontal Account Navigation Bar (< lg) -->
+        <div class="lg:hidden mb-8 border-b border-auraBorder pb-4">
+            <div class="flex items-center justify-between mb-3 px-1">
+                <span class="text-[11px] uppercase tracking-[0.2em] font-semibold text-auraMuted">Account Menu</span>
+                <span class="text-[10px] text-auraMuted tracking-wider">Swipe for more →</span>
+            </div>
+            <div class="account-nav-scroll flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+                <!-- Mobile Navigation Items -->
+                <a href="#dashboard" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'dashboard' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
+                    <span>Dashboard</span>
+                </a>
+                <a href="{% url 'profile' %}" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'profile' or not active_nav %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
+                    <span>My Profile</span>
+                </a>
+                <a href="#orders" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'orders' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
+                    <span>My Orders</span>
+                </a>
+                <a href="#addresses" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'addresses' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
+                    <span>Address Book</span>
+                </a>
+                <a href="#wallet" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'wallet' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
+                    <span>Wallet</span>
+                </a>
+                <a href="#rewards" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'rewards' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
+                    <span>Rewards</span>
+                </a>
+                <a href="#wishlist" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'wishlist' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
+                    <span>Wishlist</span>
+                </a>
+                <a href="{% url 'logout' %}" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase bg-white border border-auraBorder text-auraMuted hover:text-auraBlack">
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-8 lg:gap-12 xl:gap-16 items-start">
+
+            <!-- Persistent Left Sidebar Navigation (Desktop >= lg) -->
+            <aside class="hidden lg:block lg:w-64 xl:w-72 flex-shrink-0 border-r border-auraBorder pr-6 xl:pr-8 min-h-[750px] self-stretch">
+                {% block account_sidebar %}
+                    {% include "user_panel/includes/account_sidebar.html" %}
+                {% endblock %}
+            </aside>
+
+            <!-- Main Account Content Area -->
+            <main class="flex-1 min-w-0 w-full">
+
+                <!-- Breadcrumb Navigation -->
+                {% block breadcrumb %}
+                <nav aria-label="Breadcrumb" class="flex items-center flex-wrap gap-2 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted mb-6 sm:mb-8">
+                    <a href="{% url 'home' %}" class="hover:text-auraBlack transition-colors">Home</a>
+                    <span class="text-auraBorder select-none">/</span>
+                    <a href="{% url 'profile' %}" class="hover:text-auraBlack transition-colors">My Account</a>
+                    <span class="text-auraBorder select-none">/</span>
+                    <span class="text-auraBlack font-semibold">{% block breadcrumb_active %}My Profile{% endblock %}</span>
+                </nav>
+                {% endblock %}
+
+                <!-- Page Header (Title + Description) -->
+                {% block page_header %}
+                <div class="mb-6 sm:mb-8">
+                    <h1 class="font-serif text-3xl sm:text-4xl lg:text-[2.6rem] font-normal text-auraBlack tracking-tight leading-tight">
+                        {% block page_title %}My Profile{% endblock %}
+                    </h1>
+                    <p class="text-xs sm:text-sm text-auraMuted font-light mt-2 max-w-2xl leading-relaxed">
+                        {% block page_description %}View and manage your personal information.{% endblock %}
+                    </p>
+                </div>
+                {% endblock %}
+
+                <!-- Divider Rule -->
+                <div class="border-b border-auraBorder mb-8 sm:mb-10"></div>
+
+                <!-- Page-Specific Account Content -->
+                {% block account_content %}
+                {% endblock %}
+
+            </main>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Auto-dismiss toast after 5s -->
+{% if messages %}
+<script>
+    setTimeout(function() {
+        const toastContainer = document.getElementById('aura-toast-container');
+        if (toastContainer) {
+            toastContainer.style.opacity = '0';
+            toastContainer.style.transform = 'translateY(-10px)';
+            toastContainer.style.transition = 'all 0.5s ease';
+            setTimeout(() => toastContainer.remove(), 500);
+        }
+    }, 5000);
+</script>
+{% endif %}
+
+{% endblock %}
