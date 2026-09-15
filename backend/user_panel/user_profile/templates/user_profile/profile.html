@@ -8,85 +8,106 @@
 
 {% block page_description %}View and manage your personal information.{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* =========================================================
+       CHANGE EMAIL MODAL — AURA Custom Styles
+       ========================================================= */
+
+    #change-email-modal {
+        transition: opacity 0.25s ease;
+    }
+    #change-email-modal.modal-hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+    #change-email-modal.modal-visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    #change-email-panel {
+        transition: transform 0.28s cubic-bezier(0.16,1,0.3,1), opacity 0.25s ease;
+    }
+    #change-email-modal.modal-hidden #change-email-panel {
+        transform: scale(0.97) translateY(8px);
+        opacity: 0;
+    }
+    #change-email-modal.modal-visible #change-email-panel {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+    @keyframes ceStepEnter {
+        from { opacity: 0; transform: translateX(10px); }
+        to   { opacity: 1; transform: translateX(0); }
+    }
+    .ce-step-entering {
+        animation: ceStepEnter 0.22s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+    @keyframes ceMsgEnter {
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes ceMsgExit {
+        from { opacity: 1; transform: translateY(0); }
+        to   { opacity: 0; transform: translateY(-4px); }
+    }
+    .ce-msg-enter {
+        animation: ceMsgEnter 0.25s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+    .ce-msg-exit {
+        animation: ceMsgExit 0.2s ease-in forwards;
+    }
+    #change-email-new-input:focus {
+        outline: none;
+        border-color: #1A1A1A;
+        box-shadow: 0 0 0 2px rgba(26,26,26,0.06);
+    }
+</style>
+{% endblock %}
+
 {% block account_content %}
 
     <!-- ========================================================= -->
     <!-- 1. PROFILE SUMMARY CARD -->
     <!-- ========================================================= -->
     <div class="bg-white border border-auraBorder rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-10 shadow-aura-subtle">
-        
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 lg:gap-8">
-
             <!-- Left: Avatar + Details Group -->
             <div class="flex flex-col sm:flex-row items-center sm:items-start md:items-center gap-6 sm:gap-8 text-center sm:text-left">
-                
                 <!-- Avatar -->
                 <div class="flex-shrink-0">
-                    
                     <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border border-auraBorder bg-[#F4F1EC] flex items-center justify-center shadow-inner">
                         {% if profile.profile_image %}
-                            <img
-                                src="{{ profile.profile_image.url }}"
-                                alt="{{ profile.full_name }}"
-                                class="w-full h-full object-cover"
-                            >
+                            <img src="{{ profile.profile_image.url }}" alt="{{ profile.full_name }}" class="w-full h-full object-cover">
                         {% else %}
-                            <span class="font-serif text-3xl sm:text-4xl text-auraMuted/80 select-none">
-                                {{ profile.full_name|first|upper }}
-                            </span>
+                            <span class="font-serif text-3xl sm:text-4xl text-auraMuted/80 select-none">{{ profile.full_name|first|upper }}</span>
                         {% endif %}
                     </div>
-
                 </div>
-
                 <!-- Profile Identity & Metadata -->
                 <div>
-                    
-                    <h2 class="font-serif text-2xl sm:text-3xl text-auraBlack font-normal tracking-tight">
-                        {{ profile.full_name }}
-                    </h2>
-
-                    <p class="text-xs sm:text-sm text-auraMuted font-light mt-1 mb-4">
-                        {{ user.email }}
-                    </p>
-
-                    <!-- Mobile & Member Since Metadata -->
+                    <h2 class="font-serif text-2xl sm:text-3xl text-auraBlack font-normal tracking-tight">{{ profile.full_name }}</h2>
+                    <p class="text-xs sm:text-sm text-auraMuted font-light mt-1 mb-4">{{ user.email }}</p>
                     <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-[10px] sm:text-[11px] uppercase tracking-[0.16em]">
                         <div>
                             <span class="text-auraMuted font-normal">MOBILE:</span>
                             <span class="text-auraBlack font-semibold ml-1.5">
-                                {% if profile.mobile_number %}
-                                    +91 {{ profile.mobile_number }}
-                                {% else %}
-                                    Not added
-                                {% endif %}
+                                {% if profile.mobile_number %}+91 {{ profile.mobile_number }}{% else %}Not added{% endif %}
                             </span>
                         </div>
                         <div class="hidden sm:block text-auraBorder select-none">•</div>
                         <div>
                             <span class="text-auraMuted font-normal">MEMBER SINCE:</span>
-                            <span class="text-auraBlack font-semibold ml-1.5">
-                                {{ user.date_joined|date:"F Y" }}
-                            </span>
+                            <span class="text-auraBlack font-semibold ml-1.5">{{ user.date_joined|date:"F Y" }}</span>
                         </div>
                     </div>
-
                 </div>
-
             </div>
-
-            <!-- Right: Edit Profile Action Button -->
+            <!-- Right: Edit Profile -->
             <div class="flex items-center justify-center sm:justify-start md:justify-end flex-shrink-0">
-                <a 
-                    href="{% url 'edit_profile' %}"
-                    class="inline-flex items-center justify-center border border-auraBlack px-7 py-3 text-[11px] uppercase tracking-[0.2em] font-medium text-auraBlack hover:bg-auraBlack hover:text-white transition-all duration-200 whitespace-nowrap"
-                >
-                    Edit Profile
-                </a>
+                <a href="{% url 'edit_profile' %}" class="inline-flex items-center justify-center border border-auraBlack px-7 py-3 text-[11px] uppercase tracking-[0.2em] font-medium text-auraBlack hover:bg-auraBlack hover:text-white transition-all duration-200 whitespace-nowrap">Edit Profile</a>
             </div>
-
         </div>
-
     </div>
 
 
@@ -94,59 +115,31 @@
     <!-- 2. PERSONAL INFORMATION SECTION (2x2 Grid) -->
     <!-- ========================================================= -->
     <div class="mt-12 sm:mt-14">
-        
-        <h2 class="font-serif text-xl sm:text-2xl text-auraBlack font-normal mb-6 tracking-tight">
-            Personal Information
-        </h2>
-
+        <h2 class="font-serif text-xl sm:text-2xl text-auraBlack font-normal mb-6 tracking-tight">Personal Information</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-
             <!-- Card 1: Full Name -->
             <div class="bg-white border border-auraBorder rounded-xl p-6 sm:p-7 shadow-aura-subtle flex flex-col justify-between transition-shadow duration-200 hover:shadow-aura-card">
-                <span class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-3">
-                    Full Name
-                </span>
-                <p class="font-serif text-lg sm:text-xl text-auraBlack font-normal leading-snug">
-                    {{ profile.full_name }}
-                </p>
+                <span class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-3">Full Name</span>
+                <p class="font-serif text-lg sm:text-xl text-auraBlack font-normal leading-snug">{{ profile.full_name }}</p>
             </div>
-
             <!-- Card 2: Email Address -->
             <div class="bg-white border border-auraBorder rounded-xl p-6 sm:p-7 shadow-aura-subtle flex flex-col justify-between transition-shadow duration-200 hover:shadow-aura-card">
-                <span class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-3">
-                    Email Address
-                </span>
-                <p class="font-serif text-lg sm:text-xl text-auraBlack font-normal leading-snug break-all">
-                    {{ user.email }}
-                </p>
+                <span class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-3">Email Address</span>
+                <p class="font-serif text-lg sm:text-xl text-auraBlack font-normal leading-snug break-all">{{ user.email }}</p>
             </div>
-
             <!-- Card 3: Mobile Number -->
             <div class="bg-white border border-auraBorder rounded-xl p-6 sm:p-7 shadow-aura-subtle flex flex-col justify-between transition-shadow duration-200 hover:shadow-aura-card">
-                <span class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-3">
-                    Mobile Number
-                </span>
+                <span class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-3">Mobile Number</span>
                 <p class="font-serif text-lg sm:text-xl text-auraBlack font-normal leading-snug">
-                    {% if profile.mobile_number %}
-                        +91 {{ profile.mobile_number }}
-                    {% else %}
-                        Not added
-                    {% endif %}
+                    {% if profile.mobile_number %}+91 {{ profile.mobile_number }}{% else %}Not added{% endif %}
                 </p>
             </div>
-
             <!-- Card 4: Member Since -->
             <div class="bg-white border border-auraBorder rounded-xl p-6 sm:p-7 shadow-aura-subtle flex flex-col justify-between transition-shadow duration-200 hover:shadow-aura-card">
-                <span class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-3">
-                    Member Since
-                </span>
-                <p class="font-serif text-lg sm:text-xl text-auraBlack font-normal leading-snug">
-                    {{ user.date_joined|date:"F Y" }}
-                </p>
+                <span class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-3">Member Since</span>
+                <p class="font-serif text-lg sm:text-xl text-auraBlack font-normal leading-snug">{{ user.date_joined|date:"F Y" }}</p>
             </div>
-
         </div>
-
     </div>
 
 
@@ -154,36 +147,638 @@
     <!-- 3. SECURITY SECTION -->
     <!-- ========================================================= -->
     <div class="mt-12 sm:mt-14 mb-8">
-        
-        <h2 class="font-serif text-xl sm:text-2xl text-auraBlack font-normal mb-6 tracking-tight">
-            Security
-        </h2>
+        <h2 class="font-serif text-xl sm:text-2xl text-auraBlack font-normal mb-6 tracking-tight">Security</h2>
+        <div class="space-y-4 sm:space-y-6">
 
-        <div class="bg-white border border-auraBorder rounded-xl p-6 sm:p-8 shadow-aura-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-shadow duration-200 hover:shadow-aura-card">
-            
-            <div>
-                <span class="block text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-2">
-                    Password
-                </span>
-                <p class="text-xl sm:text-2xl tracking-[0.3em] text-auraBlack font-semibold mb-2 select-none">
-                    ••••••••••••
-                </p>
-                <p class="text-xs text-auraMuted font-light leading-relaxed">
-                    Keep your account secure by updating your password regularly.
-                </p>
+            <!-- Card 1: Password -->
+            <div class="bg-white border border-auraBorder rounded-xl p-6 sm:p-8 shadow-aura-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-shadow duration-200 hover:shadow-aura-card">
+                <div>
+                    <span class="block text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-2">Password</span>
+                    <p class="text-xl sm:text-2xl tracking-[0.3em] text-auraBlack font-semibold mb-2 select-none">••••••••••••</p>
+                    <p class="text-xs text-auraMuted font-light leading-relaxed">Keep your account secure by updating your password regularly.</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <a href="#change-password" class="inline-flex items-center justify-center border border-auraBlack px-6 py-3 text-[11px] uppercase tracking-[0.2em] font-medium text-auraBlack hover:bg-auraBlack hover:text-white transition-all duration-200 whitespace-nowrap self-start sm:self-center">Change Password</a>
+                </div>
             </div>
 
-            <div class="flex-shrink-0">
-                <a 
-                    href="#change-password"
-                    class="inline-flex items-center justify-center border border-auraBlack px-6 py-3 text-[11px] uppercase tracking-[0.2em] font-medium text-auraBlack hover:bg-auraBlack hover:text-white transition-all duration-200 whitespace-nowrap self-start sm:self-center"
-                >
-                    Change Password
-                </a>
+            <!-- Card 2: Email Address -->
+            <div class="bg-white border border-auraBorder rounded-xl p-6 sm:p-8 shadow-aura-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-shadow duration-200 hover:shadow-aura-card">
+                <div>
+                    <span class="block text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-2">Email Address</span>
+                    <p class="text-base sm:text-lg text-auraBlack font-medium mb-2 break-all">{{ user.email }}</p>
+                    <p class="text-xs text-auraMuted font-light leading-relaxed">Update your email address securely using email verification.</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <button
+                        type="button"
+                        id="change-email-btn"
+                        aria-haspopup="dialog"
+                        aria-controls="change-email-modal"
+                        class="inline-flex items-center justify-center border border-auraBlack px-6 py-3 text-[11px] uppercase tracking-[0.2em] font-medium text-auraBlack hover:bg-auraBlack hover:text-white transition-all duration-200 whitespace-nowrap self-start sm:self-center"
+                    >
+                        Change Email Address
+                    </button>
+                </div>
             </div>
 
         </div>
-
     </div>
 
+
+    <!-- ========================================================= -->
+    <!-- CHANGE EMAIL ADDRESS MODAL -->
+    <!-- ========================================================= -->
+    <div
+        id="change-email-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ce-modal-title"
+        class="modal-hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-6 sm:px-6"
+    >
+        <!-- Backdrop -->
+        <div id="change-email-backdrop" class="absolute inset-0 bg-auraBlack/30 backdrop-blur-[2px]" aria-hidden="true"></div>
+        <form id="ce-csrf-form" style="display:none;">{% csrf_token %}</form>
+
+        <!-- Modal Panel -->
+        <div id="change-email-panel" class="relative w-full max-w-md bg-white border border-auraBorder rounded-2xl shadow-aura-card overflow-hidden">
+
+            <!-- Close Button -->
+            <button
+                type="button"
+                id="change-email-close-btn"
+                aria-label="Close modal"
+                class="absolute top-5 right-5 p-1.5 text-auraMuted hover:text-auraBlack transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-auraBorder rounded"
+            >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+
+            <!-- Inner Padding -->
+            <div class="px-7 sm:px-9 pt-9 pb-8">
+
+                <!-- =============================================
+                     STEP 1: ENTER NEW EMAIL
+                     ============================================= -->
+                <div id="ce-step-1">
+
+                    <div class="mb-7">
+                        <h2 id="ce-modal-title" class="font-serif text-2xl sm:text-[1.7rem] font-normal text-auraBlack tracking-tight leading-tight">Change Email Address</h2>
+                        <div class="mt-1.5 w-8 h-px bg-auraChampagneDark"></div>
+                    </div>
+
+                    <!-- Current Email -->
+                    <div class="mb-6">
+                        <span class="block text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-1.5">Current Email</span>
+                        <p class="text-sm text-auraBlack font-medium break-all">{{ user.email }}</p>
+                    </div>
+
+                    <!-- Message Area -->
+                    <div id="ce-step-1-msg" class="hidden"></div>
+
+                    <!-- New Email Input -->
+                    <div class="mb-5">
+                        <label for="change-email-new-input" class="block text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-2.5">
+                            New Email Address <span class="text-[#A05A44]">*</span>
+                        </label>
+                        <input
+                            type="email"
+                            id="change-email-new-input"
+                            name="new_email"
+                            placeholder="Enter your new email address"
+                            autocomplete="email"
+                            required
+                            class="w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-200"
+                        >
+                    </div>
+
+                    <p class="text-xs text-auraMuted font-light leading-relaxed mb-8">We will send a verification code to your new email address.</p>
+
+                    <!-- Step 1 Actions -->
+                    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 sm:gap-4">
+                        <button type="button" id="change-email-cancel-btn" class="inline-flex items-center justify-center px-5 py-3 text-[11px] uppercase tracking-[0.2em] font-medium text-auraMuted hover:text-auraBlack underline underline-offset-4 decoration-auraBorder hover:decoration-auraBlack transition-all duration-200">Cancel</button>
+                        <button type="button" id="change-email-continue-btn" class="inline-flex items-center justify-center bg-auraBlack text-white px-7 py-3 text-[11px] uppercase tracking-[0.2em] font-medium hover:bg-black/80 active:scale-[0.99] transition-all duration-200">Continue</button>
+                    </div>
+
+                </div>
+                <!-- /STEP 1 -->
+
+
+                <!-- =============================================
+                     STEP 2: OTP VERIFICATION
+                     ============================================= -->
+                <div id="ce-step-2" class="hidden">
+
+                    <div class="mb-7">
+                        <h2 class="font-serif text-2xl sm:text-[1.7rem] font-normal text-auraBlack tracking-tight leading-tight">Verify Your Email</h2>
+                        <div class="mt-1.5 w-8 h-px bg-auraChampagneDark"></div>
+                    </div>
+
+                    <!-- Message Area -->
+                    <div id="ce-step-2-msg" class="hidden"></div>
+
+                    <p class="text-xs sm:text-[13px] text-auraMuted font-light leading-relaxed mb-7">We sent a 6-digit verification code to <span id="ce-display-new-email" class="font-medium text-auraBlack">your new email address</span>.</p>
+
+                    <!-- OTP Slots — mirrors signup_otp.html pattern -->
+                    <div class="flex flex-col items-center mb-6">
+                        <div class="relative w-full max-w-[320px] sm:max-w-[340px]">
+                            <!-- Hidden native input -->
+                            <input
+                                type="text"
+                                id="ce-otp-input"
+                                name="otp"
+                                maxlength="6"
+                                inputmode="numeric"
+                                pattern="[0-9]*"
+                                autocomplete="one-time-code"
+                                class="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer caret-transparent"
+                                aria-label="6-digit verification code"
+                            >
+                            <!-- 6 Visual Underline Slots -->
+                            <div id="ce-otp-slots" class="flex items-center justify-between gap-2 sm:gap-3 py-2 cursor-pointer z-10 select-none" aria-hidden="true">
+                                <div class="ce-otp-slot flex-1 h-12 sm:h-14 flex items-center justify-center text-xl sm:text-2xl font-serif font-medium text-auraBlack border-b-2 border-auraBorder transition-all duration-200" data-index="0"></div>
+                                <div class="ce-otp-slot flex-1 h-12 sm:h-14 flex items-center justify-center text-xl sm:text-2xl font-serif font-medium text-auraBlack border-b-2 border-auraBorder transition-all duration-200" data-index="1"></div>
+                                <div class="ce-otp-slot flex-1 h-12 sm:h-14 flex items-center justify-center text-xl sm:text-2xl font-serif font-medium text-auraBlack border-b-2 border-auraBorder transition-all duration-200" data-index="2"></div>
+                                <div class="ce-otp-slot flex-1 h-12 sm:h-14 flex items-center justify-center text-xl sm:text-2xl font-serif font-medium text-auraBlack border-b-2 border-auraBorder transition-all duration-200" data-index="3"></div>
+                                <div class="ce-otp-slot flex-1 h-12 sm:h-14 flex items-center justify-center text-xl sm:text-2xl font-serif font-medium text-auraBlack border-b-2 border-auraBorder transition-all duration-200" data-index="4"></div>
+                                <div class="ce-otp-slot flex-1 h-12 sm:h-14 flex items-center justify-center text-xl sm:text-2xl font-serif font-medium text-auraBlack border-b-2 border-auraBorder transition-all duration-200" data-index="5"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OTP Timer Display -->
+                    <div id="ce-otp-timer-container" class="text-center mb-6 text-xs text-auraMuted font-medium block h-auto opacity-100 visible">
+                        <span id="ce-otp-timer-text">Code expires in 05:00</span>
+                    </div>
+
+                    <!-- Resend Row -->
+                    <div class="text-center text-xs text-auraMuted mb-8">
+                        <span>Didn't receive the code?</span>
+                        <button type="button" id="ce-resend-btn" class="ml-1 text-auraBlack font-semibold underline underline-offset-4 decoration-auraBorder hover:decoration-auraBlack transition-colors duration-200">Resend OTP</button>
+                    </div>
+
+                    <!-- Step 2 Actions -->
+                    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 sm:gap-4">
+                        <button type="button" id="change-email-back-btn" class="inline-flex items-center justify-center px-5 py-3 text-[11px] uppercase tracking-[0.2em] font-medium text-auraMuted hover:text-auraBlack underline underline-offset-4 decoration-auraBorder hover:decoration-auraBlack transition-all duration-200">Back</button>
+                        <button type="button" id="ce-verify-btn" class="inline-flex items-center justify-center bg-auraBlack text-white px-7 py-3 text-[11px] uppercase tracking-[0.2em] font-medium hover:bg-black/80 active:scale-[0.99] transition-all duration-200">Verify &amp; Change</button>
+                    </div>
+
+                </div>
+                <!-- /STEP 2 -->
+
+            </div>
+        </div>
+    </div>
+    <!-- /CHANGE EMAIL ADDRESS MODAL -->
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const modal       = document.getElementById("change-email-modal");
+    const backdrop    = document.getElementById("change-email-backdrop");
+    const openBtn     = document.getElementById("change-email-btn");
+    const closeBtn    = document.getElementById("change-email-close-btn");
+    const cancelBtn   = document.getElementById("change-email-cancel-btn");
+    const continueBtn = document.getElementById("change-email-continue-btn");
+    const backBtn     = document.getElementById("change-email-back-btn");
+    const verifyBtn   = document.getElementById("ce-verify-btn");
+    const resendBtn   = document.getElementById("ce-resend-btn");
+    const emailInput  = document.getElementById("change-email-new-input");
+    const step1       = document.getElementById("ce-step-1");
+    const step2       = document.getElementById("ce-step-2");
+    const otpInput    = document.getElementById("ce-otp-input");
+    const otpSlots    = document.querySelectorAll(".ce-otp-slot");
+    const otpContainer = document.getElementById("ce-otp-slots");
+
+    const step1Msg    = document.getElementById("ce-step-1-msg");
+    const step2Msg    = document.getElementById("ce-step-2-msg");
+    const displayEmail = document.getElementById("ce-display-new-email");
+    const csrfForm    = document.getElementById("ce-csrf-form");
+
+    // Timer Elements
+    const timerText   = document.getElementById("ce-otp-timer-text");
+    let otpTimerInterval = null;
+
+    // URLs from Django
+    const sendOtpUrl = "{% url 'send_email_change_otp' %}";
+    const resendOtpUrl = "{% url 'resend_email_change_otp' %}";
+    const verifyOtpUrl = "{% url 'verify_email_change_otp' %}";
+
+    function getCsrfToken() {
+        if (!csrfForm) return "";
+        const input = csrfForm.querySelector('[name=csrfmiddlewaretoken]');
+        return input ? input.value : "";
+    }
+
+    let msgTimeouts = {};
+
+    function showMsg(container, text, isError, persistent = false) {
+        if (!container) return;
+
+        if (msgTimeouts[container.id]) {
+            clearTimeout(msgTimeouts[container.id]);
+            msgTimeouts[container.id] = null;
+        }
+
+        const iconSvg = isError
+            ? `<svg class="w-3.5 h-3.5 mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
+            : `<svg class="w-3.5 h-3.5 mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 13l4 4L19 7"></path></svg>`;
+
+        container.className = "mb-5 px-4 py-3.5 text-[10.5px] uppercase tracking-[0.15em] font-medium border rounded-lg flex items-center justify-center ce-msg-enter";
+        container.innerHTML = iconSvg + `<span>${text}</span>`;
+
+        if (isError) {
+            container.classList.add("border-[#A05A44]/20", "text-[#A05A44]", "bg-[#FDF8F7]");
+            container.setAttribute("role", "alert");
+        } else {
+            container.classList.add("border-[#2E4A3D]/20", "text-[#2E4A3D]", "bg-[#F7FDF9]");
+            container.setAttribute("role", "status");
+        }
+
+        if (!persistent) {
+            msgTimeouts[container.id] = setTimeout(() => {
+                hideMsg(container);
+            }, 2500);
+        }
+    }
+
+    function hideMsg(container, instant = false) {
+        if (!container) return;
+        if (container.classList.contains("hidden")) return;
+
+        if (msgTimeouts[container.id]) {
+            clearTimeout(msgTimeouts[container.id]);
+            msgTimeouts[container.id] = null;
+        }
+
+        if (instant) {
+            container.className = "hidden";
+            container.innerHTML = "";
+        } else {
+            container.classList.remove("ce-msg-enter");
+            container.classList.add("ce-msg-exit");
+            msgTimeouts[container.id] = setTimeout(() => {
+                container.className = "hidden";
+                container.innerHTML = "";
+                msgTimeouts[container.id] = null;
+            }, 200);
+        }
+    }
+
+    // =========================================================
+    // TIMER LOGIC
+    // =========================================================
+    function startOtpTimer() {
+        if (otpTimerInterval) {
+            clearInterval(otpTimerInterval);
+        }
+
+        let timeLeft = 300; // 5 minutes in seconds
+
+        // Re-query the element to be absolutely sure we have it
+        const tText = document.getElementById("ce-otp-timer-text");
+        if (!tText) console.error("ce-otp-timer-text not found during start!");
+
+        updateTimerDisplay(timeLeft);
+
+        otpTimerInterval = setInterval(() => {
+            timeLeft -= 1;
+            if (timeLeft <= 0) {
+                clearInterval(otpTimerInterval);
+                otpTimerInterval = null;
+                if (timerText) {
+                    timerText.textContent = "Code expired";
+                    timerText.classList.remove("text-auraMuted");
+                    timerText.classList.add("text-[#A05A44]"); // subtle red expiration text
+                }
+            } else {
+                updateTimerDisplay(timeLeft);
+            }
+        }, 1000);
+    }
+
+    function stopOtpTimer() {
+        if (otpTimerInterval) {
+            clearInterval(otpTimerInterval);
+            otpTimerInterval = null;
+        }
+        const tText = document.getElementById("ce-otp-timer-text");
+        if (tText) {
+            tText.textContent = "Code expires in 05:00";
+            tText.classList.remove("text-[#A05A44]");
+            tText.classList.add("text-auraMuted");
+        }
+    }
+
+    function updateTimerDisplay(seconds) {
+        const tText = document.getElementById("ce-otp-timer-text");
+        if (!tText) return;
+        const min = String(Math.floor(seconds / 60)).padStart(2, '0');
+        const sec = String(seconds % 60).padStart(2, '0');
+        tText.textContent = `Code expires in ${min}:${sec}`;
+        tText.classList.remove("text-[#A05A44]");
+        tText.classList.add("text-auraMuted");
+    }
+
+    // =========================================================
+    // OPEN / CLOSE
+    // =========================================================
+    function openModal() {
+        goToStep(1, false);
+        if (emailInput) { emailInput.value = ""; emailInput.style.borderColor = ""; }
+        resetOtp();
+        hideMsg(step1Msg, true);
+        hideMsg(step2Msg, true);
+        stopOtpTimer();
+        modal.classList.remove("modal-hidden");
+        modal.classList.add("modal-visible");
+        document.body.style.overflow = "hidden";
+        setTimeout(() => { if (emailInput) emailInput.focus(); }, 150);
+    }
+
+    function closeModal() {
+        stopOtpTimer();
+        modal.classList.remove("modal-visible");
+        modal.classList.add("modal-hidden");
+        document.body.style.overflow = "";
+        if (openBtn) openBtn.focus();
+    }
+
+    // =========================================================
+    // STEP TRANSITIONS
+    // =========================================================
+    function goToStep(n, animate) {
+        if (n === 1) {
+            step2.classList.add("hidden");
+            step1.classList.remove("hidden");
+            if (animate !== false) {
+                step1.classList.remove("ce-step-entering");
+                void step1.offsetWidth;
+                step1.classList.add("ce-step-entering");
+            }
+            setTimeout(() => { if (emailInput) emailInput.focus(); }, 60);
+        } else {
+            step1.classList.add("hidden");
+            step2.classList.remove("hidden");
+            step2.classList.remove("ce-step-entering");
+            void step2.offsetWidth;
+            step2.classList.add("ce-step-entering");
+            resetOtp();
+            setTimeout(() => { if (otpInput) otpInput.focus(); }, 100);
+        }
+    }
+
+    // =========================================================
+    // OTP SLOTS
+    // =========================================================
+    function updateOtp() {
+        if (!otpInput) return;
+        let val = otpInput.value.replace(/[^0-9]/g, "").slice(0, 6);
+        otpInput.value = val;
+        otpSlots.forEach((slot, i) => {
+            if (i < val.length) {
+                slot.textContent = val[i];
+                slot.classList.remove("border-auraBorder", "border-auraChampagneDark");
+                slot.classList.add("border-auraBlack");
+            } else if (i === val.length && document.activeElement === otpInput) {
+                slot.textContent = "";
+                slot.classList.remove("border-auraBorder", "border-auraBlack");
+                slot.classList.add("border-auraChampagneDark");
+            } else {
+                slot.textContent = "";
+                slot.classList.remove("border-auraBlack", "border-auraChampagneDark");
+                slot.classList.add("border-auraBorder");
+            }
+        });
+    }
+
+    function resetOtp() {
+        if (otpInput) otpInput.value = "";
+        otpSlots.forEach(slot => {
+            slot.textContent = "";
+            slot.classList.remove("border-auraBlack", "border-auraChampagneDark");
+            slot.classList.add("border-auraBorder");
+        });
+    }
+
+    if (otpInput) {
+        otpInput.addEventListener("input", updateOtp);
+        otpInput.addEventListener("focus", updateOtp);
+        otpInput.addEventListener("blur", () => {
+            otpSlots.forEach((slot, i) => {
+                if (i >= otpInput.value.length) {
+                    slot.classList.remove("border-auraChampagneDark");
+                    slot.classList.add("border-auraBorder");
+                }
+            });
+        });
+    }
+    if (otpContainer) {
+        otpContainer.addEventListener("click", () => { if (otpInput) otpInput.focus(); });
+    }
+
+    // =========================================================
+    // FETCH LOGIC
+    // =========================================================
+
+    function validEmail(v) {
+        return v.trim().length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+    }
+
+    // 1. Send OTP (CONTINUE)
+    if (continueBtn) {
+        continueBtn.addEventListener("click", async () => {
+            if (!emailInput || !validEmail(emailInput.value)) {
+                if (emailInput) {
+                    emailInput.style.borderColor = "#A05A44";
+                    emailInput.focus();
+                    emailInput.addEventListener("input", function clr() {
+                        emailInput.style.borderColor = "";
+                        emailInput.removeEventListener("input", clr);
+                    });
+                }
+                return;
+            }
+
+            const newEmail = emailInput.value.trim();
+            const csrf = getCsrfToken();
+
+            continueBtn.disabled = true;
+            const origText = continueBtn.textContent;
+            continueBtn.textContent = "SENDING...";
+            hideMsg(step1Msg, true);
+
+            try {
+                const response = await fetch(sendOtpUrl, {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": csrf,
+                        "X-Requested-With": "XMLHttpRequest",
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: new URLSearchParams({ new_email: newEmail }),
+                });
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch(e) {
+                    throw new Error("Invalid server response.");
+                }
+
+                if (response.ok) {
+                    if (displayEmail) displayEmail.textContent = newEmail;
+                    goToStep(2);
+                    showMsg(step2Msg, data.message || "A verification code has been sent to your new email address.", false);
+                    startOtpTimer(); // Start 5-minute countdown on success
+                } else {
+                    showMsg(step1Msg, data.message || "An error occurred. Please try again.", true);
+                }
+            } catch (err) {
+                showMsg(step1Msg, "Something went wrong. Please check your connection and try again.", true);
+            } finally {
+                continueBtn.disabled = false;
+                continueBtn.textContent = origText;
+            }
+        });
+    }
+
+    if (emailInput) {
+        emailInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") { e.preventDefault(); if (continueBtn) continueBtn.click(); }
+        });
+    }
+
+    // 2. Verify OTP (VERIFY & CHANGE)
+    if (verifyBtn) {
+        verifyBtn.addEventListener("click", async () => {
+            if (!otpInput || otpInput.value.length < 6) {
+                return;
+            }
+
+            const otpVal = otpInput.value;
+            const csrf = getCsrfToken();
+
+            verifyBtn.disabled = true;
+            const origText = verifyBtn.textContent;
+            verifyBtn.textContent = "VERIFYING...";
+            hideMsg(step2Msg, true);
+
+            try {
+                const response = await fetch(verifyOtpUrl, {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": csrf,
+                        "X-Requested-With": "XMLHttpRequest",
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: new URLSearchParams({ otp: otpVal }),
+                });
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch(e) {
+                    throw new Error("Invalid server response.");
+                }
+
+                if (response.ok) {
+                    showMsg(step2Msg, data.message || "Email address updated successfully.", false, true);
+                    stopOtpTimer(); // Stop timer as process is complete
+
+                    if (otpInput) otpInput.disabled = true;
+                    if (resendBtn) resendBtn.disabled = true;
+                    if (verifyBtn) verifyBtn.disabled = true;
+                    if (backBtn) backBtn.disabled = true;
+                    if (closeBtn) closeBtn.disabled = true;
+                    if (backdrop) backdrop.style.pointerEvents = "none";
+
+                    setTimeout(() => {
+                        closeModal();
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 300);
+                    }, 2500);
+                } else {
+                    showMsg(step2Msg, data.message || "Invalid verification code.", true);
+                    resetOtp();
+                    if (otpInput) otpInput.focus();
+                }
+            } catch (err) {
+                showMsg(step2Msg, "Something went wrong. Please check your connection and try again.", true);
+            } finally {
+                verifyBtn.disabled = false;
+                verifyBtn.textContent = origText;
+            }
+        });
+    }
+
+    // 3. Resend OTP
+    if (resendBtn) {
+        resendBtn.addEventListener("click", async () => {
+            const csrf = getCsrfToken();
+
+            resendBtn.disabled = true;
+            const origText = resendBtn.textContent;
+            resendBtn.textContent = "RESENDING...";
+            hideMsg(step2Msg, true);
+
+            try {
+                const response = await fetch(resendOtpUrl, {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": csrf,
+                        "X-Requested-With": "XMLHttpRequest",
+                    },
+                });
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch(e) {
+                    throw new Error("Invalid server response.");
+                }
+
+                if (response.ok) {
+                    showMsg(step2Msg, data.message || "A new verification code has been sent.", false);
+                    resetOtp();
+                    startOtpTimer(); // Restart 5-minute countdown on successful resend
+                    if (otpInput) otpInput.focus();
+                } else {
+                    showMsg(step2Msg, data.message || "Failed to resend code. Please try again.", true);
+                }
+            } catch (err) {
+                showMsg(step2Msg, "Something went wrong. Please check your connection and try again.", true);
+            } finally {
+                resendBtn.disabled = false;
+                resendBtn.textContent = origText;
+            }
+        });
+    }
+
+    // =========================================================
+    // EVENT BINDINGS
+    // =========================================================
+    if (openBtn)   openBtn.addEventListener("click", openModal);
+    if (closeBtn)  closeBtn.addEventListener("click", closeModal);
+    if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
+    if (backBtn)   backBtn.addEventListener("click", () => {
+        goToStep(1);
+        hideMsg(step1Msg, true);
+        hideMsg(step2Msg, true);
+        stopOtpTimer(); // Stop timer when returning to step 1
+    });
+    if (backdrop)  backdrop.addEventListener("click", closeModal);
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && modal && modal.classList.contains("modal-visible")) closeModal();
+    });
+
+});
+</script>
 {% endblock %}

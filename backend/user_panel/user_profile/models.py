@@ -28,3 +28,28 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return self.full_name
+
+
+class EmailChangeOTP(models.Model):
+    """
+    Store OTP information for changing a user's email address.
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+    )
+
+    new_email = models.EmailField()
+
+    code = models.CharField(max_length=6)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Email Change OTP for {self.user.email}"
