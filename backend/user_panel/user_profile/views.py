@@ -11,6 +11,14 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
 
+
+from http import HTTPStatus
+from django.contrib.auth import update_session_auth_hash
+from django.core.exceptions import ValidationError
+from django.contrib.auth.password_validation import validate_password
+
+
+
 from .models import UserProfile, EmailChangeOTP
 
 from user_panel.authentication.validators.signup_validator import (
@@ -54,7 +62,7 @@ def send_email_change_otp(request):
                 "success": False,
                 "message": "Invalid request method.",
             },
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     # Google-only accounts cannot change their email.
@@ -67,7 +75,7 @@ def send_email_change_otp(request):
                     "for Google-only accounts."
                 ),
             },
-            status=403,
+            status=HTTPStatus.FORBIDDEN,
         )
 
     new_email = request.POST.get(
@@ -84,7 +92,7 @@ def send_email_change_otp(request):
                 "success": False,
                 "message": email_error,
             },
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     # Prevent changing to the current email.
@@ -98,7 +106,7 @@ def send_email_change_otp(request):
                     "from your current email."
                 ),
             },
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     # Prevent using an email already registered by another account.
@@ -114,7 +122,7 @@ def send_email_change_otp(request):
                     "An account with this email already exists."
                 ),
             },
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     # Generate a 6-digit OTP.
@@ -169,7 +177,7 @@ def send_email_change_otp(request):
                         "Please try again."
                     ),
                 },
-                status=500,
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
 
     except SMTPException:
@@ -186,7 +194,7 @@ def send_email_change_otp(request):
                     "Please try again."
                 ),
             },
-            status=500,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
     except DatabaseError:
@@ -199,7 +207,7 @@ def send_email_change_otp(request):
                     "Please try again."
                 ),
             },
-            status=500,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
     return JsonResponse(
@@ -225,7 +233,7 @@ def resend_email_change_otp(request):
                 "success": False,
                 "message": "Invalid request method.",
             },
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     # Google-only accounts cannot change their email.
@@ -238,7 +246,7 @@ def resend_email_change_otp(request):
                     "for Google-only accounts."
                 ),
             },
-            status=403,
+            status=HTTPStatus.FORBIDDEN,
         )
 
     # Get the existing pending email change OTP.
@@ -257,7 +265,7 @@ def resend_email_change_otp(request):
                     "Please enter your new email address again."
                 ),
             },
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     new_otp = str(random.randint(100000, 999999))
@@ -295,7 +303,7 @@ def resend_email_change_otp(request):
                         "Please try again."
                     ),
                 },
-                status=500,
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
 
     except SMTPException:
@@ -307,7 +315,7 @@ def resend_email_change_otp(request):
                     "Please try again."
                 ),
             },
-            status=500,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
     except DatabaseError:
@@ -319,7 +327,7 @@ def resend_email_change_otp(request):
                     "Please try again."
                 ),
             },
-            status=500,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
     return JsonResponse(
@@ -345,7 +353,7 @@ def verify_email_change_otp(request):
                 "success": False,
                 "message": "Invalid request method.",
             },
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     # Google-only accounts cannot change their email.
@@ -358,7 +366,7 @@ def verify_email_change_otp(request):
                     "for Google-only accounts."
                 ),
             },
-            status=403,
+            status=HTTPStatus.FORBIDDEN,
         )
 
     otp_code = request.POST.get(
@@ -372,7 +380,7 @@ def verify_email_change_otp(request):
                 "success": False,
                 "message": "Please enter the verification code.",
             },
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     # Get the latest OTP for this user.
@@ -392,7 +400,7 @@ def verify_email_change_otp(request):
                     "Please request a new code."
                 ),
             },
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     # Check whether the OTP has expired.
@@ -407,7 +415,7 @@ def verify_email_change_otp(request):
                     "Please request a new code."
                 ),
             },
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     if otp_code != otp_record.code:
@@ -416,7 +424,7 @@ def verify_email_change_otp(request):
                 "success" : False,
                 "message": "Invalid verification code.",
             },
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     new_email = otp_record.new_email
@@ -439,7 +447,7 @@ def verify_email_change_otp(request):
                     "An account with this email already exists."
                 ),
             },
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     old_email = request.user.email
@@ -473,7 +481,7 @@ def verify_email_change_otp(request):
                     "Please try again."
                 ),
             },
-            status=500,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
     return JsonResponse(
@@ -486,6 +494,172 @@ def verify_email_change_otp(request):
         },
         status=200,
     )
+
+@login_required
+def change_password(request):
+    """
+    Change the authenticated user's password.
+    """
+    if request.method != "POST":
+        return JsonResponse(
+            {
+                "success" : False,
+                "message" : "Invalid request method.",
+            },
+            status=HTTPStatus.BAD_REQUEST,
+        )
+
+    # Google-only accounts do not have a usable password.
+    if not request.user.has_usable_password():
+        return JsonResponse(
+            {
+                "success": False,
+                "message": (
+                    "Password changes are not available "
+                    "for Google-only accounts."
+                ),
+            },
+            status=HTTPStatus.FORBIDDEN,
+        )
+
+    current_password = request.POST.get(
+        "current_password",
+        "",
+    )
+
+    new_password = request.POST.get(
+        "new_password",
+        "",
+    )
+
+    confirm_password = request.POST.get(
+        "confirm_password",
+        "",
+    )
+
+    # Check required fields.
+    if not current_password:
+        return JsonResponse(
+            {
+                "success" : False,
+                "message" : "Please enter your current password.",
+            },
+            status=HTTPStatus.BAD_REQUEST,
+        )
+
+    if not new_password:
+            return JsonResponse(
+                {
+                    "success" : False,
+                    "message" : "Please enter a new password.",
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+    if not confirm_password:
+            return JsonResponse(
+                {
+                    "success" : False,
+                    "message" : "Please confirm your new password.",
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+    # Check whether both new passwords match.
+    if new_password != confirm_password:
+        return JsonResponse(
+            {
+                "success": False,
+                "message" : (
+                    "New password and confirmation password "
+                    "do not match."
+                ),
+            },
+            status=HTTPStatus.BAD_REQUEST,
+        )
+
+    # Verify the current password.
+    if not request.user.check_password(current_password):
+        return JsonResponse(
+            {
+                "success" : False,
+                "message": "Your current password is incorrect.",
+            },
+            status=HTTPStatus.BAD_REQUEST,
+        )
+
+    # Prevent reusing the current password.
+    if request.user.check_password(new_password):
+        return JsonResponse(
+            {
+                "success" : False,
+                "message" : (
+                    "Your new password must be different "
+                    "from your current password."
+                ),
+            },
+            status=HTTPStatus.BAD_REQUEST,
+        )
+
+    # Apply Django's configured password validators.
+    try:
+
+        validate_password(
+            new_password,
+            request.user,
+        )
+
+    except ValidationError as error:
+        return JsonResponse(
+            {
+                "success": False,
+                # Use list(error.messages)[0] to safely extract the first error string
+                "message": list(error.messages)[0],
+            },
+            status=HTTPStatus.BAD_REQUEST,
+        )
+
+    try:
+
+        # Django securely hashes the new password.
+        request.user.set_password(new_password)
+
+        request.user.save(
+            update_fields=["password"],
+        )
+
+        # Keep the current user logged in after changing
+        # the password.
+        update_session_auth_hash(
+            request,
+            request.user,
+        )
+
+    except DatabaseError:
+        return JsonResponse(
+            {
+                "success" : False,
+                "message" : (
+                    "We couldn't change your password. "
+                    "Please try again."
+                ),
+            },
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+        )
+
+    return JsonResponse(
+        {
+            "success": True,
+            "message": (
+                "Your password has been changed successfully."
+            ),
+        },
+        status=HTTPStatus.OK,
+    )
+
+
+
+    
 
 
 

@@ -14,4 +14,6 @@ urlpatterns = [
 
     path("change-email/verify-otp/",views.verify_email_change_otp, name = "verify_email_change_otp"),
 
+    path("change-password/",views.change_password, name = "change_password"),
+
 ]

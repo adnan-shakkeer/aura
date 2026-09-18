@@ -62,6 +62,40 @@
         border-color: #1A1A1A;
         box-shadow: 0 0 0 2px rgba(26,26,26,0.06);
     }
+
+    /* =========================================================
+       CHANGE PASSWORD MODAL — AURA Custom Styles
+       ========================================================= */
+
+    #change-password-modal {
+        transition: opacity 0.25s ease;
+    }
+    #change-password-modal.modal-hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+    #change-password-modal.modal-visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    #change-password-panel {
+        transition: transform 0.28s cubic-bezier(0.16,1,0.3,1), opacity 0.25s ease;
+    }
+    #change-password-modal.modal-hidden #change-password-panel {
+        transform: scale(0.97) translateY(8px);
+        opacity: 0;
+    }
+    #change-password-modal.modal-visible #change-password-panel {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+    #cp-current-password:focus,
+    #cp-new-password:focus,
+    #cp-confirm-password:focus {
+        outline: none;
+        border-color: #1A1A1A;
+        box-shadow: 0 0 0 2px rgba(26,26,26,0.06);
+    }
 </style>
 {% endblock %}
 
@@ -158,7 +192,15 @@
                     <p class="text-xs text-auraMuted font-light leading-relaxed">Keep your account secure by updating your password regularly.</p>
                 </div>
                 <div class="flex-shrink-0">
-                    <a href="#change-password" class="inline-flex items-center justify-center border border-auraBlack px-6 py-3 text-[11px] uppercase tracking-[0.2em] font-medium text-auraBlack hover:bg-auraBlack hover:text-white transition-all duration-200 whitespace-nowrap self-start sm:self-center">Change Password</a>
+                    <button
+                        type="button"
+                        id="change-password-btn"
+                        aria-haspopup="dialog"
+                        aria-controls="change-password-modal"
+                        class="inline-flex items-center justify-center border border-auraBlack px-6 py-3 text-[11px] uppercase tracking-[0.2em] font-medium text-auraBlack hover:bg-auraBlack hover:text-white transition-all duration-200 whitespace-nowrap self-start sm:self-center"
+                    >
+                        Change Password
+                    </button>
                 </div>
             </div>
 
@@ -331,6 +373,109 @@
         </div>
     </div>
     <!-- /CHANGE EMAIL ADDRESS MODAL -->
+
+
+    <!-- ========================================================= -->
+    <!-- CHANGE PASSWORD MODAL -->
+    <!-- ========================================================= -->
+    <div
+        id="change-password-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cp-modal-title"
+        class="modal-hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-6 sm:px-6"
+    >
+        <!-- Backdrop -->
+        <div id="change-password-backdrop" class="absolute inset-0 bg-auraBlack/30 backdrop-blur-[2px]" aria-hidden="true"></div>
+        <form id="cp-csrf-form" style="display:none;">{% csrf_token %}</form>
+
+        <!-- Modal Panel -->
+        <div id="change-password-panel" class="relative w-full max-w-md bg-white border border-auraBorder rounded-2xl shadow-aura-card overflow-hidden">
+
+            <!-- Close Button -->
+            <button
+                type="button"
+                id="change-password-close-btn"
+                aria-label="Close modal"
+                class="absolute top-5 right-5 p-1.5 text-auraMuted hover:text-auraBlack transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-auraBorder rounded"
+            >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+
+            <!-- Inner Padding -->
+            <div class="px-7 sm:px-9 pt-9 pb-8">
+
+                <!-- Header -->
+                <div class="mb-7">
+                    <h2 id="cp-modal-title" class="font-serif text-2xl sm:text-[1.7rem] font-normal text-auraBlack tracking-tight leading-tight">Change Password</h2>
+                    <div class="mt-1.5 w-8 h-px bg-auraChampagneDark"></div>
+                </div>
+
+                <!-- Message Area -->
+                <div id="cp-msg" class="hidden"></div>
+
+                <!-- Current Password -->
+                <div class="mb-5">
+                    <label for="cp-current-password" class="block text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-2.5">
+                        Current Password <span class="text-[#A05A44]">*</span>
+                    </label>
+                    <input
+                        type="password"
+                        id="cp-current-password"
+                        name="current_password"
+                        placeholder="Enter your current password"
+                        autocomplete="current-password"
+                        required
+                        class="w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-200"
+                    >
+                </div>
+
+                <!-- New Password -->
+                <div class="mb-5">
+                    <label for="cp-new-password" class="block text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-2.5">
+                        New Password <span class="text-[#A05A44]">*</span>
+                    </label>
+                    <input
+                        type="password"
+                        id="cp-new-password"
+                        name="new_password"
+                        placeholder="Enter your new password"
+                        autocomplete="new-password"
+                        required
+                        class="w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-200"
+                    >
+                </div>
+
+                <!-- Confirm New Password -->
+                <div class="mb-6">
+                    <label for="cp-confirm-password" class="block text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-2.5">
+                        Confirm New Password <span class="text-[#A05A44]">*</span>
+                    </label>
+                    <input
+                        type="password"
+                        id="cp-confirm-password"
+                        name="confirm_password"
+                        placeholder="Re-enter your new password"
+                        autocomplete="new-password"
+                        required
+                        class="w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-200"
+                    >
+                </div>
+
+                <p class="text-xs text-auraMuted font-light leading-relaxed mb-8">Your new password must be at least 8 characters and different from your current password.</p>
+
+                <!-- Actions -->
+                <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 sm:gap-4">
+                    <button type="button" id="cp-cancel-btn" class="inline-flex items-center justify-center px-5 py-3 text-[11px] uppercase tracking-[0.2em] font-medium text-auraMuted hover:text-auraBlack underline underline-offset-4 decoration-auraBorder hover:decoration-auraBlack transition-all duration-200">Cancel</button>
+                    <button type="button" id="cp-submit-btn" class="inline-flex items-center justify-center bg-auraBlack text-white px-7 py-3 text-[11px] uppercase tracking-[0.2em] font-medium hover:bg-black/80 active:scale-[0.99] transition-all duration-200">Update Password</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!-- /CHANGE PASSWORD MODAL -->
 
 {% endblock %}
 
@@ -777,6 +922,250 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && modal && modal.classList.contains("modal-visible")) closeModal();
+    });
+
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    /* =========================================================
+       CHANGE PASSWORD MODAL — AURA
+       ========================================================= */
+
+    const cpModal      = document.getElementById("change-password-modal");
+    const cpBackdrop   = document.getElementById("change-password-backdrop");
+    const cpOpenBtn    = document.getElementById("change-password-btn");
+    const cpCloseBtn   = document.getElementById("change-password-close-btn");
+    const cpCancelBtn  = document.getElementById("cp-cancel-btn");
+    const cpSubmitBtn  = document.getElementById("cp-submit-btn");
+    const cpMsg        = document.getElementById("cp-msg");
+    const cpCsrfForm   = document.getElementById("cp-csrf-form");
+
+    const cpCurrentPw  = document.getElementById("cp-current-password");
+    const cpNewPw      = document.getElementById("cp-new-password");
+    const cpConfirmPw  = document.getElementById("cp-confirm-password");
+
+    const changePasswordUrl = "{% url 'change_password' %}";
+
+    // ── CSRF ──────────────────────────────────────────────────
+    function getCsrfToken() {
+        if (!cpCsrfForm) return "";
+        const input = cpCsrfForm.querySelector('[name=csrfmiddlewaretoken]');
+        return input ? input.value : "";
+    }
+
+    // ── MESSAGE HELPERS ───────────────────────────────────────
+    let cpMsgTimeout = null;
+
+    function showCpMsg(text, isError, persistent = false) {
+        if (!cpMsg) return;
+
+        if (cpMsgTimeout) {
+            clearTimeout(cpMsgTimeout);
+            cpMsgTimeout = null;
+        }
+
+        const iconSvg = isError
+            ? `<svg class="w-3.5 h-3.5 mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
+            : `<svg class="w-3.5 h-3.5 mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 13l4 4L19 7"></path></svg>`;
+
+        cpMsg.className = "mb-5 px-4 py-3.5 text-[10.5px] uppercase tracking-[0.15em] font-medium border rounded-lg flex items-center justify-center ce-msg-enter";
+        cpMsg.innerHTML = iconSvg + `<span>${text}</span>`;
+
+        if (isError) {
+            cpMsg.classList.add("border-[#A05A44]/20", "text-[#A05A44]", "bg-[#FDF8F7]");
+            cpMsg.setAttribute("role", "alert");
+        } else {
+            cpMsg.classList.add("border-[#2E4A3D]/20", "text-[#2E4A3D]", "bg-[#F7FDF9]");
+            cpMsg.setAttribute("role", "status");
+        }
+
+        if (!persistent) {
+            cpMsgTimeout = setTimeout(() => hideCpMsg(), 3500);
+        }
+    }
+
+    function hideCpMsg(instant = false) {
+        if (!cpMsg) return;
+        if (cpMsg.classList.contains("hidden")) return;
+
+        if (cpMsgTimeout) {
+            clearTimeout(cpMsgTimeout);
+            cpMsgTimeout = null;
+        }
+
+        if (instant) {
+            cpMsg.className = "hidden";
+            cpMsg.innerHTML = "";
+        } else {
+            cpMsg.classList.remove("ce-msg-enter");
+            cpMsg.classList.add("ce-msg-exit");
+            cpMsgTimeout = setTimeout(() => {
+                cpMsg.className = "hidden";
+                cpMsg.innerHTML = "";
+                cpMsgTimeout = null;
+            }, 200);
+        }
+    }
+
+    // ── OPEN / CLOSE ──────────────────────────────────────────
+    function openCpModal() {
+        // Reset all fields and messages
+        if (cpCurrentPw) cpCurrentPw.value = "";
+        if (cpNewPw)     cpNewPw.value = "";
+        if (cpConfirmPw) cpConfirmPw.value = "";
+        hideCpMsg(true);
+        resetCpFieldErrors();
+
+        cpModal.classList.remove("modal-hidden");
+        cpModal.classList.add("modal-visible");
+        document.body.style.overflow = "hidden";
+        setTimeout(() => { if (cpCurrentPw) cpCurrentPw.focus(); }, 150);
+    }
+
+    function closeCpModal() {
+        cpModal.classList.remove("modal-visible");
+        cpModal.classList.add("modal-hidden");
+        document.body.style.overflow = "";
+        if (cpOpenBtn) cpOpenBtn.focus();
+    }
+
+    // ── FIELD ERROR HELPERS ───────────────────────────────────
+    function setCpFieldError(input) {
+        if (!input) return;
+        input.style.borderColor = "#A05A44";
+        function clearOnInput() {
+            input.style.borderColor = "";
+            input.removeEventListener("input", clearOnInput);
+        }
+        input.addEventListener("input", clearOnInput);
+    }
+
+    function resetCpFieldErrors() {
+        [cpCurrentPw, cpNewPw, cpConfirmPw].forEach(el => {
+            if (el) el.style.borderColor = "";
+        });
+    }
+
+    // ── SUBMIT ────────────────────────────────────────────────
+    if (cpSubmitBtn) {
+        cpSubmitBtn.addEventListener("click", async () => {
+            const currentPassword = cpCurrentPw ? cpCurrentPw.value : "";
+            const newPassword     = cpNewPw     ? cpNewPw.value     : "";
+            const confirmPassword = cpConfirmPw ? cpConfirmPw.value : "";
+
+            // Basic client-side presence check
+            if (!currentPassword) {
+                setCpFieldError(cpCurrentPw);
+                if (cpCurrentPw) cpCurrentPw.focus();
+                showCpMsg("Please enter your current password.", true);
+                return;
+            }
+            if (!newPassword) {
+                setCpFieldError(cpNewPw);
+                if (cpNewPw) cpNewPw.focus();
+                showCpMsg("Please enter a new password.", true);
+                return;
+            }
+            if (!confirmPassword) {
+                setCpFieldError(cpConfirmPw);
+                if (cpConfirmPw) cpConfirmPw.focus();
+                showCpMsg("Please confirm your new password.", true);
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                setCpFieldError(cpNewPw);
+                setCpFieldError(cpConfirmPw);
+                if (cpConfirmPw) cpConfirmPw.focus();
+                showCpMsg("Passwords do not match.", true);
+                return;
+            }
+
+            const csrf = getCsrfToken();
+
+            // Loading state
+            cpSubmitBtn.disabled = true;
+            const origText = cpSubmitBtn.textContent;
+            cpSubmitBtn.textContent = "UPDATING...";
+            if (cpCancelBtn) cpCancelBtn.disabled = true;
+            hideCpMsg(true);
+
+            let cpSucceeded = false;
+
+            try {
+                const response = await fetch(changePasswordUrl, {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": csrf,
+                        "X-Requested-With": "XMLHttpRequest",
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: new URLSearchParams({
+                        current_password: currentPassword,
+                        new_password:     newPassword,
+                        confirm_password: confirmPassword,
+                    }),
+                });
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    throw new Error("Invalid server response.");
+                }
+
+                if (response.ok) {
+                    cpSucceeded = true;
+
+                    // Success: show message, disable form, close after 2s
+                    showCpMsg(data.message || "Password updated successfully.", false, true);
+
+                    if (cpCurrentPw) cpCurrentPw.disabled = true;
+                    if (cpNewPw)     cpNewPw.disabled = true;
+                    if (cpConfirmPw) cpConfirmPw.disabled = true;
+                    if (cpCloseBtn)  cpCloseBtn.disabled = true;
+                    if (cpBackdrop)  cpBackdrop.style.pointerEvents = "none";
+
+                    setTimeout(() => {
+                        closeCpModal();
+                        setTimeout(() => window.location.reload(), 300);
+                    }, 2000);
+                } else {
+                    // Error: show server message, keep modal open
+                    showCpMsg(data.message || "An error occurred. Please try again.", true, true);
+                }
+            } catch (err) {
+                showCpMsg("Something went wrong. Please check your connection and try again.", true, true);
+            } finally {
+                // Re-enable only if the request did not succeed
+                if (!cpSucceeded) {
+                    cpSubmitBtn.disabled = false;
+                    cpSubmitBtn.textContent = origText;
+                    if (cpCancelBtn) cpCancelBtn.disabled = false;
+                }
+            }
+        });
+    }
+
+    // Allow Enter key in password fields to trigger submit
+    [cpCurrentPw, cpNewPw, cpConfirmPw].forEach(input => {
+        if (input) {
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") { e.preventDefault(); if (cpSubmitBtn) cpSubmitBtn.click(); }
+            });
+        }
+    });
+
+    // ── EVENT BINDINGS ────────────────────────────────────────
+    if (cpOpenBtn)   cpOpenBtn.addEventListener("click", openCpModal);
+    if (cpCloseBtn)  cpCloseBtn.addEventListener("click", closeCpModal);
+    if (cpCancelBtn) cpCancelBtn.addEventListener("click", closeCpModal);
+    if (cpBackdrop)  cpBackdrop.addEventListener("click", closeCpModal);
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && cpModal && cpModal.classList.contains("modal-visible")) closeCpModal();
     });
 
 });
