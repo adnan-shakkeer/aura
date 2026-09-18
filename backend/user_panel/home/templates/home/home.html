@@ -1,0 +1,874 @@
+{% extends "user_panel/base.html" %}
+{% load static %}
+
+{% block title %}AURA | Haute Parfumerie & Bespoke Fragrances{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* =============================================================
+       AURA TOAST NOTIFICATION
+       Fixed top-right toast with entrance/exit animations.
+       Maintains the premium AURA notification identity.
+    ============================================================= */
+
+    #aura-toast-container {
+        position: fixed;
+        top: 88px;          /* clears the sticky 80px header + breathing room */
+        right: 24px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 360px;
+        width: calc(100vw - 48px);
+        pointer-events: none;
+    }
+
+    @media (max-width: 640px) {
+        #aura-toast-container {
+            top: 80px;
+            right: 16px;
+            max-width: calc(100vw - 32px);
+            width: 100%;
+        }
+    }
+
+    /* Entrance: slide down from slightly above + fade in */
+    @keyframes aura-toast-in {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Exit: slide up slightly + fade out */
+    @keyframes aura-toast-out {
+        from {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+    }
+
+    .aura-toast {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 13px 16px;
+        border-radius: 6px;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.06em;
+        line-height: 1.55;
+        box-shadow: 0 4px 20px -2px rgba(26, 26, 26, 0.10),
+                    0 1px 6px -1px rgba(26, 26, 26, 0.06);
+        pointer-events: auto;
+        /* Entrance plays immediately */
+        animation: aura-toast-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    /* JS adds this class to trigger the exit */
+    .aura-toast--dismissing {
+        animation: aura-toast-out 0.32s cubic-bezier(0.4, 0, 0.8, 0.6) both;
+    }
+
+    /* SUCCESS — warm ivory, champagne left accent */
+    .aura-toast--success {
+        background-color: #FDFBF7;
+        border: 1px solid #E5E0D8;
+        border-left: 2px solid #BFA98F;
+        color: #1A1A1A;
+    }
+    .aura-toast--success .aura-toast__icon {
+        color: #BFA98F;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+
+    /* ERROR — warm blush, warm-red accent */
+    .aura-toast--error {
+        background-color: #FDF8F6;
+        border: 1px solid #EAD8D0;
+        border-left: 2px solid #A05A44;
+        color: #1A1A1A;
+    }
+    .aura-toast--error .aura-toast__icon {
+        color: #A05A44;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+
+    /* WARNING — ivory, amber accent */
+    .aura-toast--warning {
+        background-color: #FDFAF4;
+        border: 1px solid #E8DEC8;
+        border-left: 2px solid #A07840;
+        color: #1A1A1A;
+    }
+    .aura-toast--warning .aura-toast__icon {
+        color: #A07840;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+
+    /* INFO — cool ivory, slate accent */
+    .aura-toast--info {
+        background-color: #F7F8F9;
+        border: 1px solid #DDE0E5;
+        border-left: 2px solid #6B6A65;
+        color: #1A1A1A;
+    }
+    .aura-toast--info .aura-toast__icon {
+        color: #6B6A65;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+
+    .aura-toast__text { flex: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if messages %}
+<!-- ========================================================= -->
+<!-- AURA TOAST NOTIFICATION ZONE                              -->
+<!-- Fixed top-right toast. Messages are consumed here so     -->
+<!-- they do not reappear on the login page after logout.     -->
+<!-- ========================================================= -->
+<div id="aura-toast-container" role="alert" aria-live="polite">
+    {% for message in messages %}
+        {% if message.tags == 'error' %}
+            <div class="aura-toast aura-toast--error">
+                <svg class="aura-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path stroke-linecap="round" d="M15 9l-6 6M9 9l6 6"/>
+                </svg>
+                <span class="aura-toast__text">{{ message }}</span>
+            </div>
+        {% elif message.tags == 'warning' %}
+            <div class="aura-toast aura-toast--warning">
+                <svg class="aura-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 3.5h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
+                </svg>
+                <span class="aura-toast__text">{{ message }}</span>
+            </div>
+        {% elif message.tags == 'info' %}
+            <div class="aura-toast aura-toast--info">
+                <svg class="aura-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path stroke-linecap="round" d="M12 11v5m0-8.5h.01"/>
+                </svg>
+                <span class="aura-toast__text">{{ message }}</span>
+            </div>
+        {% else %}
+            <!-- Default / success -->
+            <div class="aura-toast aura-toast--success">
+                <svg class="aura-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4"/>
+                </svg>
+                <span class="aura-toast__text">{{ message }}</span>
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+
+<section class="relative bg-auraIvory overflow-hidden border-b border-auraBorder">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 min-h-[600px] sm:min-h-[680px] lg:min-h-[760px] items-center">
+            
+            <!-- Left Editorial Text Content (7 cols on lg) -->
+            <div class="py-16 sm:py-20 lg:py-24 lg:col-span-7 z-10 space-y-6 sm:space-y-8 pr-0 lg:pr-8">
+                <div class="space-y-2 sm:space-y-3">
+                    <span class="text-[11px] uppercase tracking-[0.3em] font-medium text-auraMuted block">
+                        {{ hero.eyebrow|default:"Haute Parfumerie Paris" }}
+                    </span>
+                    <h1 class="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-[4.25rem] font-medium text-auraBlack tracking-tight leading-[1.08]">
+                        {% if hero.title %}
+                            {{ hero.title|safe }}
+                        {% else %}
+                            The Invisible<br>Architecture
+                        {% endif %}
+                    </h1>
+                </div>
+                
+                <p class="text-sm sm:text-base text-auraMuted font-light leading-relaxed max-w-md">
+                    {{ hero.subtitle|default:"A curated selection of olfactory masterpieces designed to define your personal space and identity." }}
+                </p>
+
+                <!-- CTAs -->
+                <div class="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                    <a 
+                        href="{% if hero.primary_url %}{{ hero.primary_url }}{% else %}#shop{% endif %}" 
+                        class="inline-flex items-center justify-center px-8 py-4 bg-auraBlack text-auraIvory text-xs uppercase tracking-[0.22em] font-semibold hover:bg-black active:scale-[0.99] transition-all duration-300 shadow-sm hover:shadow-aura-button text-center"
+                    >
+                        {{ hero.primary_btn_text|default:"Shop Collection" }}
+                    </a>
+                    <a 
+                        href="{% if hero.secondary_url %}{{ hero.secondary_url }}{% else %}#brands{% endif %}" 
+                        class="inline-flex items-center justify-center px-8 py-4 bg-transparent border border-auraBlack text-auraBlack text-xs uppercase tracking-[0.22em] font-semibold hover:bg-auraBlack hover:text-white active:scale-[0.99] transition-all duration-300 text-center"
+                    >
+                        {{ hero.secondary_btn_text|default:"Explore Brands" }}
+                    </a>
+                </div>
+            </div>
+
+            <!-- Right Hero Imagery (5 cols on lg) -->
+            <div class="lg:col-span-5 relative h-[360px] sm:h-[480px] lg:h-full flex items-center justify-center py-6 lg:py-12">
+                <div class="w-full h-full max-h-[620px] rounded-none overflow-hidden relative shadow-sm border border-auraBorder/40">
+                    <img 
+                        src="{% if hero.image_url %}{{ hero.image_url }}{% else %}{% static 'images/hero_perfume.jpg' %}{% endif %}" 
+                        alt="{{ hero.image_alt|default:'AURA Haute Parfumerie Hero Masterpiece' }}" 
+                        class="w-full h-full object-cover object-center transform hover:scale-105 transition-transform duration-1000 ease-out"
+                    >
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ========================================================= -->
+<!-- SECTION 2: FEATURED PERFUMES -->
+<!-- ========================================================= -->
+<section id="featured" class="py-20 sm:py-28 bg-white border-b border-auraBorder">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Section Header -->
+        <div class="mb-14 sm:mb-16">
+            <h2 class="font-serif text-3xl sm:text-4xl font-medium text-auraBlack tracking-tight">
+                Featured Perfumes
+            </h2>
+        </div>
+
+        <!-- 4-Column Product Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-14">
+            
+            {% if featured_perfumes or featured_products %}
+                <!-- Dynamic Backend Loop -->
+                {% for product in featured_perfumes|default:featured_products %}
+                    <div class="group flex flex-col text-center">
+                        <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative">
+                            {% if product.image %}
+                                <img 
+                                    src="{{ product.image.url }}" 
+                                    alt="{{ product.name }}" 
+                                    class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                                >
+                            {% else %}
+                                <div class="w-full h-full flex items-center justify-center bg-auraCream text-[10px] uppercase tracking-[0.2em] text-auraMuted/70">
+                                    AURA
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                            <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                                {{ product.brand_name|default:product.category|default:"AURA PARFUMS" }}
+                            </span>
+                            <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                                {{ product.name }}
+                            </h3>
+                            <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                                {{ product.type_or_volume|default:product.concentration|default:"EAU DE PARFUM • 100 ML" }}
+                            </p>
+                            <p class="text-sm font-medium text-auraBlack pt-1">
+                                ${{ product.price }}
+                            </p>
+                            <button 
+                                type="button" 
+                                class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                            >
+                                Add to Bag
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <!-- Reference Editorial Composition -->
+                <!-- Product 1: ÉCLAT VERT -->
+                <div class="group flex flex-col text-center">
+                    <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative">
+                        <img 
+                            src="{% static 'images/eclat_vert.jpg' %}" 
+                            alt="Éclat Vert Eau de Parfum" 
+                            class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                        >
+                    </div>
+                    <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                        <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                            AURA PARFUMS
+                        </span>
+                        <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                            ÉCLAT VERT
+                        </h3>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                            EAU DE PARFUM • 100 ML
+                        </p>
+                        <p class="text-sm font-medium text-auraBlack pt-1">
+                            $240.00
+                        </p>
+                        <button 
+                            type="button" 
+                            class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                        >
+                            Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product 2: AMBRE NOIR -->
+                <div class="group flex flex-col text-center">
+                    <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative">
+                        <img 
+                            src="{% static 'images/ambre_noir.jpg' %}" 
+                            alt="Ambre Noir Extrait de Parfum" 
+                            class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                        >
+                    </div>
+                    <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                        <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                            AURA PARFUMS
+                        </span>
+                        <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                            AMBRE NOIR
+                        </h3>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                            EXTRAIT DE PARFUM • 50 ML
+                        </p>
+                        <p class="text-sm font-medium text-auraBlack pt-1">
+                            $210.00
+                        </p>
+                        <button 
+                            type="button" 
+                            class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                        >
+                            Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product 3: SANTAL BLANC -->
+                <div class="group flex flex-col text-center">
+                    <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative">
+                        <img 
+                            src="{% static 'images/santal_blanc.jpg' %}" 
+                            alt="Santal Blanc Eau de Parfum" 
+                            class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                        >
+                    </div>
+                    <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                        <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                            AURA PARFUMS
+                        </span>
+                        <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                            SANTAL BLANC
+                        </h3>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                            EAU DE PARFUM • 100 ML
+                        </p>
+                        <p class="text-sm font-medium text-auraBlack pt-1">
+                            $195.00
+                        </p>
+                        <button 
+                            type="button" 
+                            class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                        >
+                            Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product 4: NOIR RITUEL -->
+                <div class="group flex flex-col text-center">
+                    <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative">
+                        <img 
+                            src="{% static 'images/noir_rituel.jpg' %}" 
+                            alt="Noir Rituel Parfum de Nuit" 
+                            class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                        >
+                    </div>
+                    <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                        <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                            AURA PARFUMS
+                        </span>
+                        <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                            NOIR RITUEL
+                        </h3>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                            PARFUM DE NUIT • 75 ML
+                        </p>
+                        <p class="text-sm font-medium text-auraBlack pt-1">
+                            $275.00
+                        </p>
+                        <button 
+                            type="button" 
+                            class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                        >
+                            Add to Bag
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+
+        </div>
+    </div>
+</section>
+
+<!-- ========================================================= -->
+<!-- SECTION 3: NEW ARRIVALS -->
+<!-- ========================================================= -->
+<section id="new-arrivals" class="py-20 sm:py-28 bg-white border-b border-auraBorder">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Section Header with View All -->
+        <div class="flex items-baseline justify-between mb-14 sm:mb-16">
+            <h2 class="font-serif text-3xl sm:text-4xl font-medium text-auraBlack tracking-tight">
+                New Arrivals
+            </h2>
+            <a 
+                href="{% if new_arrivals_url %}{{ new_arrivals_url }}{% else %}#shop{% endif %}" 
+                class="text-xs uppercase tracking-[0.2em] font-semibold text-auraBlack underline underline-offset-8 decoration-auraBorder hover:decoration-auraBlack transition-colors duration-200"
+            >
+                View All
+            </a>
+        </div>
+
+        <!-- 4-Column Product Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-14">
+            
+            {% if new_arrivals %}
+                <!-- Dynamic Backend Loop -->
+                {% for item in new_arrivals %}
+                    <div class="group flex flex-col text-center">
+                        <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center">
+                            {% if item.image %}
+                                <img 
+                                    src="{{ item.image.url }}" 
+                                    alt="{{ item.name }}" 
+                                    class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                                >
+                            {% elif item.is_coming_soon %}
+                                <div class="w-full h-full bg-auraCream flex items-center justify-center select-none group-hover:bg-auraChampagne/20 transition-colors duration-300">
+                                    <span class="text-[10px] uppercase tracking-[0.26em] text-auraMuted/70 font-medium">
+                                        COMING SOON
+                                    </span>
+                                </div>
+                            {% else %}
+                                <div class="w-full h-full flex items-center justify-center bg-auraCream text-[10px] uppercase tracking-[0.2em] text-auraMuted/70">
+                                    AURA
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                            <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                                {{ item.brand_name|default:item.category|default:"AURA PARFUMS" }}
+                            </span>
+                            <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                                {{ item.name }}
+                            </h3>
+                            <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                                {{ item.type_or_volume|default:item.concentration|default:"EAU DE PARFUM • 100 ML" }}
+                            </p>
+                            <p class="text-sm font-medium text-auraBlack pt-1">
+                                ${{ item.price }}
+                            </p>
+                            <button 
+                                type="button" 
+                                class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                            >
+                                Add to Bag
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <!-- Reference Editorial Composition -->
+                <!-- Item 1: DISCOVERY SET (Imaged) -->
+                <div class="group flex flex-col text-center">
+                    <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative">
+                        <img 
+                            src="{% static 'images/discovery_set.jpg' %}" 
+                            alt="AURA Discovery Set" 
+                            class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                        >
+                    </div>
+                    <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                        <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                            AURA DISCOVERY
+                        </span>
+                        <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                            DISCOVERY SET
+                        </h3>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                            COLLECTION • 3 X 10 ML
+                        </p>
+                        <p class="text-sm font-medium text-auraBlack pt-1">
+                            $95.00
+                        </p>
+                        <button 
+                            type="button" 
+                            class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                        >
+                            Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Item 2: ROSE VELOURS (Coming Soon Placeholder) -->
+                <div class="group flex flex-col text-center">
+                    <div class="w-full aspect-[4/3] bg-auraCream border border-auraBorder/50 mb-6 relative flex items-center justify-center select-none group-hover:bg-auraChampagne/20 transition-colors duration-300">
+                        <span class="text-[10px] uppercase tracking-[0.26em] text-auraMuted/70 font-medium">
+                            COMING SOON
+                        </span>
+                    </div>
+                    <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                        <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                            AURA PARFUMS
+                        </span>
+                        <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                            ROSE VELOURS
+                        </h3>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                            EAU DE PARFUM • 100 ML
+                        </p>
+                        <p class="text-sm font-medium text-auraBlack pt-1">
+                            $225.00
+                        </p>
+                        <button 
+                            type="button" 
+                            class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                        >
+                            Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Item 3: CITRON ÉCLAT (Coming Soon Placeholder) -->
+                <div class="group flex flex-col text-center">
+                    <div class="w-full aspect-[4/3] bg-auraCream border border-auraBorder/50 mb-6 relative flex items-center justify-center select-none group-hover:bg-auraChampagne/20 transition-colors duration-300">
+                        <span class="text-[10px] uppercase tracking-[0.26em] text-auraMuted/70 font-medium">
+                            COMING SOON
+                        </span>
+                    </div>
+                    <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                        <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                            AURA PARFUMS
+                        </span>
+                        <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                            CITRON ÉCLAT
+                        </h3>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                            EAU DE TOILETTE • 100 ML
+                        </p>
+                        <p class="text-sm font-medium text-auraBlack pt-1">
+                            $180.00
+                        </p>
+                        <button 
+                            type="button" 
+                            class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                        >
+                            Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Item 4: BOIS FUMÉ (Coming Soon Placeholder) -->
+                <div class="group flex flex-col text-center">
+                    <div class="w-full aspect-[4/3] bg-auraCream border border-auraBorder/50 mb-6 relative flex items-center justify-center select-none group-hover:bg-auraChampagne/20 transition-colors duration-300">
+                        <span class="text-[10px] uppercase tracking-[0.26em] text-auraMuted/70 font-medium">
+                            COMING SOON
+                        </span>
+                    </div>
+                    <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                        <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                            AURA PARFUMS
+                        </span>
+                        <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                            BOIS FUMÉ
+                        </h3>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                            PARFUM • 50 ML
+                        </p>
+                        <p class="text-sm font-medium text-auraBlack pt-1">
+                            $260.00
+                        </p>
+                        <button 
+                            type="button" 
+                            class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                        >
+                            Add to Bag
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+
+        </div>
+    </div>
+</section>
+
+<!-- ========================================================= -->
+<!-- SECTION 4: BEST SELLERS (Warm Ivory Contrast Section) -->
+<!-- ========================================================= -->
+<section id="best-sellers" class="py-20 sm:py-28 bg-auraIvory border-b border-auraBorder">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Section Header with View All -->
+        <div class="flex items-baseline justify-between mb-14 sm:mb-16">
+            <h2 class="font-serif text-3xl sm:text-4xl font-medium text-auraBlack tracking-tight">
+                Best Sellers
+            </h2>
+            <a 
+                href="{% if best_sellers_url %}{{ best_sellers_url }}{% else %}#shop{% endif %}" 
+                class="text-xs uppercase tracking-[0.2em] font-semibold text-auraBlack underline underline-offset-8 decoration-auraBorder hover:decoration-auraBlack transition-colors duration-200"
+            >
+                View All
+            </a>
+        </div>
+
+        <!-- 4-Column Product Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-14">
+            
+            {% if best_sellers %}
+                <!-- Dynamic Backend Loop -->
+                {% for item in best_sellers %}
+                    <div class="group flex flex-col text-center">
+                        <div class="w-full aspect-[4/3] bg-auraCream border border-auraBorder/60 mb-6 relative overflow-hidden flex items-center justify-center">
+                            {% if item.image %}
+                                <img 
+                                    src="{{ item.image.url }}" 
+                                    alt="{{ item.name }}" 
+                                    class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                                >
+                            {% elif item.rank %}
+                                <div class="w-full h-full bg-auraCream/80 border border-auraBorder/60 flex items-center justify-center select-none group-hover:bg-auraCream transition-colors duration-300">
+                                    <span class="text-[10px] uppercase tracking-[0.28em] text-auraMuted/60 font-medium">
+                                        {{ item.rank }}
+                                    </span>
+                                </div>
+                            {% else %}
+                                <div class="w-full h-full bg-gradient-to-tr from-auraChampagne/30 to-auraCream flex flex-col items-center justify-center p-6 text-center">
+                                    <span class="font-serif text-lg italic text-auraBlack/80">{{ item.name }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                            <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                                {{ item.line_name|default:item.collection|default:"SIGNATURE LINE" }}
+                            </span>
+                            <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                                {{ item.name }}
+                            </h3>
+                            <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                                {{ item.type_or_volume|default:item.concentration|default:"EAU DE PARFUM • 100 ML" }}
+                            </p>
+                            <p class="text-sm font-medium text-auraBlack pt-1">
+                                ${{ item.price }}
+                            </p>
+                            <button 
+                                type="button" 
+                                class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                            >
+                                Add to Bag
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <!-- Reference Editorial Composition -->
+                <!-- Rank 01: ORCHIDÉE VANILLE -->
+                <div class="group flex flex-col text-center">
+                    <div class="w-full aspect-[4/3] bg-auraCream border border-auraBorder/60 mb-6 relative overflow-hidden flex items-center justify-center">
+                        <div class="w-full h-full bg-gradient-to-tr from-auraChampagne/30 to-auraCream flex flex-col items-center justify-center p-6 text-center">
+                            <span class="font-serif text-lg italic text-auraBlack/80">Orchidée &amp; Vanille</span>
+                            <span class="text-[9px] uppercase tracking-[0.22em] text-auraMuted mt-1">Signature Accord</span>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                        <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                            SIGNATURE LINE
+                        </span>
+                        <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                            ORCHIDÉE VANILLE
+                        </h3>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                            EAU DE PARFUM • 100 ML
+                        </p>
+                        <p class="text-sm font-medium text-auraBlack pt-1">
+                            $230.00
+                        </p>
+                        <button 
+                            type="button" 
+                            class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                        >
+                            Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Rank 02: L'EAU D'OR -->
+                <div class="group flex flex-col text-center">
+                    <div class="w-full aspect-[4/3] bg-auraCream/80 border border-auraBorder/60 mb-6 relative flex items-center justify-center select-none group-hover:bg-auraCream transition-colors duration-300">
+                        <span class="text-[10px] uppercase tracking-[0.28em] text-auraMuted/60 font-medium">
+                            RANK 02
+                        </span>
+                    </div>
+                    <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                        <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                            SIGNATURE LINE
+                        </span>
+                        <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                            L'EAU D'OR
+                        </h3>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                            EAU DE PARFUM • 100 ML
+                        </p>
+                        <p class="text-sm font-medium text-auraBlack pt-1">
+                            $215.00
+                        </p>
+                        <button 
+                            type="button" 
+                            class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                        >
+                            Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Rank 03: CUIR NOBLE -->
+                <div class="group flex flex-col text-center">
+                    <div class="w-full aspect-[4/3] bg-auraCream/80 border border-auraBorder/60 mb-6 relative flex items-center justify-center select-none group-hover:bg-auraCream transition-colors duration-300">
+                        <span class="text-[10px] uppercase tracking-[0.28em] text-auraMuted/60 font-medium">
+                            RANK 03
+                        </span>
+                    </div>
+                    <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                        <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                            SIGNATURE LINE
+                        </span>
+                        <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                            CUIR NOBLE
+                        </h3>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                            PARFUM • 50 ML
+                        </p>
+                        <p class="text-sm font-medium text-auraBlack pt-1">
+                            $290.00
+                        </p>
+                        <button 
+                            type="button" 
+                            class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                        >
+                            Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Rank 04: JARDIN D'ÉTÉ -->
+                <div class="group flex flex-col text-center">
+                    <div class="w-full aspect-[4/3] bg-auraCream/80 border border-auraBorder/60 mb-6 relative flex items-center justify-center select-none group-hover:bg-auraCream transition-colors duration-300">
+                        <span class="text-[10px] uppercase tracking-[0.28em] text-auraMuted/60 font-medium">
+                            RANK 04
+                        </span>
+                    </div>
+                    <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                        <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                            SIGNATURE LINE
+                        </span>
+                        <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                            JARDIN D'ÉTÉ
+                        </h3>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                            EAU DE TOILETTE • 100 ML
+                        </p>
+                        <p class="text-sm font-medium text-auraBlack pt-1">
+                            $175.00
+                        </p>
+                        <button 
+                            type="button" 
+                            class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent hover:border-auraBlack pb-0.5 hover:opacity-75 transition-all"
+                        >
+                            Add to Bag
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+
+        </div>
+    </div>
+</section>
+
+<!-- ========================================================= -->
+<!-- SECTION 5: THE PHILOSOPHY (Luxury Editorial Quote) -->
+<!-- ========================================================= -->
+<section id="philosophy" class="py-28 sm:py-36 bg-white">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <span class="text-[11px] uppercase tracking-[0.32em] text-auraMuted font-medium mb-8 block">
+            The Philosophy
+        </span>
+        <blockquote class="font-serif italic text-2xl sm:text-3xl md:text-4xl lg:text-[2.65rem] font-normal text-auraBlack leading-[1.38] sm:leading-[1.42] tracking-tight">
+            &ldquo;A fragrance is more than an accessory; it is the invisible architecture of one's identity.&rdquo;
+        </blockquote>
+        <span class="text-[10px] uppercase tracking-[0.26em] text-auraMuted font-medium mt-8 block">
+            &mdash; AURA CREATIVE DIRECTION
+        </span>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+{% if messages %}
+<script>
+    (function () {
+        /*
+         * AURA TOAST AUTO-DISMISS
+         * ─────────────────────────────────────────────────────
+         * Timing:
+         *   0 ms        entrance animation begins (CSS)
+         *   0–320 ms    slide-down + fade-in
+         *   320–2800 ms toast is fully visible
+         *   2800 ms     exit animation triggered (JS adds class)
+         *   2800–3120 ms slide-up + fade-out
+         *   3120 ms     toast element removed from DOM
+         */
+        var VISIBLE_MS  = 2800;   /* how long the toast stays visible   */
+        var EXIT_MS     = 320;    /* duration of the exit animation      */
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var toasts = document.querySelectorAll('.aura-toast');
+            toasts.forEach(function (toast, index) {
+                var stagger = index * 120;
+
+                setTimeout(function () {
+                    /* Add dismissing class → triggers exit CSS animation */
+                    toast.classList.add('aura-toast--dismissing');
+
+                    /* After the exit animation completes, remove from DOM */
+                    setTimeout(function () {
+                        if (toast.parentNode) {
+                            toast.parentNode.removeChild(toast);
+                        }
+                        /* If container is now empty, remove it too */
+                        var container = document.getElementById('aura-toast-container');
+                        if (container && container.children.length === 0) {
+                            container.parentNode.removeChild(container);
+                        }
+                    }, EXIT_MS);
+
+                }, VISIBLE_MS + stagger);
+            });
+        });
+    })();
+</script>
+{% endif %}
+{% endblock %}
