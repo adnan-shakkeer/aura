@@ -1,0 +1,927 @@
+{% extends "user_panel/account_base.html" %}
+
+{% block title %}Address Book | AURA{% endblock %}
+
+{% block breadcrumb_active %}Address Book{% endblock %}
+
+{% block page_title %}Address Book{% endblock %}
+
+{% block page_description %}Manage your saved delivery addresses for a faster checkout experience.{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* =========================================================
+       ADDRESS BOOK — AURA Custom Styles
+       ========================================================= */
+
+    /* Add Address modal transitions */
+    #add-address-modal {
+        transition: opacity 0.25s ease;
+    }
+    #add-address-modal.modal-hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+    #add-address-modal.modal-visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    #add-address-panel {
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+    }
+    #add-address-modal.modal-hidden #add-address-panel {
+        transform: scale(0.97) translateY(10px);
+        opacity: 0;
+    }
+    #add-address-modal.modal-visible #add-address-panel {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+
+    /* Edit address modal */
+    #edit-address-modal {
+        transition: opacity 0.25s ease;
+    }
+    #edit-address-modal.modal-hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+    #edit-address-modal.modal-visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    #edit-address-panel {
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+    }
+    #edit-address-modal.modal-hidden #edit-address-panel {
+        transform: scale(0.97) translateY(10px);
+        opacity: 0;
+    }
+    #edit-address-modal.modal-visible #edit-address-panel {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+
+    /* Delete confirm modal */
+    #delete-address-modal {
+        transition: opacity 0.2s ease;
+    }
+    #delete-address-modal.modal-hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+    #delete-address-modal.modal-visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    #delete-address-panel {
+        transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+    }
+    #delete-address-modal.modal-hidden #delete-address-panel {
+        transform: scale(0.95) translateY(6px);
+        opacity: 0;
+    }
+    #delete-address-modal.modal-visible #delete-address-panel {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+
+    /* Address card subtle hover lift */
+    .address-card {
+        transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .address-card:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+        border-color: #D1CCC4;
+    }
+
+    /* Modal form input focus */
+    .addr-input:focus {
+        outline: none;
+        border-color: #1A1A1A;
+        box-shadow: 0 0 0 2px rgba(26,26,26,0.06);
+    }
+    .addr-select:focus {
+        outline: none;
+        border-color: #1A1A1A;
+        box-shadow: 0 0 0 2px rgba(26,26,26,0.06);
+    }
+
+    /* Toast fade-out */
+    .addr-toast-exit {
+        animation: addrToastExit 0.3s ease forwards;
+    }
+    @keyframes addrToastExit {
+        to { opacity: 0; transform: translateY(-6px); }
+    }
+
+    /* Spinner */
+    @keyframes addrSpin {
+        to { transform: rotate(360deg); }
+    }
+    .addr-spinner {
+        animation: addrSpin 0.7s linear infinite;
+    }
+
+    /* Add card dashed hover */
+    .add-address-card:hover {
+        border-color: #111111;
+        background-color: rgba(249,249,251,0.7);
+    }
+    .add-address-card:hover .add-addr-icon-wrap {
+        background-color: #111111;
+    }
+    .add-address-card:hover .add-addr-icon-wrap svg {
+        color: #ffffff;
+    }
+    .add-address-card:hover .add-addr-label {
+        color: #111111;
+    }
+</style>
+{% endblock %}
+
+{% block account_content %}
+
+    <!-- ========================================================= -->
+    <!-- ADDRESS GRID                                               -->
+    <!-- ========================================================= -->
+    <div id="address-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+
+        {% for address in addresses %}
+        <!-- ── Address Card ── -->
+        <div
+            class="address-card bg-white border border-[#E5E5E5] rounded-xl p-6 shadow-sm flex flex-col justify-between relative"
+            data-address-id="{{ address.id }}"
+        >
+            <!-- Top Header Row -->
+            <div class="flex items-start justify-between gap-3 mb-4">
+
+                <!-- Left: Type Badge + Default Pill -->
+                <div class="flex items-center gap-2 flex-wrap">
+                    <!-- Address Type Badge -->
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-[#F3F3F3] text-[#444444] text-[10px] font-semibold tracking-[0.14em] uppercase">
+                        {{ address.get_address_type_display|upper }}
+                    </span>
+                    <!-- Default Pill -->
+                    {% if address.is_default %}
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#FFF8E7] text-[#9E782F] text-[10px] font-medium tracking-[0.1em]">
+                        <span class="text-[11px]">★</span>
+                        <span class="uppercase">Default</span>
+                    </span>
+                    {% endif %}
+                </div>
+
+                <!-- Right: EDIT / DELETE -->
+                <div class="flex items-center gap-3 flex-shrink-0">
+                    <button
+                        type="button"
+                        class="edit-address-btn text-[10px] font-semibold tracking-[0.15em] uppercase text-auraMuted hover:text-auraBlack transition-colors duration-150 underline underline-offset-2 decoration-auraMuted/30 hover:decoration-auraBlack/60"
+                        data-address-id="{{ address.id }}"
+                        data-full-name="{{ address.full_name|escape }}"
+                        data-phone-number="{{ address.phone_number|escape }}"
+                        data-address-line1="{{ address.address_line1|escape }}"
+                        data-address-line2="{{ address.address_line2|default:''|escape }}"
+                        data-landmark="{{ address.landmark|default:''|escape }}"
+                        data-city="{{ address.city|escape }}"
+                        data-state="{{ address.state|escape }}"
+                        data-pincode="{{ address.pincode|escape }}"
+                        data-address-type="{{ address.address_type }}"
+                        data-is-default="{{ address.is_default|yesno:'true,false' }}"
+                        data-edit-url="{% url 'edit_address' address.id %}"
+                        aria-label="Edit address"
+                    >
+                        Edit
+                    </button>
+                    <button
+                        type="button"
+                        class="delete-address-btn text-[10px] font-semibold tracking-[0.15em] uppercase text-auraMuted hover:text-red-500 transition-colors duration-150 underline underline-offset-2 decoration-auraMuted/30 hover:decoration-red-400/60"
+                        data-address-id="{{ address.id }}"
+                        data-delete-url="{% url 'delete_address' address.id %}"
+                        aria-label="Delete address"
+                    >
+                        Delete
+                    </button>
+                </div>
+            </div>
+
+            <!-- Address Body -->
+            <div class="flex-1">
+                <!-- Full Name -->
+                <p class="font-medium text-[#111111] text-base mb-1 leading-snug">{{ address.full_name }}</p>
+
+                <!-- Phone -->
+                <p class="text-xs text-[#777777] mb-3 tracking-wide">{{ address.phone_number }}</p>
+
+                <!-- Address Lines -->
+                <address class="not-italic text-sm text-[#444444] leading-relaxed space-y-0.5">
+                    <span class="block">{{ address.address_line1 }}</span>
+                    {% if address.address_line2 %}
+                    <span class="block">{{ address.address_line2 }}</span>
+                    {% endif %}
+                    {% if address.landmark %}
+                    <span class="block">{{ address.landmark }}</span>
+                    {% endif %}
+                    <span class="block">{{ address.city }}, {{ address.state }} – {{ address.pincode }}</span>
+                    <span class="block">India</span>
+                </address>
+            </div>
+
+            <!-- Footer: Set as Default -->
+            {% if not address.is_default %}
+            <div class="mt-5 pt-4 border-t border-[#F0F0F0]">
+                <button
+                    type="button"
+                    class="set-default-btn text-[10px] font-semibold tracking-[0.18em] uppercase text-auraMuted hover:text-auraBlack transition-colors duration-150 underline underline-offset-2 decoration-auraMuted/30 hover:decoration-auraBlack/60"
+                    data-address-id="{{ address.id }}"
+                    data-set-default-url="{% url 'set_default_address' address.id %}"
+                >
+                    Set as Default
+                </button>
+            </div>
+            {% else %}
+            <!-- Spacer to maintain card height parity -->
+            <div class="mt-5 pt-4 border-t border-[#F0F0F0] invisible" aria-hidden="true">
+                <span class="text-[10px]">‌</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <!-- ── Add New Address Card ── -->
+        <button
+            type="button"
+            id="open-add-address-btn"
+            class="add-address-card border-2 border-dashed border-[#D1D5DB] rounded-xl p-6 min-h-[220px] flex flex-col items-center justify-center cursor-pointer transition-all duration-200 group w-full text-left focus:outline-none focus:ring-2 focus:ring-auraBlack/20"
+            aria-haspopup="dialog"
+            aria-controls="add-address-modal"
+        >
+            <!-- Icon -->
+            <div class="add-addr-icon-wrap w-12 h-12 rounded-full bg-[#F3F3F3] flex items-center justify-center transition-all duration-200 mb-3">
+                <svg class="w-5 h-5 text-[#888888] transition-colors duration-200" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v4.5m-2.25-2.25h4.5" />
+                </svg>
+            </div>
+            <!-- Label -->
+            <span class="add-addr-label text-xs tracking-[0.2em] text-[#888888] font-medium uppercase transition-colors duration-200">Add New Address</span>
+        </button>
+
+    </div><!-- /#address-grid -->
+
+
+    <!-- ========================================================= -->
+    <!-- ADD ADDRESS MODAL                                          -->
+    <!-- ========================================================= -->
+    <div
+        id="add-address-modal"
+        class="modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-address-title"
+    >
+        <!-- Backdrop -->
+        <div id="add-address-backdrop" class="absolute inset-0 bg-auraBlack/30 backdrop-blur-[2px]"></div>
+
+        <!-- Panel -->
+        <div
+            id="add-address-panel"
+            class="relative w-full max-w-lg bg-white rounded-2xl shadow-aura-card p-7 sm:p-9 max-h-[90vh] overflow-y-auto"
+        >
+            <!-- Close -->
+            <button
+                type="button"
+                id="close-add-address-btn"
+                class="absolute top-5 right-5 w-8 h-8 flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors duration-150 rounded-full hover:bg-[#F3F3F3]"
+                aria-label="Close modal"
+            >
+                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+
+            <!-- Header -->
+            <div class="mb-7">
+                <h2 id="add-address-title" class="font-serif text-2xl text-auraBlack font-normal tracking-tight mb-2">Add New Address</h2>
+                <div class="w-8 h-px bg-auraChampagneDark"></div>
+            </div>
+
+            <!-- Form -->
+            <form id="add-address-form" novalidate>
+                {% csrf_token %}
+
+                <!-- Error Banner -->
+                <div id="add-addr-error" class="hidden mb-5 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 leading-relaxed"></div>
+
+                <!-- Full Name -->
+                <div class="mb-5">
+                    <label for="add-full-name" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Full Name <span class="text-red-400">*</span></label>
+                    <input
+                        type="text"
+                        id="add-full-name"
+                        name="full_name"
+                        placeholder="e.g. Mohammed Adnan"
+                        autocomplete="name"
+                        class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                    >
+                </div>
+
+                <!-- Phone Number -->
+                <div class="mb-5">
+                    <label for="add-phone" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Phone Number <span class="text-red-400">*</span></label>
+                    <input
+                        type="tel"
+                        id="add-phone"
+                        name="phone_number"
+                        placeholder="+91 98765 43210"
+                        autocomplete="tel"
+                        maxlength="15"
+                        class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                    >
+                </div>
+
+                <!-- Address Line 1 -->
+                <div class="mb-5">
+                    <label for="add-line1" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Address Line 1 <span class="text-red-400">*</span></label>
+                    <input
+                        type="text"
+                        id="add-line1"
+                        name="address_line1"
+                        placeholder="House / Flat / Building No. and Street"
+                        autocomplete="address-line1"
+                        class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                    >
+                </div>
+
+                <!-- Address Line 2 -->
+                <div class="mb-5">
+                    <label for="add-line2" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Address Line 2 <span class="text-auraMuted/40">(Optional)</span></label>
+                    <input
+                        type="text"
+                        id="add-line2"
+                        name="address_line2"
+                        placeholder="Apartment, Suite, Floor (optional)"
+                        autocomplete="address-line2"
+                        class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                    >
+                </div>
+
+                <!-- Landmark -->
+                <div class="mb-5">
+                    <label for="add-landmark" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Landmark <span class="text-auraMuted/40">(Optional)</span></label>
+                    <input
+                        type="text"
+                        id="add-landmark"
+                        name="landmark"
+                        placeholder="Near Metro Station, Mall, etc."
+                        class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                    >
+                </div>
+
+                <!-- City + Pincode Row -->
+                <div class="grid grid-cols-2 gap-4 mb-5">
+                    <div>
+                        <label for="add-city" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">City <span class="text-red-400">*</span></label>
+                        <input
+                            type="text"
+                            id="add-city"
+                            name="city"
+                            placeholder="Mumbai"
+                            autocomplete="address-level2"
+                            class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                        >
+                    </div>
+                    <div>
+                        <label for="add-pincode" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Pincode <span class="text-red-400">*</span></label>
+                        <input
+                            type="text"
+                            id="add-pincode"
+                            name="pincode"
+                            placeholder="400001"
+                            maxlength="10"
+                            class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                        >
+                    </div>
+                </div>
+
+                <!-- State -->
+                <div class="mb-5">
+                    <label for="add-state" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">State <span class="text-red-400">*</span></label>
+                    <input
+                        type="text"
+                        id="add-state"
+                        name="state"
+                        placeholder="Maharashtra"
+                        autocomplete="address-level1"
+                        class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                    >
+                </div>
+
+                <!-- Address Type -->
+                <div class="mb-6">
+                    <label class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-3">Address Type</label>
+                    <div class="flex items-center gap-3">
+                        {% for val, label in address_type_choices %}
+                        <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                            <input type="radio" name="address_type" value="{{ val }}" class="sr-only" {% if val == 'HOME' %}checked{% endif %}>
+                            <span>{{ label }}</span>
+                        </label>
+                        {% empty %}
+                        <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                            <input type="radio" name="address_type" value="HOME" class="sr-only" checked>
+                            <span>Home</span>
+                        </label>
+                        <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                            <input type="radio" name="address_type" value="WORK" class="sr-only">
+                            <span>Work</span>
+                        </label>
+                        <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                            <input type="radio" name="address_type" value="OTHER" class="sr-only">
+                            <span>Other</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Set as Default -->
+                <div class="mb-6 flex items-center gap-3">
+                    <input type="checkbox" id="add-is-default" name="is_default" class="w-4 h-4 text-auraBlack border-auraBorder rounded focus:ring-auraBlack/20 cursor-pointer transition-colors duration-150 accent-auraBlack">
+                    <label for="add-is-default" class="text-xs text-auraMuted cursor-pointer font-medium tracking-wide">Set as default delivery address</label>
+                </div>
+
+                <!-- Submit -->
+                <button
+                    type="submit"
+                    id="add-address-submit-btn"
+                    class="w-full py-4 text-[11px] uppercase tracking-[0.2em] font-semibold bg-auraBlack text-white hover:bg-[#2A2A2A] active:scale-[0.99] transition-all duration-200 rounded-lg flex items-center justify-center gap-2"
+                >
+                    <span id="add-addr-btn-text">Save Address</span>
+                    <svg id="add-addr-spinner" class="addr-spinner hidden w-4 h-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- EDIT ADDRESS MODAL                                         -->
+    <!-- ========================================================= -->
+    <div
+        id="edit-address-modal"
+        class="modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-address-title"
+    >
+        <div class="absolute inset-0 bg-auraBlack/30 backdrop-blur-[2px]" id="edit-address-backdrop"></div>
+        <div
+            id="edit-address-panel"
+            class="relative w-full max-w-lg bg-white rounded-2xl shadow-aura-card p-7 sm:p-9 max-h-[90vh] overflow-y-auto"
+        >
+            <button
+                type="button"
+                id="close-edit-address-btn"
+                class="absolute top-5 right-5 w-8 h-8 flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors duration-150 rounded-full hover:bg-[#F3F3F3]"
+                aria-label="Close modal"
+            >
+                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+
+            <div class="mb-7">
+                <h2 id="edit-address-title" class="font-serif text-2xl text-auraBlack font-normal tracking-tight mb-2">Edit Address</h2>
+                <div class="w-8 h-px bg-auraChampagneDark"></div>
+            </div>
+
+            <form id="edit-address-form" novalidate>
+                {% csrf_token %}
+                <input type="hidden" id="edit-address-id" name="address_id">
+
+                <div id="edit-addr-error" class="hidden mb-5 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 leading-relaxed"></div>
+
+                <div class="mb-5">
+                    <label for="edit-full-name" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Full Name <span class="text-red-400">*</span></label>
+                    <input type="text" id="edit-full-name" name="full_name" placeholder="e.g. Mohammed Adnan" autocomplete="name" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                </div>
+                <div class="mb-5">
+                    <label for="edit-phone" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Phone Number <span class="text-red-400">*</span></label>
+                    <input type="tel" id="edit-phone" name="phone_number" placeholder="+91 98765 43210" autocomplete="tel" maxlength="15" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                </div>
+                <div class="mb-5">
+                    <label for="edit-line1" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Address Line 1 <span class="text-red-400">*</span></label>
+                    <input type="text" id="edit-line1" name="address_line1" placeholder="House / Flat / Building No. and Street" autocomplete="address-line1" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                </div>
+                <div class="mb-5">
+                    <label for="edit-line2" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Address Line 2 <span class="text-auraMuted/40">(Optional)</span></label>
+                    <input type="text" id="edit-line2" name="address_line2" placeholder="Apartment, Suite, Floor (optional)" autocomplete="address-line2" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                </div>
+                <div class="mb-5">
+                    <label for="edit-landmark" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Landmark <span class="text-auraMuted/40">(Optional)</span></label>
+                    <input type="text" id="edit-landmark" name="landmark" placeholder="Near Metro Station, Mall, etc." class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-5">
+                    <div>
+                        <label for="edit-city" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">City <span class="text-red-400">*</span></label>
+                        <input type="text" id="edit-city" name="city" placeholder="Mumbai" autocomplete="address-level2" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                    </div>
+                    <div>
+                        <label for="edit-pincode" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Pincode <span class="text-red-400">*</span></label>
+                        <input type="text" id="edit-pincode" name="pincode" placeholder="400001" maxlength="10" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                    </div>
+                </div>
+                <div class="mb-5">
+                    <label for="edit-state" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">State <span class="text-red-400">*</span></label>
+                    <input type="text" id="edit-state" name="state" placeholder="Maharashtra" autocomplete="address-level1" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-3">Address Type</label>
+                    <div class="flex items-center gap-3">
+                        <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                            <input type="radio" name="address_type" value="HOME" class="sr-only" id="edit-type-home">
+                            <span>Home</span>
+                        </label>
+                        <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                            <input type="radio" name="address_type" value="WORK" class="sr-only" id="edit-type-work">
+                            <span>Work</span>
+                        </label>
+                        <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                            <input type="radio" name="address_type" value="OTHER" class="sr-only" id="edit-type-other">
+                            <span>Other</span>
+                        </label>
+                    </div>
+                </div>
+                <!-- Set as Default -->
+                <div class="mb-6 flex items-center gap-3">
+                    <input type="checkbox" id="edit-is-default" name="is_default" class="w-4 h-4 text-auraBlack border-auraBorder rounded focus:ring-auraBlack/20 cursor-pointer transition-colors duration-150 accent-auraBlack">
+                    <label for="edit-is-default" class="text-xs text-auraMuted cursor-pointer font-medium tracking-wide">Set as default delivery address</label>
+                </div>
+
+                <button type="submit" id="edit-address-submit-btn" class="w-full py-4 text-[11px] uppercase tracking-[0.2em] font-semibold bg-auraBlack text-white hover:bg-[#2A2A2A] active:scale-[0.99] transition-all duration-200 rounded-lg flex items-center justify-center gap-2">
+                    <span id="edit-addr-btn-text">Save Changes</span>
+                    <svg id="edit-addr-spinner" class="addr-spinner hidden w-4 h-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- DELETE CONFIRM MODAL                                       -->
+    <!-- ========================================================= -->
+    <div
+        id="delete-address-modal"
+        class="modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-address-title"
+    >
+        <div class="absolute inset-0 bg-auraBlack/40 backdrop-blur-[2px]" id="delete-address-backdrop"></div>
+        <div id="delete-address-panel" class="relative w-full max-w-sm bg-white rounded-2xl shadow-aura-card p-8 text-center">
+            <!-- Icon -->
+            <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-5">
+                <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                </svg>
+            </div>
+            <h2 id="delete-address-title" class="font-serif text-xl text-auraBlack font-normal tracking-tight mb-2">Remove Address</h2>
+            <p class="text-sm text-auraMuted font-light leading-relaxed mb-7">Are you sure you want to remove this address? This action cannot be undone.</p>
+            <input type="hidden" id="delete-address-id">
+            <div class="flex items-center gap-3">
+                <button
+                    type="button"
+                    id="cancel-delete-btn"
+                    class="flex-1 py-3.5 text-[11px] uppercase tracking-[0.18em] font-semibold border border-auraBorder text-auraBlack hover:bg-[#F3F3F3] transition-all duration-200 rounded-lg"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="button"
+                    id="confirm-delete-btn"
+                    class="flex-1 py-3.5 text-[11px] uppercase tracking-[0.18em] font-semibold bg-red-500 text-white hover:bg-red-600 active:scale-[0.98] transition-all duration-200 rounded-lg flex items-center justify-center gap-2"
+                >
+                    <span id="delete-btn-text">Remove</span>
+                    <svg id="delete-spinner" class="addr-spinner hidden w-4 h-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- INLINE TOAST NOTIFICATION                                  -->
+    <!-- ========================================================= -->
+    <div id="addr-toast" class="hidden fixed top-6 right-6 z-[60] max-w-sm w-full">
+        <div class="flex items-start gap-3 p-4 rounded-lg bg-auraCream border border-auraBorder border-l-4 border-l-auraChampagneDark shadow-aura-card">
+            <svg id="addr-toast-icon-success" class="w-5 h-5 text-auraChampagneDark flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m4.5 12.75 6 6 9-13.5"/></svg>
+            <svg id="addr-toast-icon-error" class="hidden w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+            <p id="addr-toast-msg" class="flex-1 text-xs font-medium text-auraBlack tracking-wide leading-relaxed"></p>
+            <button type="button" onclick="document.getElementById('addr-toast').classList.add('hidden')" class="text-auraMuted hover:text-auraBlack text-xs p-1" aria-label="Close">✕</button>
+        </div>
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- JAVASCRIPT                                                 -->
+    <!-- ========================================================= -->
+    <script>
+    (function () {
+        'use strict';
+
+        // ─── CSRF Helper ───────────────────────────────────────────────────────────
+        function getCookie(name) {
+            const match = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith(name + '='));
+            return match ? decodeURIComponent(match.split('=')[1]) : null;
+        }
+        const CSRF = getCookie('csrftoken');
+
+        // ─── Toast ─────────────────────────────────────────────────────────────────
+        let toastTimer;
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('addr-toast');
+            const msgEl = document.getElementById('addr-toast-msg');
+            const iconOk = document.getElementById('addr-toast-icon-success');
+            const iconErr = document.getElementById('addr-toast-icon-error');
+
+            msgEl.textContent = msg;
+            iconOk.classList.toggle('hidden', type !== 'success');
+            iconErr.classList.toggle('hidden', type !== 'error');
+
+            toast.classList.remove('hidden');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.add('addr-toast-exit');
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                    toast.classList.remove('addr-toast-exit');
+                }, 320);
+            }, 4500);
+        }
+
+        // ─── Modal Helpers ─────────────────────────────────────────────────────────
+        function openModal(modalId) {
+            const el = document.getElementById(modalId);
+            if (!el) return;
+            el.classList.remove('modal-hidden');
+            el.classList.add('modal-visible');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeModal(modalId) {
+            const el = document.getElementById(modalId);
+            if (!el) return;
+            el.classList.remove('modal-visible');
+            el.classList.add('modal-hidden');
+            document.body.style.overflow = '';
+        }
+
+        // Close on backdrop click
+        ['add-address-backdrop', 'edit-address-backdrop', 'delete-address-backdrop'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('click', () => {
+                    closeModal('add-address-modal');
+                    closeModal('edit-address-modal');
+                    closeModal('delete-address-modal');
+                });
+            }
+        });
+
+        // Close on Escape
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                closeModal('add-address-modal');
+                closeModal('edit-address-modal');
+                closeModal('delete-address-modal');
+            }
+        });
+
+        // ─── Open Add Modal ────────────────────────────────────────────────────────
+        const openAddBtn = document.getElementById('open-add-address-btn');
+        if (openAddBtn) {
+            openAddBtn.addEventListener('click', () => {
+                document.getElementById('add-address-form').reset();
+                document.getElementById('add-addr-error').classList.add('hidden');
+                openModal('add-address-modal');
+            });
+        }
+        document.getElementById('close-add-address-btn')?.addEventListener('click', () => closeModal('add-address-modal'));
+
+        // ─── Open Edit Modal ───────────────────────────────────────────────────────
+        document.querySelectorAll('.edit-address-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('edit-addr-error').classList.add('hidden');
+
+                // Populate existing data into inputs using data-* attributes from the card
+                document.getElementById('edit-address-id').value = btn.dataset.addressId || '';
+                document.getElementById('edit-full-name').value  = btn.dataset.fullName || '';
+                document.getElementById('edit-phone').value      = btn.dataset.phoneNumber || '';
+                document.getElementById('edit-line1').value      = btn.dataset.addressLine1 || '';
+                document.getElementById('edit-line2').value      = btn.dataset.addressLine2 || '';
+                document.getElementById('edit-landmark').value   = btn.dataset.landmark || '';
+                document.getElementById('edit-city').value       = btn.dataset.city || '';
+                document.getElementById('edit-state').value      = btn.dataset.state || '';
+                document.getElementById('edit-pincode').value    = btn.dataset.pincode || '';
+
+                // Set Address Type Radio
+                const addressType = btn.dataset.addressType;
+                if (addressType) {
+                    const typeInput = document.querySelector(`#edit-address-form input[name="address_type"][value="${addressType}"]`);
+                    if (typeInput) typeInput.checked = true;
+                }
+
+                // Set Is Default Checkbox
+                const isDefault = btn.dataset.isDefault === 'true';
+                document.getElementById('edit-is-default').checked = isDefault;
+
+                // Store dynamic edit URL for submission
+                document.getElementById('edit-address-form').dataset.editUrl = btn.dataset.editUrl;
+
+                openModal('edit-address-modal');
+            });
+        });
+        document.getElementById('close-edit-address-btn')?.addEventListener('click', () => closeModal('edit-address-modal'));
+
+        // ─── Open Delete Modal ─────────────────────────────────────────────────────
+        document.querySelectorAll('.delete-address-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const confirmBtn = document.getElementById('confirm-delete-btn');
+                confirmBtn.dataset.deleteUrl = btn.dataset.deleteUrl;
+                openModal('delete-address-modal');
+            });
+        });
+        document.getElementById('cancel-delete-btn')?.addEventListener('click', () => closeModal('delete-address-modal'));
+
+        // ─── Set as Default ────────────────────────────────────────────────────────
+        document.querySelectorAll('.set-default-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const setDefaultUrl = btn.dataset.setDefaultUrl;
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+
+                fetch(setDefaultUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': CSRF,
+                    }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('Default address updated successfully.');
+                        setTimeout(() => location.reload(), 900);
+                    } else {
+                        showToast(data.message || 'Could not update default address.', 'error');
+                        btn.disabled = false;
+                        btn.textContent = 'Set as Default';
+                    }
+                })
+                .catch(() => {
+                    showToast('Something went wrong. Please try again.', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Set as Default';
+                });
+            });
+        });
+
+        // ─── Add Address Submit ────────────────────────────────────────────────────
+        document.getElementById('add-address-form')?.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('add-addr-error');
+            const btnText = document.getElementById('add-addr-btn-text');
+            const spinner = document.getElementById('add-addr-spinner');
+            const submitBtn = document.getElementById('add-address-submit-btn');
+
+            errorEl.classList.add('hidden');
+            btnText.textContent = 'Saving…';
+            spinner.classList.remove('hidden');
+            submitBtn.disabled = true;
+
+            const formData = new FormData(this);
+
+            fetch('{% url "add_address" %}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': CSRF,
+                },
+                body: formData,
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Address saved successfully.');
+                    closeModal('add-address-modal');
+                    setTimeout(() => location.reload(), 900);
+                } else {
+                    errorEl.textContent = data.message || 'Please check your details and try again.';
+                    errorEl.classList.remove('hidden');
+                }
+            })
+            .catch(() => {
+                errorEl.textContent = 'Something went wrong. Please try again.';
+                errorEl.classList.remove('hidden');
+            })
+            .finally(() => {
+                btnText.textContent = 'Save Address';
+                spinner.classList.add('hidden');
+                submitBtn.disabled = false;
+            });
+        });
+
+        // ─── Edit Address Submit ───────────────────────────────────────────────────
+        document.getElementById('edit-address-form')?.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const addressId = document.getElementById('edit-address-id').value;
+            const errorEl  = document.getElementById('edit-addr-error');
+            const btnText  = document.getElementById('edit-addr-btn-text');
+            const spinner  = document.getElementById('edit-addr-spinner');
+            const submitBtn = document.getElementById('edit-address-submit-btn');
+
+            errorEl.classList.add('hidden');
+            btnText.textContent = 'Saving…';
+            spinner.classList.remove('hidden');
+            submitBtn.disabled = true;
+
+            const formData = new FormData(this);
+            const editUrl = this.dataset.editUrl;
+
+            fetch(editUrl, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': CSRF,
+                },
+                body: formData,
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Address updated successfully.');
+                    closeModal('edit-address-modal');
+                    setTimeout(() => location.reload(), 900);
+                } else {
+                    errorEl.textContent = data.message || 'Please check your details and try again.';
+                    errorEl.classList.remove('hidden');
+                }
+            })
+            .catch(() => {
+                errorEl.textContent = 'Something went wrong. Please try again.';
+                errorEl.classList.remove('hidden');
+            })
+            .finally(() => {
+                btnText.textContent = 'Save Changes';
+                spinner.classList.add('hidden');
+                submitBtn.disabled = false;
+            });
+        });
+
+        // ─── Confirm Delete ────────────────────────────────────────────────────────
+        document.getElementById('confirm-delete-btn')?.addEventListener('click', function () {
+            const deleteUrl = this.dataset.deleteUrl;
+            const btnText  = document.getElementById('delete-btn-text');
+            const spinner  = document.getElementById('delete-spinner');
+            const self     = this;
+
+            btnText.textContent = 'Removing…';
+            spinner.classList.remove('hidden');
+            self.disabled = true;
+
+            fetch(deleteUrl, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': CSRF,
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Address removed successfully.');
+                    closeModal('delete-address-modal');
+                    setTimeout(() => location.reload(), 900);
+                } else {
+                    showToast(data.message || 'Could not remove address.', 'error');
+                    closeModal('delete-address-modal');
+                }
+            })
+            .catch(() => {
+                showToast('Something went wrong. Please try again.', 'error');
+                closeModal('delete-address-modal');
+            })
+            .finally(() => {
+                btnText.textContent = 'Remove';
+                spinner.classList.add('hidden');
+                self.disabled = false;
+            });
+        });
+
+    })();
+    </script>
+
+{% endblock %}

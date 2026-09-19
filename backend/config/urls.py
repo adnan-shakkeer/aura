@@ -30,6 +30,8 @@ urlpatterns = [
 
     path("profile/",include("user_panel.user_profile.urls")),
 
+    path("address/",include("user_panel.address.urls")),
+
 ]
 
 
