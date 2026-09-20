@@ -20,10 +20,23 @@ from django.contrib import admin
 from django.urls import path,include
 
 urlpatterns = [
+    # Built-in Django Admin (Default)
     path('admin/', admin.site.urls),
 
+
+    # Allauth URLs
     path("accounts/",include("allauth.urls")),
 
+
+    # Custom Admin Panel Modular App Routes
+    path("admin-panel/auth/", include("admin_panel.admin_auth.urls")),
+
+    path("admin-panel/dashboard/", include("admin_panel.dashboard.urls")),
+    
+    path("admin-panel/users/", include("admin_panel.users.urls")),
+
+
+    # User Panel Routes
     path("",include("user_panel.home.urls")),
 
     path("",include("user_panel.authentication.urls")),

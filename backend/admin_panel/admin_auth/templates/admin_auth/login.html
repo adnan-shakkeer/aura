@@ -1,0 +1,220 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURA — Admin Portal Login</title>
+    
+    <!-- Tailwind CSS (CDN for rapid styling) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        aura: {
+                            bg: '#0B0C10',
+                            card: '#12141C',
+                            border: '#2A2D3D',
+                            gold: '#D4AF37',
+                            'gold-hover': '#F3E5AB',
+                            text: '#E5E7EB',
+                            muted: '#9CA3AF'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0B0C10;
+        }
+        .brand-title {
+            font-family: 'Cinzel', serif;
+        }
+    </style>
+</head>
+<body class="bg-aura-bg text-aura-text min-h-screen flex items-center justify-center p-4">
+
+    <!-- Background Subtle Glow Effect -->
+    <div class="fixed inset-0 pointer-events-none flex items-center justify-center">
+        <div class="w-[500px] h-[500px] bg-aura-gold/5 rounded-full blur-[120px]"></div>
+    </div>
+
+    <!-- Login Container -->
+    <div class="w-full max-w-md relative z-10">
+        
+        <!-- Brand Header -->
+        <div class="text-center mb-8">
+            <h1 class="brand-title text-4xl tracking-[0.25em] font-bold text-aura-gold mb-2">AURA</h1>
+            <p class="text-xs uppercase tracking-[0.3em] text-aura-muted font-medium">Administration Portal</p>
+        </div>
+
+        <!-- Login Card -->
+        <div class="bg-aura-card border border-aura-border/80 rounded-2xl p-8 shadow-2xl shadow-black/60 backdrop-blur-md">
+            <h2 class="text-xl font-semibold text-white mb-2">System Authentication</h2>
+            <p class="text-sm text-aura-muted mb-6">Enter your administrative credentials to continue.</p>
+
+            <!-- Alert Message Box -->
+            <div id="alertBox" class="hidden mb-6 p-4 rounded-xl text-sm border flex items-start gap-3 transition-all duration-300">
+                <span id="alertIcon" class="mt-0.5 text-lg"></span>
+                <p id="alertMessage" class="text-xs sm:text-sm font-medium leading-relaxed"></p>
+            </div>
+
+            <!-- Login Form -->
+            <form id="adminLoginForm" novalidate class="space-y-5">
+                {% csrf_token %}
+
+                <!-- Username/Email Field -->
+                <div>
+                    <label for="username" class="block text-xs uppercase tracking-wider text-aura-muted mb-2 font-semibold">
+                        Username or Email
+                    </label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        required
+                        autocomplete="username"
+                        placeholder="admin@aura.com"
+                        class="w-full bg-aura-bg border border-aura-border text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-aura-gold focus:ring-1 focus:ring-aura-gold transition-all duration-200 placeholder-aura-muted/40"
+                    >
+                </div>
+
+                <!-- Password Field -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="password" class="block text-xs uppercase tracking-wider text-aura-muted font-semibold">
+                            Password
+                        </label>
+                    </div>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        required
+                        autocomplete="current-password"
+                        placeholder="••••••••••••"
+                        class="w-full bg-aura-bg border border-aura-border text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-aura-gold focus:ring-1 focus:ring-aura-gold transition-all duration-200 placeholder-aura-muted/40"
+                    >
+                </div>
+
+                <!-- Submit Button -->
+                <button 
+                    type="submit" 
+                    id="submitBtn"
+                    class="w-full bg-aura-gold hover:bg-aura-gold-hover text-black font-semibold text-sm tracking-wide py-3.5 px-4 rounded-xl transition-all duration-200 shadow-lg shadow-aura-gold/10 flex items-center justify-center gap-2 mt-2"
+                >
+                    <span id="btnText">Authenticate</span>
+                    <svg id="btnSpinner" class="hidden animate-spin h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </form>
+        </div>
+
+        <!-- Footer Info -->
+        <p class="text-center text-xs text-aura-muted/60 mt-8">
+            &copy; 2026 AURA Luxury Fragrances. Restricted Access.
+        </p>
+    </div>
+
+    <!-- Client-Side JavaScript -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const form = document.getElementById("adminLoginForm");
+            const alertBox = document.getElementById("alertBox");
+            const alertIcon = document.getElementById("alertIcon");
+            const alertMessage = document.getElementById("alertMessage");
+            const submitBtn = document.getElementById("submitBtn");
+            const btnText = document.getElementById("btnText");
+            const btnSpinner = document.getElementById("btnSpinner");
+
+            function showAlert(message, type = "error") {
+                alertBox.classList.remove("hidden", "bg-red-500/10", "border-red-500/30", "text-red-400", "bg-emerald-500/10", "border-emerald-500/30", "text-emerald-400");
+                
+                if (type === "success") {
+                    alertBox.classList.add("bg-emerald-500/10", "border-emerald-500/30", "text-emerald-400");
+                    alertIcon.textContent = "✓";
+                } else {
+                    alertBox.classList.add("bg-red-500/10", "border-red-500/30", "text-red-400");
+                    alertIcon.textContent = "⚠️";
+                }
+                
+                alertMessage.textContent = message;
+            }
+
+            function setLoading(isLoading) {
+                if (isLoading) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add("opacity-75", "cursor-not-allowed");
+                    btnText.textContent = "Verifying...";
+                    btnSpinner.classList.remove("hidden");
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove("opacity-75", "cursor-not-allowed");
+                    btnText.textContent = "Authenticate";
+                    btnSpinner.classList.add("hidden");
+                }
+            }
+
+            form.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                alertBox.classList.add("hidden");
+
+                const username = document.getElementById("username").value.trim();
+                const password = document.getElementById("password").value.trim();
+                const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+
+                if (!username || !password) {
+                    showAlert("Please enter both credentials.");
+                    return;
+                }
+
+                setLoading(true);
+
+                try {
+                    const formData = new FormData();
+                    formData.append("username", username);
+                    formData.append("password", password);
+
+                    const response = await fetch("{% url 'admin_auth:login' %}", {
+                        method: "POST",
+                        headers: {
+                            "X-CSRFToken": csrfToken,
+                            "X-Requested-With": "XMLHttpRequest"
+                        },
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        showAlert(data.message, "success");
+                        setTimeout(() => {
+                            window.location.href = "{% url 'dashboard:index' %}";
+                        }, 800);
+                    } else {
+                        showAlert(data.message || "Authentication failed. Please try again.");
+                    }
+                } catch (err) {
+                    showAlert("A server error occurred. Please try again later.");
+                } finally {
+                    setLoading(false);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
