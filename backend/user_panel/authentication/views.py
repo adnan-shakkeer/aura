@@ -1,5 +1,6 @@
 import random
 from datetime import timedelta
+from http import HTTPStatus
 
 from allauth.account.models import EmailAddress
 
@@ -214,6 +215,7 @@ def signup_otp(request):
         request,
         "authentication/signup_otp.html",
         context,
+        status=HTTPStatus.BAD_REQUEST if error else HTTPStatus.OK,
     )
 
 def resend_signup_otp(request):
@@ -293,6 +295,8 @@ def signup(request):
 
                 errors["email"] = "An account with this email already exists."
 
+        
+
         if errors:
 
             context = {
@@ -308,6 +312,7 @@ def signup(request):
                 request,
                 "authentication/signup.html",
                 context,
+                status=HTTPStatus.BAD_REQUEST,
             )
 
         request.session["signup_data"] = {
@@ -336,6 +341,8 @@ def login(request):
         "login_data": {},
         "errors": {},
     }
+
+    status_code = HTTPStatus.OK
 
     if request.method == "POST":
 
@@ -393,6 +400,8 @@ def login(request):
                     "Invalid email or password."
                 )
 
+                status_code = HTTPStatus.UNAUTHORIZED
+
             else:
 
                 auth_login(
@@ -419,6 +428,7 @@ def login(request):
         request,
         "authentication/login.html",
         context,
+        status=status_code,
     )
 
 def forgot_password(request):
@@ -452,6 +462,7 @@ def forgot_password(request):
                 request,
                 "authentication/forgot_password.html",
                 context,
+                status=HTTPStatus.BAD_REQUEST,
             )
 
         user_exists = User.objects.filter(
@@ -554,6 +565,7 @@ def forgot_password_otp(request):
         request,
         "authentication/forgot_password_otp.html",
         context,
+        status=HTTPStatus.BAD_REQUEST if error else HTTPStatus.OK,
     )
 
 def reset_password(request):
@@ -608,7 +620,8 @@ def reset_password(request):
             return render(
                 request,
                 "authentication/reset_password.html",
-                context
+                context,
+                status=HTTPStatus.BAD_REQUEST,
             )
 
         user = User.objects.filter(
