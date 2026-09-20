@@ -1,0 +1,333 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AURA | Haute Parfumerie & Bespoke Fragrances{% endblock %}</title>
+    
+    <!-- Google Fonts: Playfair Display (Serif) & Inter (Sans) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        auraIvory: '#F8F5F0',
+                        auraCream: '#FDFBF7',
+                        auraBlack: '#1A1A1A',
+                        auraDark: '#111111',
+                        auraChampagne: '#D4C5B0',
+                        auraChampagneDark: '#BFA98F',
+                        auraBorder: '#E5E0D8',
+                        auraMuted: '#6B6A65',
+                    },
+                    fontFamily: {
+                        serif: ['"Playfair Display"', 'Georgia', 'serif'],
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                    },
+                    letterSpacing: {
+                        luxury: '0.22em',
+                        widest: '0.28em',
+                    },
+                    boxShadow: {
+                        'aura-subtle': '0 4px 20px -2px rgba(26, 26, 26, 0.04)',
+                        'aura-card': '0 10px 30px -4px rgba(26, 26, 26, 0.06)',
+                        'aura-button': '0 4px 14px 0 rgba(26, 26, 26, 0.15)',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        ::selection {
+            background-color: #1A1A1A;
+            color: #F8F5F0;
+        }
+        /* Custom subtle scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #F8F5F0;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D4C5B0;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #BFA98F;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-auraIvory font-sans text-auraBlack antialiased flex flex-col min-h-screen selection:bg-auraBlack selection:text-white">
+
+    <!-- ========================================================= -->
+    <!-- GLOBAL AURA HEADER / NAVIGATION -->
+    <!-- ========================================================= -->
+    <header class="sticky top-0 z-50 bg-[#F8F5F0]/95 backdrop-blur-md border-b border-auraBorder transition-all duration-300">
+        <!--
+            Full-viewport-width header using a CSS-grid approach:
+            Three columns — left (nav), center (wordmark), right (icons).
+            The center column uses position:absolute to guarantee true
+            viewport-centred placement regardless of left/right widths.
+        -->
+        <div class="relative w-full h-20 sm:h-24 flex items-center justify-between px-6 sm:px-10 lg:px-16 xl:px-20">
+
+            <!-- LEFT: Desktop Navigation Links -->
+            <nav class="hidden md:flex items-center gap-8 lg:gap-10 z-10">
+                <a 
+                    href="{% url 'home' %}" 
+                    class="text-xs uppercase tracking-[0.18em] font-medium text-auraBlack relative py-2 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1px] after:bg-auraBlack transition-all"
+                >
+                    Home
+                </a>
+                <a 
+                    href="#shop" 
+                    class="text-xs uppercase tracking-[0.18em] font-light text-auraMuted hover:text-auraBlack transition-colors duration-200 py-2"
+                >
+                    Shop
+                </a>
+                <a 
+                    href="#brands" 
+                    class="text-xs uppercase tracking-[0.18em] font-light text-auraMuted hover:text-auraBlack transition-colors duration-200 py-2"
+                >
+                    Brands
+                </a>
+            </nav>
+
+            <!-- LEFT: Mobile Menu Button (replaces nav on small screens) -->
+            <div class="md:hidden flex items-center z-10">
+                <button 
+                    type="button" 
+                    id="mobileMenuBtn"
+                    aria-label="Open Navigation Menu"
+                    class="p-2 text-auraBlack hover:text-auraMuted focus:outline-none transition-colors"
+                >
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- CENTER: AURA Wordmark — absolutely centred to full header width -->
+            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <a 
+                    href="{% url 'home' %}" 
+                    class="font-serif text-2xl sm:text-3xl lg:text-[1.9rem] font-normal tracking-[0.32em] pl-[0.32em] text-auraBlack uppercase select-none hover:opacity-70 transition-opacity pointer-events-auto"
+                    aria-label="AURA Home"
+                >
+                    AURA
+                </a>
+            </div>
+
+            <!-- RIGHT: Utility Actions / Icons -->
+            <div class="flex items-center gap-5 sm:gap-6 z-10">
+                <!-- Search Action -->
+                <button 
+                    type="button" 
+                    aria-label="Search Fragrances"
+                    class="p-1.5 text-auraBlack hover:text-auraMuted transition-colors duration-200"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                    </svg>
+                </button>
+
+                <!-- Wishlist Action -->
+                <a 
+                    href="#wishlist" 
+                    aria-label="Wishlist"
+                    class="p-1.5 text-auraBlack hover:text-auraMuted transition-colors duration-200"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+                    </svg>
+                </a>
+
+                <!-- Shopping Bag Action -->
+                <a 
+                    href="#cart" 
+                    aria-label="Shopping Bag"
+                    class="p-1.5 text-auraBlack hover:text-auraMuted transition-colors duration-200 relative"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                    </svg>
+                </a>
+
+                <!-- Account / Profile Action -->
+                <a 
+                    href="{% if user.is_authenticated %}{% url 'profile' %}{% else %}{% url 'login' %}{% endif %}" 
+                    aria-label="Account"
+                    class="p-1.5 text-auraBlack hover:text-auraMuted transition-colors duration-200"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- Mobile Drawer Navigation -->
+        <div id="mobileMenu" class="hidden md:hidden border-t border-auraBorder bg-[#F8F5F0] px-6 py-6 space-y-4">
+            <a href="{% url 'home' %}" class="block text-xs uppercase tracking-[0.2em] font-medium text-auraBlack py-1">Home</a>
+            <a href="#shop" class="block text-xs uppercase tracking-[0.2em] font-light text-auraMuted hover:text-auraBlack py-1">Shop</a>
+            <a href="#brands" class="block text-xs uppercase tracking-[0.2em] font-light text-auraMuted hover:text-auraBlack py-1">Brands</a>
+            <div class="pt-4 border-t border-auraBorder flex items-center justify-between text-xs text-auraMuted">
+                {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="hover:text-auraBlack font-medium">My Account</a>
+                {% else %}
+                <a href="{% url 'login' %}" class="hover:text-auraBlack">Sign In / Register</a>
+                {% endif %}
+                <a href="#wishlist" class="hover:text-auraBlack">Wishlist</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========================================================= -->
+    <!-- MAIN CONTENT BLOCK -->
+    <!-- ========================================================= -->
+    <main class="flex-grow">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- ========================================================= -->
+    <!-- GLOBAL AURA FOOTER -->
+    <!-- ========================================================= -->
+    <footer class="bg-white border-t border-auraBorder pt-16 sm:pt-20 pb-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-12 mb-16">
+                
+                <!-- Column 1: Brand & Philosophy (2 cols on large) -->
+                <div class="lg:col-span-2 space-y-4">
+                    <span class="font-serif text-2xl font-normal tracking-[0.28em] text-auraBlack uppercase select-none">
+                        AURA
+                    </span>
+                    <p class="text-xs sm:text-[13px] text-auraMuted font-light leading-relaxed max-w-sm">
+                        The intersection of olfactory art and modern minimalism. Experience scents that resonate with the soul.
+                    </p>
+                </div>
+
+                <!-- Column 2: EXPLORE -->
+                <div>
+                    <h3 class="text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack mb-5">
+                        Explore
+                    </h3>
+                    <ul class="space-y-3">
+                        <li>
+                            <a href="#shop" class="text-xs text-auraMuted font-light hover:text-auraBlack transition-colors duration-200">
+                                Shop
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#brands" class="text-xs text-auraMuted font-light hover:text-auraBlack transition-colors duration-200">
+                                Brands
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#collections" class="text-xs text-auraMuted font-light hover:text-auraBlack transition-colors duration-200">
+                                Collections
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#gift-sets" class="text-xs text-auraMuted font-light hover:text-auraBlack transition-colors duration-200">
+                                Gift Sets
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Column 3: CLIENT SERVICE -->
+                <div>
+                    <h3 class="text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack mb-5">
+                        Client Service
+                    </h3>
+                    <ul class="space-y-3">
+                        <li>
+                            <a href="#shipping" class="text-xs text-auraMuted font-light hover:text-auraBlack transition-colors duration-200">
+                                Shipping & Returns
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#privacy" class="text-xs text-auraMuted font-light hover:text-auraBlack transition-colors duration-200">
+                                Privacy Policy
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#terms" class="text-xs text-auraMuted font-light hover:text-auraBlack transition-colors duration-200">
+                                Terms of Service
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#contact" class="text-xs text-auraMuted font-light hover:text-auraBlack transition-colors duration-200">
+                                Contact Us
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Column 4: FOLLOW -->
+                <div>
+                    <h3 class="text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack mb-5">
+                        Follow
+                    </h3>
+                    <div class="flex items-center gap-4 text-auraBlack">
+                        <!-- Instagram -->
+                        <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="hover:text-auraChampagneDark transition-colors">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                            </svg>
+                        </a>
+                        <!-- X (Twitter) -->
+                        <a href="https://x.com" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" class="hover:text-auraChampagneDark transition-colors">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                            </svg>
+                        </a>
+                        <!-- Pinterest -->
+                        <a href="https://pinterest.com" target="_blank" rel="noopener noreferrer" aria-label="Pinterest" class="hover:text-auraChampagneDark transition-colors">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.627 0-12 5.372-12 12 0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345-.09.375-.291 1.199-.334 1.357-.056.208-.182.254-.419.154-1.564-.728-2.543-3.012-2.543-4.848 0-3.946 2.868-7.57 8.268-7.57 4.341 0 7.714 3.094 7.714 7.228 0 4.313-2.72 7.784-6.495 7.784-1.268 0-2.46-.659-2.868-1.439l-.779 2.966c-.282 1.083-1.045 2.441-1.558 3.271 1.139.351 2.348.543 3.606.543 6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Row Divider & Provenance -->
+            <div class="border-t border-auraBorder pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+                <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                    &copy; {% now "Y" %} AURA PERFUMERY. ALL RIGHTS RESERVED.
+                </p>
+                <div class="flex items-center gap-6 text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                    <span>Designed in Paris</span>
+                    <span class="text-auraBorder">•</span>
+                    <span>Crafted in Grasse</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Mobile Drawer Script -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+            const mobileMenu = document.getElementById("mobileMenu");
+            if (mobileMenuBtn && mobileMenu) {
+                mobileMenuBtn.addEventListener("click", function () {
+                    mobileMenu.classList.toggle("hidden");
+                });
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
