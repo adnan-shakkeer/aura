@@ -1,19 +1,152 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Admin Dashboard Placeholder</title>
-</head>
-<body style="font-family: sans-serif; padding: 20px;">
-    <h1>Admin Dashboard Placeholder</h1>
-    <p>You are successfully authenticated as an admin!</p>
+{% extends "dashboard/base_admin.html" %}
 
-    <!-- POST form to trigger logout -->
-    <form action="{% url 'admin_auth:logout' %}" method="POST">
-        {% csrf_token %}
-        <button type="submit" style="padding: 10px 20px; cursor: pointer; background: #dc2626; color: white; border: none; border-radius: 4px;">
-            Logout
+{% block admin_content %}
+<!-- Dashboard Header & Filter [C] -->
+<div class="flex justify-between items-end mb-10">
+    <div>
+        <h2 class="font-serif text-4xl tracking-wide text-white mb-4">Dashboard</h2>
+        <div class="w-16 h-[1px] bg-auraGold"></div>
+    </div>
+    
+    <!-- Date Filter Dropdown -->
+    <div class="relative group">
+        <button class="flex items-center gap-3 px-5 py-2.5 border border-auraBorder bg-auraSurface rounded-sm hover:border-auraGold transition-all duration-300">
+            <span class="text-[10px] uppercase tracking-widest text-auraMuted font-medium group-hover:text-white transition-colors">Period: <span class="text-white">Last 30 Days</span></span>
+            <i data-lucide="chevron-down" class="w-3 h-3 text-auraMuted group-hover:text-auraGold transition-colors"></i>
         </button>
-    </form>
-</body>
-</html>
+    </div>
+</div>
+
+<!-- 4 Metric Stat Cards [D] -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+    
+    <!-- TOTAL REVENUE (Featured) -->
+    <div class="bg-auraBg border border-auraGold/30 rounded-sm p-8 shadow-lg relative overflow-hidden group hover:border-auraGold transition-all duration-300">
+        <div class="absolute -right-10 -top-10 w-32 h-32 bg-auraGold/5 rounded-full blur-2xl group-hover:bg-auraGold/10 transition-all duration-500"></div>
+        <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4 relative z-10">Total Revenue</p>
+        <h3 class="font-serif text-4xl text-white tracking-wide mb-6 relative z-10">₹{{ total_revenue }}</h3>
+        <p class="text-[9px] uppercase tracking-widest text-green-400/80 font-medium relative z-10">+8.2% VS PREV MONTH</p>
+    </div>
+
+    <!-- TOTAL ORDERS -->
+    <div class="bg-auraSurface border border-auraBorder rounded-sm p-8 hover:border-auraGold/50 transition-all duration-300">
+        <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4">Total Orders</p>
+        <h3 class="font-serif text-4xl text-white tracking-wide mb-6">{{ total_orders }}</h3>
+        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium">Avg. Order Value: ₹{{ avg_order_value }}</p>
+    </div>
+
+    <!-- TOTAL CUSTOMERS (Featured) -->
+    <div class="bg-auraBg border border-auraGold/30 rounded-sm p-8 shadow-lg relative overflow-hidden group hover:border-auraGold transition-all duration-300">
+        <div class="absolute -right-10 -top-10 w-32 h-32 bg-auraGold/5 rounded-full blur-2xl group-hover:bg-auraGold/10 transition-all duration-500"></div>
+        <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4 relative z-10">Total Customers</p>
+        <h3 class="font-serif text-4xl text-white tracking-wide mb-6 relative z-10">{{ total_customers }}</h3>
+        <p class="text-[9px] uppercase tracking-widest text-auraGold/80 font-medium relative z-10">24 New Today</p>
+    </div>
+
+    <!-- TOTAL PRODUCTS -->
+    <div class="bg-auraSurface border border-auraBorder rounded-sm p-8 hover:border-auraGold/50 transition-all duration-300">
+        <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4">Total Products</p>
+        <h3 class="font-serif text-4xl text-white tracking-wide mb-6">{{ total_products }}</h3>
+        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium">Across 12 Brands</p>
+    </div>
+</div>
+
+<!-- Sales Overtime Chart Section [E] -->
+<div class="bg-auraSurface border border-auraBorder rounded-sm mb-10 overflow-hidden">
+    <!-- Chart Header -->
+    <div class="px-8 py-6 border-b border-auraBorder flex items-center justify-between">
+        <h3 class="text-[11px] uppercase tracking-[0.2em] text-white font-semibold">Sales Overtime</h3>
+        <div class="flex items-center gap-8">
+            <span class="text-[10px] uppercase tracking-widest text-auraGold font-medium">Monthly Growth: +12.4%</span>
+            <div class="flex items-center gap-6 text-[9px] uppercase tracking-[0.2em] font-medium">
+                <button class="text-white border-b border-auraGold pb-1">Revenue</button>
+                <button class="text-auraMuted hover:text-white transition-colors pb-1">Units Sold</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chart Area (Mockup using HTML/CSS) -->
+    <div class="p-8 h-80 relative flex items-end justify-between gap-4">
+        <!-- Dashed Trendline (SVG Overlay) -->
+        <svg class="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
+            <polyline points="0,80 16,65 33,75 50,45 66,50 83,20 100,10" fill="none" stroke="#D4AF37" stroke-width="0.5" stroke-dasharray="2,2" class="opacity-50" />
+        </svg>
+        
+        <!-- Bars -->
+        <div class="w-full bg-auraBorder/30 rounded-t-sm relative group h-[20%] hover:bg-auraBorder/50 transition-colors"></div>
+        <div class="w-full bg-auraBorder/30 rounded-t-sm relative group h-[40%] hover:bg-auraBorder/50 transition-colors"></div>
+        <div class="w-full bg-auraBorder/30 rounded-t-sm relative group h-[25%] hover:bg-auraBorder/50 transition-colors"></div>
+        <div class="w-full bg-auraBorder/30 rounded-t-sm relative group h-[60%] hover:bg-auraBorder/50 transition-colors"></div>
+        <div class="w-full bg-auraBorder/30 rounded-t-sm relative group h-[50%] hover:bg-auraBorder/50 transition-colors"></div>
+        <div class="w-full bg-auraBorder/30 rounded-t-sm relative group h-[80%] hover:bg-auraBorder/50 transition-colors"></div>
+        
+        <!-- Active/Highlighted Bar -->
+        <div class="w-full bg-white rounded-t-sm relative group h-[95%] shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+            <!-- Tooltip Tag -->
+            <div class="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-auraBg border border-auraBorder text-white text-[9px] uppercase tracking-widest px-3 py-2 rounded-sm whitespace-nowrap shadow-lg">
+                Jul <br> <span class="text-auraMuted">(Act)</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Orders Table [F] -->
+<div class="mb-10">
+    <div class="flex items-center justify-between mb-6 px-1">
+        <h3 class="font-serif text-2xl tracking-wide text-white">Recent Orders</h3>
+        <a href="#" class="text-[9px] uppercase tracking-[0.2em] text-auraGold hover:text-white transition-colors flex items-center gap-2 font-medium">
+            View All Orders <i data-lucide="arrow-right" class="w-3 h-3"></i>
+        </a>
+    </div>
+
+    <div class="bg-auraSurface border border-auraBorder rounded-sm overflow-hidden">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="border-b border-auraBorder bg-[#161619]">
+                    <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold w-32">Order ID</th>
+                    <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold">Customer</th>
+                    <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold w-40">Date</th>
+                    <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold w-32">Total</th>
+                    <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold w-40">Status</th>
+                    <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold w-24 text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-auraBorder">
+                {% for order in recent_orders %}
+                <tr class="hover:bg-auraBg/50 transition-colors duration-200">
+                    <td class="py-5 px-6 text-xs text-white font-medium">{{ order.order_id }}</td>
+                    <td class="py-5 px-6 text-xs text-auraMuted">{{ order.customer }}</td>
+                    <td class="py-5 px-6 text-xs text-auraMuted">{{ order.date }}</td>
+                    <td class="py-5 px-6 text-xs text-white font-semibold">₹{{ order.total }}</td>
+                    <td class="py-5 px-6">
+                        {% if order.status|lower == 'shipped' %}
+                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-auraMuted/50 text-auraMuted rounded-sm w-24">Shipped</span>
+                        {% elif order.status|lower == 'processing' %}
+                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest bg-auraGold text-auraBg font-bold rounded-sm w-24">Processing</span>
+                        {% elif order.status|lower == 'pending' %}
+                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-auraBorder text-auraMuted rounded-sm w-24">Pending</span>
+                        {% elif order.status|lower == 'delivered' %}
+                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-green-500/30 text-green-400 rounded-sm w-24">Delivered</span>
+                        {% elif order.status|lower == 'cancelled' %}
+                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-red-500/30 text-red-400 rounded-sm w-24">Cancelled</span>
+                        {% else %}
+                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-auraBorder text-auraMuted rounded-sm w-24">{{ order.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-5 px-6 text-right">
+                        <a href="{{ order.action_url|default:'#' }}" class="text-[9px] uppercase tracking-widest text-auraMuted hover:text-auraGold transition-colors inline-flex items-center gap-1 font-medium group">
+                            View <i data-lucide="arrow-right" class="w-3 h-3 group-hover:translate-x-0.5 transition-transform"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="py-10 px-6 text-center text-xs text-auraMuted tracking-wider">No recent orders found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
