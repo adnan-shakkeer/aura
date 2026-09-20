@@ -1,27 +1,48 @@
-{% load static %}
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AURA — Admin Portal Login</title>
+    <title>AURA | Admin Portal</title>
     
-    <!-- Tailwind CSS (CDN for rapid styling) -->
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (CDN for standalone file, replace with local build if needed) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        aura: {
-                            bg: '#0B0C10',
-                            card: '#12141C',
-                            border: '#2A2D3D',
-                            gold: '#D4AF37',
-                            'gold-hover': '#F3E5AB',
-                            text: '#E5E7EB',
-                            muted: '#9CA3AF'
+                        auraDark: '#0B0C10',
+                        auraSurface: '#12141C',
+                        auraGold: '#D4AF37',
+                        auraGoldMuted: 'rgba(212, 175, 55, 0.4)',
+                        auraText: '#F5F5F5',
+                        auraMuted: '#A0A0A0',
+                        auraBorder: '#2A2A2A',
+                    },
+                    fontFamily: {
+                        serif: ['"Cormorant Garamond"', 'serif'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    animation: {
+                        'slide-in': 'slideIn 0.4s ease-out forwards',
+                        'slide-out': 'slideOut 0.4s ease-in forwards',
+                        'spin-slow': 'spin 2s linear infinite',
+                    },
+                    keyframes: {
+                        slideIn: {
+                            '0%': { transform: 'translateY(-20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        slideOut: {
+                            '0%': { transform: 'translateY(0)', opacity: '1' },
+                            '100%': { transform: 'translateY(-20px)', opacity: '0' },
                         }
                     }
                 }
@@ -29,171 +50,225 @@
         }
     </script>
     
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
     <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #0B0C10;
+        /* Custom Scrollbar for dark theme */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0B0C10; }
+        ::-webkit-scrollbar-thumb { background: #2A2A2A; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #D4AF37; }
+
+        /* Input Autofill override for dark mode */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px #12141C inset !important;
+            -webkit-text-fill-color: #F5F5F5 !important;
+            transition: background-color 5000s ease-in-out 0s;
         }
-        .brand-title {
-            font-family: 'Cinzel', serif;
+
+        /* Glassmorphism for Toast */
+        .glass-toast {
+            background: rgba(18, 20, 28, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
     </style>
 </head>
-<body class="bg-aura-bg text-aura-text min-h-screen flex items-center justify-center p-4">
+<body class="bg-auraDark font-sans text-auraText min-h-screen flex items-center justify-center relative overflow-hidden selection:bg-auraGold selection:text-auraDark">
 
-    <!-- Background Subtle Glow Effect -->
-    <div class="fixed inset-0 pointer-events-none flex items-center justify-center">
-        <div class="w-[500px] h-[500px] bg-aura-gold/5 rounded-full blur-[120px]"></div>
+    <!-- Ambient Glow Background -->
+    <div class="absolute inset-0 z-0 flex items-center justify-center pointer-events-none opacity-20">
+        <div class="w-[600px] h-[600px] bg-auraGold rounded-full blur-[120px] mix-blend-screen transform -translate-y-1/4"></div>
     </div>
 
-    <!-- Login Container -->
-    <div class="w-full max-w-md relative z-10">
-        
-        <!-- Brand Header -->
-        <div class="text-center mb-8">
-            <h1 class="brand-title text-4xl tracking-[0.25em] font-bold text-aura-gold mb-2">AURA</h1>
-            <p class="text-xs uppercase tracking-[0.3em] text-aura-muted font-medium">Administration Portal</p>
-        </div>
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-3 w-full max-w-sm px-4"></div>
 
-        <!-- Login Card -->
-        <div class="bg-aura-card border border-aura-border/80 rounded-2xl p-8 shadow-2xl shadow-black/60 backdrop-blur-md">
-            <h2 class="text-xl font-semibold text-white mb-2">System Authentication</h2>
-            <p class="text-sm text-aura-muted mb-6">Enter your administrative credentials to continue.</p>
-
-            <!-- Alert Message Box -->
-            <div id="alertBox" class="hidden mb-6 p-4 rounded-xl text-sm border flex items-start gap-3 transition-all duration-300">
-                <span id="alertIcon" class="mt-0.5 text-lg"></span>
-                <p id="alertMessage" class="text-xs sm:text-sm font-medium leading-relaxed"></p>
+    <!-- Main Login Card -->
+    <main class="relative z-10 w-full max-w-md mx-4">
+        <div class="bg-auraSurface/90 backdrop-blur-md border border-auraBorder rounded-2xl shadow-2xl p-10 sm:p-12">
+            
+            <!-- Logo & Header -->
+            <div class="text-center mb-10">
+                <h1 class="font-serif text-3xl md:text-4xl tracking-[0.25em] text-white mb-2 uppercase">AURA</h1>
+                <div class="w-12 h-[1px] bg-auraGold mx-auto mb-6"></div>
+                <h2 class="font-serif text-2xl tracking-[0.1em] text-white mb-2 italic">Welcome Back</h2>
+                <p class="text-xs uppercase tracking-[0.3em] text-auraGold font-medium">Atelier Control Center</p>
             </div>
 
             <!-- Login Form -->
-            <form id="adminLoginForm" novalidate class="space-y-5">
+            <form id="admin-login-form" class="space-y-6">
                 {% csrf_token %}
-
-                <!-- Username/Email Field -->
-                <div>
-                    <label for="username" class="block text-xs uppercase tracking-wider text-aura-muted mb-2 font-semibold">
-                        Username or Email
-                    </label>
-                    <input 
-                        type="text" 
-                        id="username" 
-                        name="username" 
-                        required
-                        autocomplete="username"
-                        placeholder="admin@aura.com"
-                        class="w-full bg-aura-bg border border-aura-border text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-aura-gold focus:ring-1 focus:ring-aura-gold transition-all duration-200 placeholder-aura-muted/40"
-                    >
+                
+                <!-- Username / Email -->
+                <div class="space-y-2">
+                    <label for="username" class="block text-[10px] uppercase tracking-widest text-auraMuted font-semibold">Username or Email</label>
+                    <div class="relative">
+                        <input type="text" id="username" name="username" required autocomplete="username"
+                            class="w-full bg-transparent border-b border-auraBorder py-3 px-1 text-sm text-white placeholder-auraMuted/40 focus:outline-none focus:border-auraGold transition-colors duration-300"
+                            placeholder="Enter your admin credentials">
+                    </div>
                 </div>
 
-                <!-- Password Field -->
-                <div>
-                    <div class="flex justify-between items-center mb-2">
-                        <label for="password" class="block text-xs uppercase tracking-wider text-aura-muted font-semibold">
-                            Password
-                        </label>
+                <!-- Password -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label for="password" class="block text-[10px] uppercase tracking-widest text-auraMuted font-semibold">Password</label>
                     </div>
-                    <input 
-                        type="password" 
-                        id="password" 
-                        name="password" 
-                        required
-                        autocomplete="current-password"
-                        placeholder="••••••••••••"
-                        class="w-full bg-aura-bg border border-aura-border text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-aura-gold focus:ring-1 focus:ring-aura-gold transition-all duration-200 placeholder-aura-muted/40"
-                    >
+                    <div class="relative">
+                        <input type="password" id="password" name="password" required autocomplete="current-password"
+                            class="w-full bg-transparent border-b border-auraBorder py-3 px-1 pr-10 text-sm text-white placeholder-auraMuted/40 focus:outline-none focus:border-auraGold transition-colors duration-300"
+                            placeholder="••••••••">
+                        
+                        <!-- Toggle Button -->
+                        <button type="button" id="toggle-password" class="absolute right-2 top-1/2 -translate-y-1/2 text-auraMuted hover:text-auraGold focus:outline-none transition-colors duration-300 p-1" aria-label="Toggle password visibility">
+                            <!-- Eye icon (default) -->
+                            <svg id="eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                            <!-- Eye Slash icon (hidden by default) -->
+                            <svg id="eye-slash-icon" class="hidden w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Submit Button -->
-                <button 
-                    type="submit" 
-                    id="submitBtn"
-                    class="w-full bg-aura-gold hover:bg-aura-gold-hover text-black font-semibold text-sm tracking-wide py-3.5 px-4 rounded-xl transition-all duration-200 shadow-lg shadow-aura-gold/10 flex items-center justify-center gap-2 mt-2"
-                >
-                    <span id="btnText">Authenticate</span>
-                    <svg id="btnSpinner" class="hidden animate-spin h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                </button>
+                <div class="pt-4">
+                    <button type="submit" id="submit-btn" 
+                        class="w-full relative group overflow-hidden bg-transparent border border-auraGold text-auraGold hover:text-auraDark py-4 text-xs uppercase tracking-[0.2em] font-semibold transition-all duration-500 ease-out flex justify-center items-center gap-3">
+                        <span class="absolute inset-0 w-full h-full bg-auraGold transform -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out z-0"></span>
+                        <span id="btn-text" class="relative z-10">Authenticate</span>
+                        
+                        <!-- Spinner (Hidden by default) -->
+                        <svg id="btn-spinner" class="relative z-10 hidden w-4 h-4 text-current animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                </div>
             </form>
+
+            <div class="mt-8 text-center">
+                <p class="text-[10px] text-auraMuted tracking-wider">SECURE CONNECTION ESTABLISHED</p>
+            </div>
         </div>
+    </main>
 
-        <!-- Footer Info -->
-        <p class="text-center text-xs text-aura-muted/60 mt-8">
-            &copy; 2026 AURA Luxury Fragrances. Restricted Access.
-        </p>
-    </div>
-
-    <!-- Client-Side JavaScript -->
+    <!-- JavaScript -->
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const form = document.getElementById("adminLoginForm");
-            const alertBox = document.getElementById("alertBox");
-            const alertIcon = document.getElementById("alertIcon");
-            const alertMessage = document.getElementById("alertMessage");
-            const submitBtn = document.getElementById("submitBtn");
-            const btnText = document.getElementById("btnText");
-            const btnSpinner = document.getElementById("btnSpinner");
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('admin-login-form');
+            const submitBtn = document.getElementById('submit-btn');
+            const btnText = document.getElementById('btn-text');
+            const btnSpinner = document.getElementById('btn-spinner');
+            const toastContainer = document.getElementById('toast-container');
+            
+            // Generate CSRF token from Django's hidden input
+            const getCSRFToken = () => {
+                const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+                return csrfInput ? csrfInput.value : '';
+            };
 
-            function showAlert(message, type = "error") {
-                alertBox.classList.remove("hidden", "bg-red-500/10", "border-red-500/30", "text-red-400", "bg-emerald-500/10", "border-emerald-500/30", "text-emerald-400");
-                
-                if (type === "success") {
-                    alertBox.classList.add("bg-emerald-500/10", "border-emerald-500/30", "text-emerald-400");
-                    alertIcon.textContent = "✓";
-                } else {
-                    alertBox.classList.add("bg-red-500/10", "border-red-500/30", "text-red-400");
-                    alertIcon.textContent = "⚠️";
-                }
-                
-                alertMessage.textContent = message;
+            // Password Visibility Toggle
+            const togglePasswordBtn = document.getElementById('toggle-password');
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eye-icon');
+            const eyeSlashIcon = document.getElementById('eye-slash-icon');
+
+            if (togglePasswordBtn && passwordInput) {
+                togglePasswordBtn.addEventListener('click', () => {
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    
+                    if (type === 'text') {
+                        eyeIcon.classList.add('hidden');
+                        eyeSlashIcon.classList.remove('hidden');
+                    } else {
+                        eyeIcon.classList.remove('hidden');
+                        eyeSlashIcon.classList.add('hidden');
+                    }
+                });
             }
 
-            function setLoading(isLoading) {
+            // Luxury Toast Notification System
+            const showToast = (message, type = 'success') => {
+                const toast = document.createElement('div');
+                
+                // Styling based on type
+                let borderColor = type === 'success' ? 'border-auraGold' : (type === 'error' ? 'border-red-500' : 'border-yellow-400');
+                let iconHtml = '';
+                
+                if (type === 'success') {
+                    iconHtml = `<svg class="w-4 h-4 text-auraGold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                } else if (type === 'error') {
+                    iconHtml = `<svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+                } else {
+                    iconHtml = `<svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+                }
+
+                toast.className = `glass-toast border-l-2 ${borderColor} rounded shadow-lg p-4 flex items-start gap-3 animate-slide-in`;
+                toast.innerHTML = `
+                    <div class="mt-0.5">${iconHtml}</div>
+                    <p class="text-xs text-white font-medium tracking-wide leading-relaxed">${message}</p>
+                `;
+
+                toastContainer.appendChild(toast);
+
+                // Auto-dismiss exactly after 2.5 seconds (2500ms)
+                setTimeout(() => {
+                    toast.classList.remove('animate-slide-in');
+                    toast.classList.add('animate-slide-out');
+                    
+                    // Remove from DOM after animation completes
+                    setTimeout(() => {
+                        if (toastContainer.contains(toast)) {
+                            toastContainer.removeChild(toast);
+                        }
+                    }, 400); // Matches the CSS animation duration (0.4s)
+                }, 2500);
+            };
+
+            // Loading state toggle
+            const setLoadingState = (isLoading) => {
                 if (isLoading) {
                     submitBtn.disabled = true;
-                    submitBtn.classList.add("opacity-75", "cursor-not-allowed");
-                    btnText.textContent = "Verifying...";
-                    btnSpinner.classList.remove("hidden");
+                    submitBtn.classList.add('pointer-events-none');
+                    btnText.textContent = 'Verifying...';
+                    btnSpinner.classList.remove('hidden');
                 } else {
                     submitBtn.disabled = false;
-                    submitBtn.classList.remove("opacity-75", "cursor-not-allowed");
-                    btnText.textContent = "Authenticate";
-                    btnSpinner.classList.add("hidden");
+                    submitBtn.classList.remove('pointer-events-none');
+                    btnText.textContent = 'Authenticate';
+                    btnSpinner.classList.add('hidden');
                 }
-            }
+            };
 
-            form.addEventListener("submit", async (e) => {
+            // Form Submit Handler
+            form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                alertBox.classList.add("hidden");
-
-                const username = document.getElementById("username").value.trim();
-                const password = document.getElementById("password").value.trim();
-                const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
-
+                
+                // Client-side validation fallback
+                const username = form.username.value.trim();
+                const password = form.password.value.trim();
+                
                 if (!username || !password) {
-                    showAlert("Please enter both credentials.");
+                    showToast('Please provide both username and password.', 'error');
                     return;
                 }
 
-                setLoading(true);
+                setLoadingState(true);
+                const formData = new FormData(form);
 
                 try {
-                    const formData = new FormData();
-                    formData.append("username", username);
-                    formData.append("password", password);
-
                     const response = await fetch("{% url 'admin_auth:login' %}", {
-                        method: "POST",
+                        method: 'POST',
                         headers: {
-                            "X-CSRFToken": csrfToken,
-                            "X-Requested-With": "XMLHttpRequest"
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': getCSRFToken()
                         },
                         body: formData
                     });
@@ -201,17 +276,22 @@
                     const data = await response.json();
 
                     if (response.ok && data.success) {
-                        showAlert(data.message, "success");
+                        showToast(data.message || 'Authentication successful. Redirecting...', 'success');
+                        
+                        // Wait for the toast to be visible before redirecting
                         setTimeout(() => {
-                            window.location.href = "{% url 'dashboard:index' %}";
-                        }, 800);
+                            window.location.href = data.redirect_url || '{% url "dashboard:index" %}';
+                        }, 1000);
                     } else {
-                        showAlert(data.message || "Authentication failed. Please try again.");
+                        // Error from backend (e.g. invalid credentials)
+                        showToast(data.message || 'Authentication failed. Please verify credentials.', 'error');
+                        setLoadingState(false);
+                        form.password.value = ''; // clear password on fail
                     }
-                } catch (err) {
-                    showAlert("A server error occurred. Please try again later.");
-                } finally {
-                    setLoading(false);
+                } catch (error) {
+                    console.error('Login Error:', error);
+                    showToast('A network error occurred. Please try again.', 'error');
+                    setLoadingState(false);
                 }
             });
         });

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard Placeholder</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px;">
+    <h1>Admin Dashboard Placeholder</h1>
+    <p>You are successfully authenticated as an admin!</p>
+
+    <!-- POST form to trigger logout -->
+    <form action="{% url 'admin_auth:logout' %}" method="POST">
+        {% csrf_token %}
+        <button type="submit" style="padding: 10px 20px; cursor: pointer; background: #dc2626; color: white; border: none; border-radius: 4px;">
+            Logout
+        </button>
+    </form>
+</body>
+</html>

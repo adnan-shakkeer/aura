@@ -75,11 +75,7 @@ def logout(request):
     Flushes admin session and redirects to login.
     """
     auth_logout(request)
-    return JsonResponse(
-        {
-            "success" : True,
-            "message" : "Logged out successfully."
-        },
-        status=HTTPStatus.OK,
-    )
+
+    return redirect("admin_auth:login")
+    
 
