@@ -41,6 +41,7 @@
     {% if messages %}
     <div id="aura-toast-container" class="fixed top-24 right-6 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
         {% for message in messages %}
+        {% if 'admin' not in message.tags %}
         <div id="aura-account-toast" class="aura-toast flex items-start gap-3 p-4 rounded-lg bg-auraCream border border-auraBorder border-l-4 border-l-auraChampagneDark shadow-aura-card pointer-events-auto transition-all duration-300">
             <svg class="w-5 h-5 text-auraChampagneDark flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m4.5 12.75 6 6 9-13.5" />
@@ -52,6 +53,7 @@
                 ✕
             </button>
         </div>
+        {% endif %}
         {% endfor %}
     </div>
     {% endif %}
@@ -88,7 +90,7 @@
                 <a href="#wishlist" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'wishlist' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
                     <span>Wishlist</span>
                 </a>
-                <a href="{% url 'logout' %}" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase bg-white border border-auraBorder text-auraMuted hover:text-auraBlack">
+                <a href="{% url 'user_auth:logout' %}" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase bg-white border border-auraBorder text-auraMuted hover:text-auraBlack">
                     <span>Logout</span>
                 </a>
             </div>

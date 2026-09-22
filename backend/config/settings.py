@@ -71,9 +71,13 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'user_panel.authentication.middleware.BlockedUserMiddleware',
     "allauth.account.middleware.AccountMiddleware",
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Security: prevents all pages from being cached by the browser
+    # so that Back-button navigation after logout always re-validates with the server.
+    'user_panel.authentication.middleware.NeverCacheMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -191,8 +195,11 @@ SOCIALACCOUNT_PROVIDERS = {
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 
 SOCIALACCOUNT_ADAPTER = "user_panel.authentication.adapter.AURASocialAccountAdapter"
+ACCOUNT_ADAPTER = "user_panel.authentication.adapter.AURAAccountAdapter"
 
 LOGIN_REDIRECT_URL = "/"
+
+LOGIN_URL = 'user_auth:login'
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"

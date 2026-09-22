@@ -65,11 +65,11 @@
         border-radius: 6px;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         font-size: 11px;
-        font-weight: 500;
-        letter-spacing: 0.06em;
-        line-height: 1.55;
-        box-shadow: 0 4px 20px -2px rgba(26, 26, 26, 0.10),
-                    0 1px 6px -1px rgba(26, 26, 26, 0.06);
+        font-weight: 300;
+        letter-spacing: 0.08em;
+        line-height: 1.6;
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25),
+                    0 1px 6px -1px rgba(0, 0, 0, 0.15);
         pointer-events: auto;
         /* Entrance plays immediately */
         animation: aura-toast-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -80,54 +80,54 @@
         animation: aura-toast-out 0.32s cubic-bezier(0.4, 0, 0.8, 0.6) both;
     }
 
-    /* SUCCESS — warm ivory, champagne left accent */
+    /* SUCCESS — Soft charcoal background with warm gold accent */
     .aura-toast--success {
-        background-color: #FDFBF7;
-        border: 1px solid #E5E0D8;
-        border-left: 2px solid #BFA98F;
-        color: #1A1A1A;
+        background-color: #0F172A;
+        border: 1px solid #1E293B;
+        border-left: 2px solid #FBBF24;
+        color: #F1F5F9;
     }
     .aura-toast--success .aura-toast__icon {
-        color: #BFA98F;
+        color: #FBBF24;
         flex-shrink: 0;
         margin-top: 1px;
     }
 
-    /* ERROR — warm blush, warm-red accent */
+    /* ERROR — Muted rose/charcoal background with soft rose border/accent */
     .aura-toast--error {
-        background-color: #FDF8F6;
-        border: 1px solid #EAD8D0;
-        border-left: 2px solid #A05A44;
-        color: #1A1A1A;
+        background-color: #1a0f12; /* rose-950/40 approx over dark */
+        border: 1px solid #4c1d24; /* rose-900/60 */
+        border-left: 2px solid #9f1239; /* rose-800 */
+        color: #fecdd3; /* rose-200 */
     }
     .aura-toast--error .aura-toast__icon {
-        color: #A05A44;
+        color: #fb7185; /* rose-400 */
         flex-shrink: 0;
         margin-top: 1px;
     }
 
-    /* WARNING — ivory, amber accent */
+    /* WARNING — Warm espresso with amber accent */
     .aura-toast--warning {
-        background-color: #FDFAF4;
-        border: 1px solid #E8DEC8;
-        border-left: 2px solid #A07840;
-        color: #1A1A1A;
+        background-color: #1c140a;
+        border: 1px solid #422a14;
+        border-left: 2px solid #b45309;
+        color: #fde68a;
     }
     .aura-toast--warning .aura-toast__icon {
-        color: #A07840;
+        color: #f59e0b;
         flex-shrink: 0;
         margin-top: 1px;
     }
 
-    /* INFO — cool ivory, slate accent */
+    /* INFO — Cool dark slate with muted steel accent */
     .aura-toast--info {
-        background-color: #F7F8F9;
-        border: 1px solid #DDE0E5;
-        border-left: 2px solid #6B6A65;
-        color: #1A1A1A;
+        background-color: #0f172a;
+        border: 1px solid #1e293b;
+        border-left: 2px solid #64748b;
+        color: #e2e8f0;
     }
     .aura-toast--info .aura-toast__icon {
-        color: #6B6A65;
+        color: #94a3b8;
         flex-shrink: 0;
         margin-top: 1px;
     }
@@ -146,6 +146,7 @@
 <!-- ========================================================= -->
 <div id="aura-toast-container" role="alert" aria-live="polite">
     {% for message in messages %}
+        {% if 'admin' not in message.tags %}
         {% if message.tags == 'error' %}
             <div class="aura-toast aura-toast--error">
                 <svg class="aura-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
@@ -178,6 +179,7 @@
                 </svg>
                 <span class="aura-toast__text">{{ message }}</span>
             </div>
+        {% endif %}
         {% endif %}
     {% endfor %}
 </div>

@@ -65,7 +65,7 @@ AURA | Sign In
             <label for="password" class="block text-[11px] uppercase tracking-[0.16em] font-medium text-auraBlack">
                 Password
             </label>
-            <a href="{% url 'forgot_password' %}"
+            <a href="{% url 'user_auth:forgot_password' %}"
                 class="text-[11px] tracking-wide text-auraMuted hover:text-auraBlack transition-colors duration-200">
                 Forgot Password?
             </a>
@@ -146,7 +146,7 @@ AURA | Sign In
 <!-- ========================================================= -->
 <div class="mt-8 text-center text-xs text-auraMuted">
     <span>Don't have an account?</span>
-    <a href="{% url 'signup' %}"
+    <a href="{% url 'user_auth:signup' %}"
         class="ml-1 text-auraBlack font-semibold underline underline-offset-4 decoration-auraBorder hover:decoration-auraBlack transition-colors duration-200">
         Create Account
     </a>

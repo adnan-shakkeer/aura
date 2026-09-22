@@ -322,6 +322,7 @@
                         autocomplete="name"
                         class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
                     >
+                    <p id="add-address-error-full_name" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                 </div>
 
                 <!-- Phone Number -->
@@ -336,6 +337,7 @@
                         maxlength="15"
                         class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
                     >
+                    <p id="add-address-error-phone_number" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                 </div>
 
                 <!-- Address Line 1 -->
@@ -349,6 +351,7 @@
                         autocomplete="address-line1"
                         class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
                     >
+                    <p id="add-address-error-address_line1" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                 </div>
 
                 <!-- Address Line 2 -->
@@ -362,6 +365,7 @@
                         autocomplete="address-line2"
                         class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
                     >
+                    <p id="add-address-error-address_line2" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                 </div>
 
                 <!-- Landmark -->
@@ -374,6 +378,7 @@
                         placeholder="Near Metro Station, Mall, etc."
                         class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
                     >
+                    <p id="add-address-error-landmark" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                 </div>
 
                 <!-- City + Pincode Row -->
@@ -388,6 +393,7 @@
                             autocomplete="address-level2"
                             class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
                         >
+                        <p id="add-address-error-city" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                     </div>
                     <div>
                         <label for="add-pincode" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Pincode <span class="text-red-400">*</span></label>
@@ -399,6 +405,7 @@
                             maxlength="10"
                             class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
                         >
+                        <p id="add-address-error-pincode" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                     </div>
                 </div>
 
@@ -413,6 +420,7 @@
                         autocomplete="address-level1"
                         class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
                     >
+                    <p id="add-address-error-state" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                 </div>
 
                 <!-- Address Type -->
@@ -502,36 +510,44 @@
                 <div class="mb-5">
                     <label for="edit-full-name" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Full Name <span class="text-red-400">*</span></label>
                     <input type="text" id="edit-full-name" name="full_name" placeholder="e.g. Mohammed Adnan" autocomplete="name" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                    <p id="edit-address-error-full_name" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                 </div>
                 <div class="mb-5">
                     <label for="edit-phone" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Phone Number <span class="text-red-400">*</span></label>
                     <input type="tel" id="edit-phone" name="phone_number" placeholder="+91 98765 43210" autocomplete="tel" maxlength="15" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                    <p id="edit-address-error-phone_number" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                 </div>
                 <div class="mb-5">
                     <label for="edit-line1" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Address Line 1 <span class="text-red-400">*</span></label>
                     <input type="text" id="edit-line1" name="address_line1" placeholder="House / Flat / Building No. and Street" autocomplete="address-line1" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                    <p id="edit-address-error-address_line1" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                 </div>
                 <div class="mb-5">
                     <label for="edit-line2" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Address Line 2 <span class="text-auraMuted/40">(Optional)</span></label>
                     <input type="text" id="edit-line2" name="address_line2" placeholder="Apartment, Suite, Floor (optional)" autocomplete="address-line2" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                    <p id="edit-address-error-address_line2" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                 </div>
                 <div class="mb-5">
                     <label for="edit-landmark" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Landmark <span class="text-auraMuted/40">(Optional)</span></label>
                     <input type="text" id="edit-landmark" name="landmark" placeholder="Near Metro Station, Mall, etc." class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                    <p id="edit-address-error-landmark" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                 </div>
                 <div class="grid grid-cols-2 gap-4 mb-5">
                     <div>
                         <label for="edit-city" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">City <span class="text-red-400">*</span></label>
                         <input type="text" id="edit-city" name="city" placeholder="Mumbai" autocomplete="address-level2" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                        <p id="edit-address-error-city" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                     </div>
                     <div>
                         <label for="edit-pincode" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Pincode <span class="text-red-400">*</span></label>
                         <input type="text" id="edit-pincode" name="pincode" placeholder="400001" maxlength="10" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                        <p id="edit-address-error-pincode" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                     </div>
                 </div>
                 <div class="mb-5">
                     <label for="edit-state" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">State <span class="text-red-400">*</span></label>
                     <input type="text" id="edit-state" name="state" placeholder="Maharashtra" autocomplete="address-level1" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                    <p id="edit-address-error-state" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
                 </div>
                 <div class="mb-6">
                     <label class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-3">Address Type</label>
@@ -639,6 +655,44 @@
             return match ? decodeURIComponent(match.split('=')[1]) : null;
         }
         const CSRF = getCookie('csrftoken');
+
+        // ─── Inline Error Helpers ──────────────────────────────────────────────────
+        function clearInlineErrors(form) {
+            form.querySelectorAll('.field-error-text').forEach(el => {
+                el.textContent = '';
+                el.classList.add('hidden');
+            });
+            form.querySelectorAll('.addr-input').forEach(input => {
+                input.classList.remove('border-red-500');
+            });
+        }
+
+        function displayInlineErrors(form, errors) {
+            for (const [field, message] of Object.entries(errors)) {
+                const input = form.querySelector(`[name="${field}"]`);
+                if (input) {
+                    input.classList.add('border-red-500');
+                    const errorTag = form.querySelector(`#${form.id.replace('-form', '')}-error-${field}`);
+                    if (errorTag) {
+                        errorTag.textContent = message;
+                        errorTag.classList.remove('hidden');
+                    }
+                }
+            }
+        }
+
+        // ─── Real-time Clear on Type ───────────────────────────────────────────────
+        document.querySelectorAll('.addr-input').forEach(input => {
+            input.addEventListener('input', function() {
+                this.classList.remove('border-red-500');
+                // The error tag is immediately after the input
+                const errorTag = this.nextElementSibling;
+                if (errorTag && errorTag.classList.contains('field-error-text')) {
+                    errorTag.textContent = '';
+                    errorTag.classList.add('hidden');
+                }
+            });
+        });
 
         // ─── Toast ─────────────────────────────────────────────────────────────────
         let toastTimer;
@@ -797,6 +851,7 @@
             const spinner = document.getElementById('add-addr-spinner');
             const submitBtn = document.getElementById('add-address-submit-btn');
 
+            clearInlineErrors(this);
             errorEl.classList.add('hidden');
             btnText.textContent = 'Saving…';
             spinner.classList.remove('hidden');
@@ -819,8 +874,12 @@
                     closeModal('add-address-modal');
                     setTimeout(() => location.reload(), 900);
                 } else {
-                    errorEl.textContent = data.message || 'Please check your details and try again.';
-                    errorEl.classList.remove('hidden');
+                    if (data.errors) {
+                        displayInlineErrors(document.getElementById('add-address-form'), data.errors);
+                    } else {
+                        errorEl.textContent = data.message || 'Please check your details and try again.';
+                        errorEl.classList.remove('hidden');
+                    }
                 }
             })
             .catch(() => {
@@ -843,6 +902,7 @@
             const spinner  = document.getElementById('edit-addr-spinner');
             const submitBtn = document.getElementById('edit-address-submit-btn');
 
+            clearInlineErrors(this);
             errorEl.classList.add('hidden');
             btnText.textContent = 'Saving…';
             spinner.classList.remove('hidden');
@@ -866,8 +926,12 @@
                     closeModal('edit-address-modal');
                     setTimeout(() => location.reload(), 900);
                 } else {
-                    errorEl.textContent = data.message || 'Please check your details and try again.';
-                    errorEl.classList.remove('hidden');
+                    if (data.errors) {
+                        displayInlineErrors(document.getElementById('edit-address-form'), data.errors);
+                    } else {
+                        errorEl.textContent = data.message || 'Please check your details and try again.';
+                        errorEl.classList.remove('hidden');
+                    }
                 }
             })
             .catch(() => {

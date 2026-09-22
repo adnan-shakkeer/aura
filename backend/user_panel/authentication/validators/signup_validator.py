@@ -17,6 +17,13 @@ def validate_full_name(full_name):
     if len(full_name) < 3:
         return "Full name must contain at least 3 characters."
 
+    if len(full_name) > 50:
+        return "Full name cannot exceed 50 characters."
+
+    # Must start and end with an alphabetic character
+    if not (full_name[0].isalpha() and full_name[-1].isalpha()):
+        return "Full name must start and end with a letter."
+
     if not re.fullmatch(r"[A-Za-z ]+",full_name):
         return "Full name should contain only letters and spaces."
 

@@ -11,6 +11,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.utils import timezone
 from django.db import transaction
+from django.views.decorators.cache import never_cache
 
 from .models import SignupOTP, PasswordResetOTP
 from user_panel.user_profile.models import UserProfile
@@ -109,7 +110,7 @@ def signup_otp(request):
     signup_data = request.session.get("signup_data")
 
     if not signup_data:
-        return redirect("signup")
+        return redirect("user_auth:signup")
 
     email = signup_data["email"]
 
@@ -195,7 +196,7 @@ def signup_otp(request):
 
                     messages.success(
                         request,
-                        "Your account has been created successfully. Please log in.",
+                        "Your account has been successfully created. Please log in to continue.",
                     )    
 
                     request.session.pop(
@@ -203,7 +204,7 @@ def signup_otp(request):
                         None,
                     )
 
-                    return redirect("login")
+                    return redirect("user_auth:login")
 
     context = {
         "email": email,
@@ -226,7 +227,7 @@ def resend_signup_otp(request):
     signup_data = request.session.get("signup_data")
 
     if not signup_data:
-        return redirect("signup")
+        return redirect("user_auth:signup")
 
     email = signup_data["email"]
 
@@ -234,10 +235,10 @@ def resend_signup_otp(request):
 
     messages.success(
         request,
-        "A new OTP has been sent to your email address.",
+        "A new verification code has been dispatched to your email address.",
     )
 
-    return redirect("signup_otp")
+    return redirect("user_auth:signup_otp")
 
 
 
@@ -325,12 +326,13 @@ def signup(request):
             signup_data["email"]
         )
 
-        return redirect("signup_otp")
+        return redirect("user_auth:signup_otp")
 
                 
     return render(request, "authentication/signup.html",context)
 
 
+@never_cache
 def login(request):
     """
     Display the user login page.
@@ -478,10 +480,10 @@ def forgot_password(request):
 
         messages.success(
             request,
-            "If an account exists for this email, a verification code has been sent.",
+            "If an account exists for this email, a verification code has been dispatched.",
         )
 
-        return redirect("forgot_password_otp")
+        return redirect("user_auth:forgot_password_otp")
 
     return render(
         request,
@@ -497,7 +499,7 @@ def forgot_password_otp(request):
     email = request.session.get("password_reset_email")
 
     if not email:
-        return redirect("forgot_password")
+        return redirect("user_auth:forgot_password")
 
     otp_record = PasswordResetOTP.objects.filter(
         email=email,
@@ -549,7 +551,7 @@ def forgot_password_otp(request):
 
                 request.session["password_reset_verified"] = True
 
-                return redirect("reset_password")
+                return redirect("user_auth:reset_password")
 
     context = {
         "email" : email,
@@ -578,7 +580,7 @@ def reset_password(request):
 
     # User must have a valid password-reset session.
     if not email or not otp_verified:
-        return redirect("forgot_password")
+        return redirect("user_auth:forgot_password")
 
     context = {
         "errors" : {},
@@ -643,10 +645,10 @@ def reset_password(request):
 
             messages.error(
                 request,
-                "We couldn't complete your password reset. Please try again.",
+                "We encountered an issue updating your password. Please try again.",
             )
 
-            return redirect("forgot_password")
+            return redirect("user_auth:forgot_password")
 
         # Update password securely using Django's password hashing.
         user.set_password(password)
@@ -665,10 +667,10 @@ def reset_password(request):
 
         messages.success(
             request,
-            "Your password has been reset successfully. Please log in."
+            "Your password has been successfully updated. Please log in."
         )
 
-        return redirect("login")
+        return redirect("user_auth:login")
 
     return render(
         request,
@@ -693,7 +695,7 @@ def resend_password_reset_otp(request):
     email = request.session.get("password_reset_email")
 
     if not email:
-        return redirect("forgot_password")
+        return redirect("user_auth:forgot_password")
 
     user_exists = User.objects.filter(
         email__iexact=email,
@@ -701,7 +703,7 @@ def resend_password_reset_otp(request):
     ).exists()
 
     if not user_exists:
-        return redirect("forgot_password")
+        return redirect("user_auth:forgot_password")
 
     # ─── Throttle guard ───────────────────────────────────────────
     # If a PasswordResetOTP record exists and has NOT expired yet,
@@ -713,24 +715,25 @@ def resend_password_reset_otp(request):
     if existing_otp and timezone.now() < existing_otp.expires_at:
         messages.warning(
             request,
-            "A verification code was already sent to your email. "
+            "A verification code was already dispatched to your email. "
             "Please wait until it expires before requesting a new one.",
         )
-        return redirect("forgot_password_otp")
+        return redirect("user_auth:forgot_password_otp")
     # ─────────────────────────────────────────────────────────────
 
     generate_password_reset_otp(email)
 
     messages.success(
         request,
-        "A new verification code has been sent to your email address.",
+        "A new verification code has been dispatched to your email address.",
     )
 
-    return redirect("forgot_password_otp")
+    return redirect("user_auth:forgot_password_otp")
 
 
 
     
+@never_cache
 def logout(request):
     """
     Log out the currently authenticated user.
@@ -740,7 +743,7 @@ def logout(request):
 
     messages.success(
         request,
-        "You have been logged out successfully.",
+        "You have been successfully logged out.",
     )
 
-    return redirect("login")
+    return redirect("user_auth:login")

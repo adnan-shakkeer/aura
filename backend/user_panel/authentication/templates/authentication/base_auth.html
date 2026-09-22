@@ -90,6 +90,18 @@
             }
         }
 
+        /* Exit: slide up slightly + fade out */
+        @keyframes aura-notice-out {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+        }
+
         .aura-notice {
             display: flex;
             align-items: flex-start;
@@ -98,60 +110,65 @@
             border-radius: 6px;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             font-size: 11px;
-            font-weight: 500;
-            letter-spacing: 0.06em;
-            line-height: 1.55;
+            font-weight: 300;
+            letter-spacing: 0.08em;
+            line-height: 1.6;
             animation: aura-notice-in 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
         }
 
-        /* SUCCESS — warm ivory surface, champagne left rule, AURA black text */
+        /* JS adds this class to trigger the exit */
+        .aura-notice--dismissing {
+            animation: aura-notice-out 0.32s cubic-bezier(0.4, 0, 0.8, 0.6) both;
+        }
+
+        /* SUCCESS — Soft charcoal background with warm gold accent */
         .aura-notice--success {
-            background-color: #FDFBF7;
-            border: 1px solid #E5E0D8;
-            border-left: 2px solid #BFA98F;
-            color: #1A1A1A;
+            background-color: #0F172A;
+            border: 1px solid #1E293B;
+            border-left: 2px solid #FBBF24;
+            color: #F1F5F9;
         }
         .aura-notice--success .aura-notice__icon {
-            color: #BFA98F;
+            color: #FBBF24;
             flex-shrink: 0;
             margin-top: 1px;
         }
 
-        /* ERROR — very light warm blush, refined warm-red rule */
+        /* ERROR — Muted rose/charcoal background with soft rose border/accent */
         .aura-notice--error {
-            background-color: #FDF8F6;
-            border: 1px solid #EAD8D0;
-            border-left: 2px solid #A05A44;
-            color: #1A1A1A;
+            background-color: #1a0f12; /* rose-950/40 approx over dark */
+            border: 1px solid #4c1d24; /* rose-900/60 */
+            border-left: 2px solid #9f1239; /* rose-800 */
+            color: #fecdd3; /* rose-200 */
         }
         .aura-notice--error .aura-notice__icon {
-            color: #A05A44;
+            color: #fb7185; /* rose-400 */
             flex-shrink: 0;
             margin-top: 1px;
         }
 
-        /* WARNING — ivory with a warm amber left rule */
+        /* WARNING — Warm espresso with amber accent */
         .aura-notice--warning {
-            background-color: #FDFAF4;
-            border: 1px solid #E8DEC8;
-            border-left: 2px solid #9E7D3A;
-            color: #1A1A1A;
+            background-color: #1c140a;
+            border: 1px solid #422a14;
+            border-left: 2px solid #b45309;
+            color: #fde68a;
         }
         .aura-notice--warning .aura-notice__icon {
-            color: #9E7D3A;
+            color: #f59e0b;
             flex-shrink: 0;
             margin-top: 1px;
         }
 
-        /* INFO — cool ivory with a slate left rule */
+        /* INFO — Cool dark slate with muted steel accent */
         .aura-notice--info {
-            background-color: #F9F8F6;
-            border: 1px solid #DDDAD5;
-            border-left: 2px solid #6B6A65;
-            color: #1A1A1A;
+            background-color: #0f172a;
+            border: 1px solid #1e293b;
+            border-left: 2px solid #64748b;
+            color: #e2e8f0;
         }
         .aura-notice--info .aura-notice__icon {
-            color: #6B6A65;
+            color: #94a3b8;
             flex-shrink: 0;
             margin-top: 1px;
         }
@@ -195,6 +212,7 @@
             {% if messages %}
                 <div class="mb-5 space-y-2" role="alert" aria-live="polite">
                     {% for message in messages %}
+                        {% if 'admin' not in message.tags %}
                         {% if message.tags == 'error' %}
                             <div class="aura-notice aura-notice--error">
                                 <svg class="aura-notice__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
@@ -228,6 +246,7 @@
                                 <span class="aura-notice__text">{{ message }}</span>
                             </div>
                         {% endif %}
+                        {% endif %}
                     {% endfor %}
                 </div>
             {% endif %}
@@ -255,6 +274,44 @@
         </div>
     </footer>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const notices = document.querySelectorAll('.aura-notice');
+            if (notices.length > 0) {
+                setTimeout(() => {
+                    notices.forEach(notice => {
+                        // Apply the exit animation class
+                        notice.classList.add('aura-notice--dismissing');
+                        
+                        // Remove from DOM after the animation completes (320ms)
+                        setTimeout(() => {
+                            if (notice.parentNode) {
+                                const container = notice.closest('[role="alert"]');
+                                notice.remove();
+                                // Clean up the container if it's empty
+                                if (container && container.children.length === 0) {
+                                    container.remove();
+                                }
+                            }
+                        }, 320);
+                    });
+                }, 2500); // Wait 2.5 seconds before starting to dismiss
+            }
+        });
+    </script>
+
     {% block extra_js %}{% endblock %}
+    <script>
+        /*
+         * BFCache (Back/Forward Cache) Defence
+         * Prevents a logged-in user from pressing Back to return to the login page
+         * from a stale BFCache snapshot. Forces a full server round-trip.
+         */
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+    </script>
 </body>
 </html>

@@ -232,6 +232,23 @@
                 }, 2500);
             };
 
+            // Render Server-Side Django Messages targeted for Admin
+            {% if messages %}
+                {% for message in messages %}
+                    {% if 'admin' in message.tags %}
+                        // Map Django message tags to toast types
+                        let type = 'success';
+                        {% if 'error' in message.tags %} type = 'error'; {% endif %}
+                        {% if 'warning' in message.tags %} type = 'warning'; {% endif %}
+                        
+                        // Use setTimeout to ensure DOM is fully ready and to stagger animations if multiple
+                        setTimeout(() => {
+                            showToast("{{ message|escapejs }}", type);
+                        }, {{ forloop.counter0 }} * 400 + 100);
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+
             // Loading state toggle
             const setLoadingState = (isLoading) => {
                 if (isLoading) {

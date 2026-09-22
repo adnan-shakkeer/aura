@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.views.decorators.cache import never_cache
 from admin_panel.admin_auth.decorators import admin_required
 
 # Note: Once your models are created, you will replace the hardcoded values with actual Django queries:
@@ -7,6 +8,7 @@ from admin_panel.admin_auth.decorators import admin_required
 # from accounts.models import User
 
 @admin_required
+@never_cache
 def dashboard_overview(request):
     """
     Renders the main Admin Dashboard overview with metrics and recent orders.

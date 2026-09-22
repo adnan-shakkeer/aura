@@ -1,6 +1,15 @@
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from allauth.account.adapter import DefaultAccountAdapter
+from django.contrib import messages
+from django.urls import reverse
+from django.http import HttpResponseRedirect
 from user_panel.user_profile.models import UserProfile
 
+
+class AURAAccountAdapter(DefaultAccountAdapter):
+    def respond_user_inactive(self, request, user):
+        messages.error(request, "Your account has been suspended. Please reach out to AURA support for assistance.")
+        return HttpResponseRedirect(reverse("user_auth:login"))
 
 class AURASocialAccountAdapter(DefaultSocialAccountAdapter):
 

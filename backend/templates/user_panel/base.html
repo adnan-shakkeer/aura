@@ -165,7 +165,7 @@
 
                 <!-- Account / Profile Action -->
                 <a 
-                    href="{% if user.is_authenticated %}{% url 'profile' %}{% else %}{% url 'login' %}{% endif %}" 
+                    href="{% if user.is_authenticated %}{% url 'profile' %}{% else %}{% url 'user_auth:login' %}{% endif %}" 
                     aria-label="Account"
                     class="p-1.5 text-auraBlack hover:text-auraMuted transition-colors duration-200"
                 >
@@ -185,7 +185,7 @@
                 {% if user.is_authenticated %}
                 <a href="{% url 'profile' %}" class="hover:text-auraBlack font-medium">My Account</a>
                 {% else %}
-                <a href="{% url 'login' %}" class="hover:text-auraBlack">Sign In / Register</a>
+                <a href="{% url 'user_auth:login' %}" class="hover:text-auraBlack">Sign In / Register</a>
                 {% endif %}
                 <a href="#wishlist" class="hover:text-auraBlack">Wishlist</a>
             </div>
@@ -325,6 +325,21 @@
                 mobileMenuBtn.addEventListener("click", function () {
                     mobileMenu.classList.toggle("hidden");
                 });
+            }
+        });
+    </script>
+    <script>
+        /*
+         * BFCache (Back/Forward Cache) Defence
+         * Modern browsers (Chrome, Firefox, Safari) can restore a full DOM snapshot
+         * when the user presses Back, bypassing all HTTP cache headers. This listener
+         * detects such a restore (event.persisted === true) and forces a full server
+         * round-trip, ensuring the auth middleware re-validates the session.
+         */
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                // Page was restored from BFCache — force a fresh reload from server
+                window.location.reload();
             }
         });
     </script>

@@ -119,7 +119,7 @@ AURA | Verify Email
         <!-- Resend Link -->
         <a
             id="resendLink"
-            href="{% url 'resend_signup_otp' %}"
+            href="{% url 'user_auth:resend_signup_otp' %}"
             class="hidden ml-1 text-auraBlack font-semibold underline underline-offset-4 decoration-auraBorder hover:decoration-auraBlack transition-colors duration-200"
         >
             Resend Code
@@ -147,7 +147,7 @@ AURA | Verify Email
 <div class="mt-8 text-center">
 
     <a
-        href="{% url 'login' %}"
+        href="{% url 'user_auth:login' %}"
         class="inline-flex items-center justify-center gap-2 text-xs font-light text-auraMuted hover:text-auraBlack transition-colors duration-200 group"
     >
         <span class="transform transition-transform duration-200 group-hover:-translate-x-1">

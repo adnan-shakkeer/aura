@@ -3,9 +3,11 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.cache import never_cache
 from .decorators import admin_required
 
 
+@never_cache
 def login(request):
     """
     Renders the luxury admin login page and handles POST authentication requests.
@@ -69,6 +71,7 @@ def login(request):
     return render(request,"admin_auth/login.html")
 
 @admin_required
+@never_cache
 @require_http_methods(["POST"])
 def logout(request):
     """

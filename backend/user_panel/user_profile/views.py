@@ -10,6 +10,7 @@ from django.core.mail import send_mail
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
 
 
 from http import HTTPStatus
@@ -33,6 +34,7 @@ from smtplib import SMTPException
 
 
 @login_required
+@never_cache
 def profile(request):
 
     profile = get_object_or_404(
@@ -71,8 +73,8 @@ def send_email_change_otp(request):
             {
                 "success": False,
                 "message": (
-                    "Email changes are not available "
-                    "for Google-only accounts."
+                    "This account uses Google authentication. "
+                    "Email changes are currently restricted."
                 ),
             },
             status=HTTPStatus.FORBIDDEN,
@@ -102,8 +104,8 @@ def send_email_change_otp(request):
             {
                 "success": False,
                 "message": (
-                    "The new email address must be different "
-                    "from your current email."
+                    "The new email address matches your current one. "
+                    "Please provide a different address."
                 ),
             },
             status=HTTPStatus.BAD_REQUEST,
@@ -119,7 +121,7 @@ def send_email_change_otp(request):
             {
                 "success": False,
                 "message": (
-                    "An account with this email already exists."
+                    "This email address is already associated with another AURA account."
                 ),
             },
             status=HTTPStatus.BAD_REQUEST,
@@ -173,8 +175,8 @@ def send_email_change_otp(request):
                 {
                     "success": False,
                     "message": (
-                        "We couldn't send the verification code. "
-                        "Please try again."
+                        "We encountered an issue dispatching the verification code. "
+                        "Please try again shortly."
                     ),
                 },
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -190,8 +192,8 @@ def send_email_change_otp(request):
             {
                 "success": False,
                 "message": (
-                    "We couldn't send the verification code. "
-                    "Please try again."
+                    "We encountered an issue dispatching the verification code. "
+                    "Please try again shortly."
                 ),
             },
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -203,8 +205,8 @@ def send_email_change_otp(request):
             {
                 "success": False,
                 "message": (
-                    "We couldn't process your request. "
-                    "Please try again."
+                    "We encountered an issue processing your request. "
+                    "Please try again shortly."
                 ),
             },
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -214,7 +216,7 @@ def send_email_change_otp(request):
         {
             "success": True,
             "message": (
-                "A verification code has been sent "
+                "A verification code has been dispatched "
                 "to your new email address."
             ),
         },
@@ -242,8 +244,8 @@ def resend_email_change_otp(request):
             {
                 "success": False,
                 "message": (
-                    "Email changes are not available "
-                    "for Google-only accounts."
+                    "This account uses Google authentication. "
+                    "Email changes are currently restricted."
                 ),
             },
             status=HTTPStatus.FORBIDDEN,
@@ -261,8 +263,8 @@ def resend_email_change_otp(request):
             {
                 "success": False,
                 "message": (
-                    "No pending email change was found. "
-                    "Please enter your new email address again."
+                    "No pending email modification was found. "
+                    "Please submit your new email address again."
                 ),
             },
             status=HTTPStatus.BAD_REQUEST,
@@ -299,8 +301,8 @@ def resend_email_change_otp(request):
                 {
                     "success": False,
                     "message": (
-                        "We couldn't send the verification code. "
-                        "Please try again."
+                        "We encountered an issue dispatching the verification code. "
+                        "Please try again shortly."
                     ),
                 },
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -311,8 +313,8 @@ def resend_email_change_otp(request):
             {
                 "success": False,
                 "message": (
-                    "We couldn't send the verification code. "
-                    "Please try again."
+                    "We encountered an issue dispatching the verification code. "
+                    "Please try again shortly."
                 ),
             },
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -323,8 +325,8 @@ def resend_email_change_otp(request):
             {
                 "success": False,
                 "message": (
-                    "We couldn't process your request. "
-                    "Please try again."
+                    "We encountered an issue processing your request. "
+                    "Please try again shortly."
                 ),
             },
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -334,8 +336,8 @@ def resend_email_change_otp(request):
         {
             "success": True,
             "message": (
-                "A new verification code has been sent "
-                "to your new email address."
+                "A new verification code has been dispatched "
+                "to your email address."
             ),
         },
         status=200,
@@ -362,8 +364,8 @@ def verify_email_change_otp(request):
             {
                 "success": False,
                 "message": (
-                    "Email changes are not available "
-                    "for Google-only accounts."
+                    "This account uses Google authentication. "
+                    "Email changes are currently restricted."
                 ),
             },
             status=HTTPStatus.FORBIDDEN,
@@ -378,7 +380,7 @@ def verify_email_change_otp(request):
         return JsonResponse(
             {
                 "success": False,
-                "message": "Please enter the verification code.",
+                "message": "Please provide the verification code.",
             },
             status=HTTPStatus.BAD_REQUEST,
         )
@@ -422,7 +424,7 @@ def verify_email_change_otp(request):
         return JsonResponse(
             {
                 "success" : False,
-                "message": "Invalid verification code.",
+                "message": "The provided verification code is incorrect.",
             },
             status=HTTPStatus.BAD_REQUEST,
         )
@@ -444,7 +446,7 @@ def verify_email_change_otp(request):
             {
                 "success": False,
                 "message": (
-                    "An account with this email already exists."
+                    "This email address is already associated with another AURA account."
                 ),
             },
             status=HTTPStatus.BAD_REQUEST,
@@ -477,8 +479,8 @@ def verify_email_change_otp(request):
             {
                 "success": False,
                 "message": (
-                    "We couldn't change your email address. "
-                    "Please try again."
+                    "We encountered an issue updating your email address. "
+                    "Please try again shortly."
                 ),
             },
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -488,7 +490,7 @@ def verify_email_change_otp(request):
         {
             "success": True,
             "message": (
-                "Your email address has been changed successfully."
+                "Your email address has been successfully updated."
             ),
             "email": new_email,
         },
@@ -515,8 +517,8 @@ def change_password(request):
             {
                 "success": False,
                 "message": (
-                    "Password changes are not available "
-                    "for Google-only accounts."
+                    "This account uses Google authentication. "
+                    "Password changes are currently restricted."
                 ),
             },
             status=HTTPStatus.FORBIDDEN,
@@ -542,7 +544,7 @@ def change_password(request):
         return JsonResponse(
             {
                 "success" : False,
-                "message" : "Please enter your current password.",
+                "message" : "Your current password is required to proceed.",
             },
             status=HTTPStatus.BAD_REQUEST,
         )
@@ -551,7 +553,7 @@ def change_password(request):
             return JsonResponse(
                 {
                     "success" : False,
-                    "message" : "Please enter a new password.",
+                    "message" : "Please provide a new password.",
                 },
                 status=HTTPStatus.BAD_REQUEST,
             )
@@ -571,8 +573,8 @@ def change_password(request):
             {
                 "success": False,
                 "message" : (
-                    "New password and confirmation password "
-                    "do not match."
+                    "The new passwords provided do not match. "
+                    "Please ensure both entries are identical."
                 ),
             },
             status=HTTPStatus.BAD_REQUEST,
@@ -583,7 +585,7 @@ def change_password(request):
         return JsonResponse(
             {
                 "success" : False,
-                "message": "Your current password is incorrect.",
+                "message": "The current password provided is incorrect.",
             },
             status=HTTPStatus.BAD_REQUEST,
         )
@@ -594,7 +596,7 @@ def change_password(request):
             {
                 "success" : False,
                 "message" : (
-                    "Your new password must be different "
+                    "Your new password must differ "
                     "from your current password."
                 ),
             },
@@ -640,8 +642,8 @@ def change_password(request):
             {
                 "success" : False,
                 "message" : (
-                    "We couldn't change your password. "
-                    "Please try again."
+                    "We encountered an issue updating your password. "
+                    "Please try again shortly."
                 ),
             },
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -651,7 +653,7 @@ def change_password(request):
         {
             "success": True,
             "message": (
-                "Your password has been changed successfully."
+                "Your password has been successfully updated."
             ),
         },
         status=HTTPStatus.OK,
@@ -672,6 +674,7 @@ def change_password(request):
 
 
 @login_required
+@never_cache
 def edit_profile(request):
 
 
@@ -698,6 +701,12 @@ def edit_profile(request):
 
             errors["full_name"] = "Full name is required."
 
+        elif len(full_name) < 3:
+            errors["full_name"] = "Full name must contain at least 3 characters."
+
+        elif not (full_name[0].isalpha() and full_name[-1].isalpha()):
+            errors["full_name"] = "Full name must start and end with a letter."
+        
         elif len(full_name) > 100:
 
             errors["full_name"] = (
@@ -715,16 +724,17 @@ def edit_profile(request):
 
         if mobile_number:
 
-            if not re.fullmatch(
-                r"[6-9][0-9]{9}",
-                mobile_number,
-            ):
+            if not mobile_number.isdigit():
+                errors["mobile_number"] = "Mobile number must contain only digits."
 
-                errors["mobile_number"] = (
-                    "Enter a valid 10-digit mobile number."
-                )
+            elif len(mobile_number) != 10:
+                    errors["mobile_number"] = "Mobile number must be exactly 10 digits."
+
+            elif not re.fullmatch(r"[6-9][0-9]{9}", mobile_number):
+                errors["mobile_number"] = "Enter a valid 10-digit number" 
 
 
+    
         # Profile image validation
 
         if profile_image:

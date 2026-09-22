@@ -11,11 +11,11 @@ def admin_required(view_func):
     def _wrapper_view(request,*args,**kwargs):
         # --- BEFORE: Security Gatekeeper Checks ---
         if not request.user.is_authenticated:
-            messages.warning(request, "Please log in to access the admin portal.")
+            messages.warning(request, "Please log in to access the admin portal.", extra_tags="admin")
             return redirect("admin_auth:login")
 
         if not (request.user.is_superuser or request.user.is_staff):
-            messages.error(request,"Unauthorized access. Admin privileges required.")
+            messages.error(request,"Unauthorized access. Admin privileges required.", extra_tags="admin")
             return redirect("admin_auth:login")
         
         # --- CALL ORIGINAL FUNCTION: If security checks pass ---

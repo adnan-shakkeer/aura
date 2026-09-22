@@ -534,14 +534,14 @@ document.addEventListener("DOMContentLoaded", function () {
             ? `<svg class="w-3.5 h-3.5 mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
             : `<svg class="w-3.5 h-3.5 mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 13l4 4L19 7"></path></svg>`;
 
-        container.className = "mb-5 px-4 py-3.5 text-[10.5px] uppercase tracking-[0.15em] font-medium border rounded-lg flex items-center justify-center ce-msg-enter";
+        container.className = "mb-5 px-5 py-4 text-[11px] font-light tracking-wide rounded-lg flex items-center shadow-sm ce-msg-enter";
         container.innerHTML = iconSvg + `<span>${text}</span>`;
 
         if (isError) {
-            container.classList.add("border-[#A05A44]/20", "text-[#A05A44]", "bg-[#FDF8F7]");
+            container.classList.add("bg-[#1a0f12]", "text-rose-200", "border", "border-[#4c1d24]", "border-l-2", "border-l-rose-800");
             container.setAttribute("role", "alert");
         } else {
-            container.classList.add("border-[#2E4A3D]/20", "text-[#2E4A3D]", "bg-[#F7FDF9]");
+            container.classList.add("bg-slate-900", "text-slate-100", "border", "border-slate-800", "border-l-2", "border-l-amber-400");
             container.setAttribute("role", "status");
         }
 
@@ -779,13 +779,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (response.ok) {
                     if (displayEmail) displayEmail.textContent = newEmail;
                     goToStep(2);
-                    showMsg(step2Msg, data.message || "A verification code has been sent to your new email address.", false);
+                    showMsg(step2Msg, data.message || "A verification code has been dispatched to your new email address.", false);
                     startOtpTimer(); // Start 5-minute countdown on success
                 } else {
-                    showMsg(step1Msg, data.message || "An error occurred. Please try again.", true);
+                    showMsg(step1Msg, data.message || "An unexpected error occurred. Please try again.", true);
                 }
             } catch (err) {
-                showMsg(step1Msg, "Something went wrong. Please check your connection and try again.", true);
+                showMsg(step1Msg, "Unable to connect. Please verify your connection and try again.", true);
             } finally {
                 continueBtn.disabled = false;
                 continueBtn.textContent = origText;
@@ -833,7 +833,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 if (response.ok) {
-                    showMsg(step2Msg, data.message || "Email address updated successfully.", false, true);
+                    showMsg(step2Msg, data.message || "Your email address has been successfully updated.", false, true);
                     stopOtpTimer(); // Stop timer as process is complete
 
                     if (otpInput) otpInput.disabled = true;
@@ -850,12 +850,12 @@ document.addEventListener("DOMContentLoaded", function () {
                         }, 300);
                     }, 2500);
                 } else {
-                    showMsg(step2Msg, data.message || "Invalid verification code.", true);
+                    showMsg(step2Msg, data.message || "The provided verification code is incorrect.", true);
                     resetOtp();
                     if (otpInput) otpInput.focus();
                 }
             } catch (err) {
-                showMsg(step2Msg, "Something went wrong. Please check your connection and try again.", true);
+                showMsg(step2Msg, "Unable to connect. Please verify your connection and try again.", true);
             } finally {
                 verifyBtn.disabled = false;
                 verifyBtn.textContent = origText;
@@ -890,15 +890,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 if (response.ok) {
-                    showMsg(step2Msg, data.message || "A new verification code has been sent.", false);
+                    showMsg(step2Msg, data.message || "A new verification code has been dispatched.", false);
                     resetOtp();
                     startOtpTimer(); // Restart 5-minute countdown on successful resend
                     if (otpInput) otpInput.focus();
                 } else {
-                    showMsg(step2Msg, data.message || "Failed to resend code. Please try again.", true);
+                    showMsg(step2Msg, data.message || "Unable to dispatch a new code. Please try again.", true);
                 }
             } catch (err) {
-                showMsg(step2Msg, "Something went wrong. Please check your connection and try again.", true);
+                showMsg(step2Msg, "Unable to connect. Please verify your connection and try again.", true);
             } finally {
                 resendBtn.disabled = false;
                 resendBtn.textContent = origText;
@@ -971,14 +971,14 @@ document.addEventListener("DOMContentLoaded", function () {
             ? `<svg class="w-3.5 h-3.5 mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
             : `<svg class="w-3.5 h-3.5 mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 13l4 4L19 7"></path></svg>`;
 
-        cpMsg.className = "mb-5 px-4 py-3.5 text-[10.5px] uppercase tracking-[0.15em] font-medium border rounded-lg flex items-center justify-center ce-msg-enter";
+        cpMsg.className = "mb-5 px-5 py-4 text-[11px] font-light tracking-wide rounded-lg flex items-center shadow-sm ce-msg-enter";
         cpMsg.innerHTML = iconSvg + `<span>${text}</span>`;
 
         if (isError) {
-            cpMsg.classList.add("border-[#A05A44]/20", "text-[#A05A44]", "bg-[#FDF8F7]");
+            cpMsg.classList.add("bg-[#1a0f12]", "text-rose-200", "border", "border-[#4c1d24]", "border-l-2", "border-l-rose-800");
             cpMsg.setAttribute("role", "alert");
         } else {
-            cpMsg.classList.add("border-[#2E4A3D]/20", "text-[#2E4A3D]", "bg-[#F7FDF9]");
+            cpMsg.classList.add("bg-slate-900", "text-slate-100", "border", "border-slate-800", "border-l-2", "border-l-amber-400");
             cpMsg.setAttribute("role", "status");
         }
 
@@ -1060,13 +1060,13 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!currentPassword) {
                 setCpFieldError(cpCurrentPw);
                 if (cpCurrentPw) cpCurrentPw.focus();
-                showCpMsg("Please enter your current password.", true);
+                showCpMsg("Please provide your current password.", true);
                 return;
             }
             if (!newPassword) {
                 setCpFieldError(cpNewPw);
                 if (cpNewPw) cpNewPw.focus();
-                showCpMsg("Please enter a new password.", true);
+                showCpMsg("Please provide a new password.", true);
                 return;
             }
             if (!confirmPassword) {
@@ -1079,7 +1079,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 setCpFieldError(cpNewPw);
                 setCpFieldError(cpConfirmPw);
                 if (cpConfirmPw) cpConfirmPw.focus();
-                showCpMsg("Passwords do not match.", true);
+                showCpMsg("The new passwords do not match.", true);
                 return;
             }
 
@@ -1120,7 +1120,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     cpSucceeded = true;
 
                     // Success: show message, disable form, close after 2s
-                    showCpMsg(data.message || "Password updated successfully.", false, true);
+                    showCpMsg(data.message || "Your password has been successfully updated.", false, true);
 
                     if (cpCurrentPw) cpCurrentPw.disabled = true;
                     if (cpNewPw)     cpNewPw.disabled = true;
@@ -1134,10 +1134,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     }, 2000);
                 } else {
                     // Error: show server message, keep modal open
-                    showCpMsg(data.message || "An error occurred. Please try again.", true, true);
+                    showCpMsg(data.message || "An unexpected error occurred. Please try again.", true, true);
                 }
             } catch (err) {
-                showCpMsg("Something went wrong. Please check your connection and try again.", true, true);
+                showCpMsg("Unable to connect. Please verify your connection and try again.", true, true);
             } finally {
                 // Re-enable only if the request did not succeed
                 if (!cpSucceeded) {
