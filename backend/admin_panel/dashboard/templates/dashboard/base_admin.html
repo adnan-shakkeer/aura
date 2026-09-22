@@ -58,55 +58,76 @@
 
         <!-- Navigation Items -->
         <nav class="flex-1 px-4 space-y-2">
-            <!-- DASHBOARD (Active) -->
-            <a href="{% url 'dashboard:index' %}" class="flex items-center justify-between py-3 px-4 rounded-sm bg-auraSurface border-r-2 border-auraGold text-auraGold group transition-all duration-300 relative overflow-hidden">
+            <!-- DASHBOARD -->
+            <a href="{% url 'dashboard:index' %}" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'dashboard' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
                 <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                 <div class="flex items-center gap-3 relative z-10">
-                    <i data-lucide="layout-grid" class="w-4 h-4"></i>
-                    <span class="text-xs uppercase tracking-widest font-semibold">Dashboard</span>
+                    <i data-lucide="layout-grid" class="w-4 h-4 {% if request.resolver_match.app_name != 'dashboard' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'dashboard' %}font-semibold{% else %}font-medium{% endif %}">Dashboard</span>
                 </div>
             </a>
             
             <!-- PRODUCTS -->
-            <a href="#" class="flex items-center gap-3 py-3 px-4 text-auraMuted hover:text-white hover:bg-auraSurface/50 rounded-sm transition-all duration-300 group">
-                <i data-lucide="box" class="w-4 h-4 group-hover:text-auraGold transition-colors duration-300"></i>
-                <span class="text-xs uppercase tracking-widest font-medium">Products</span>
+            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'products' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                <div class="flex items-center gap-3 relative z-10">
+                    <i data-lucide="box" class="w-4 h-4 {% if request.resolver_match.app_name != 'products' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'products' %}font-semibold{% else %}font-medium{% endif %}">Products</span>
+                </div>
             </a>
 
             <!-- CATEGORIES -->
-            <a href="#" class="flex items-center gap-3 py-3 px-4 text-auraMuted hover:text-white hover:bg-auraSurface/50 rounded-sm transition-all duration-300 group">
-                <i data-lucide="layers" class="w-4 h-4 group-hover:text-auraGold transition-colors duration-300"></i>
-                <span class="text-xs uppercase tracking-widest font-medium">Categories</span>
+            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'categories' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                <div class="flex items-center gap-3 relative z-10">
+                    <i data-lucide="layers" class="w-4 h-4 {% if request.resolver_match.app_name != 'categories' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'categories' %}font-semibold{% else %}font-medium{% endif %}">Categories</span>
+                </div>
             </a>
 
             <!-- BRANDS -->
-            <a href="#" class="flex items-center gap-3 py-3 px-4 text-auraMuted hover:text-white hover:bg-auraSurface/50 rounded-sm transition-all duration-300 group">
-                <i data-lucide="gem" class="w-4 h-4 group-hover:text-auraGold transition-colors duration-300"></i>
-                <span class="text-xs uppercase tracking-widest font-medium">Brands</span>
+            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'brands' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                <div class="flex items-center gap-3 relative z-10">
+                    <i data-lucide="gem" class="w-4 h-4 {% if request.resolver_match.app_name != 'brands' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'brands' %}font-semibold{% else %}font-medium{% endif %}">Brands</span>
+                </div>
             </a>
 
             <!-- ORDERS -->
-            <a href="#" class="flex items-center gap-3 py-3 px-4 text-auraMuted hover:text-white hover:bg-auraSurface/50 rounded-sm transition-all duration-300 group">
-                <i data-lucide="shopping-bag" class="w-4 h-4 group-hover:text-auraGold transition-colors duration-300"></i>
-                <span class="text-xs uppercase tracking-widest font-medium">Orders</span>
+            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'orders' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                <div class="flex items-center gap-3 relative z-10">
+                    <i data-lucide="shopping-bag" class="w-4 h-4 {% if request.resolver_match.app_name != 'orders' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'orders' %}font-semibold{% else %}font-medium{% endif %}">Orders</span>
+                </div>
             </a>
 
             <!-- USERS -->
-            <a href="#" class="flex items-center gap-3 py-3 px-4 text-auraMuted hover:text-white hover:bg-auraSurface/50 rounded-sm transition-all duration-300 group">
-                <i data-lucide="users" class="w-4 h-4 group-hover:text-auraGold transition-colors duration-300"></i>
-                <span class="text-xs uppercase tracking-widest font-medium">Users</span>
+            <a href="{% url 'users:index' %}" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'users' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                <div class="flex items-center gap-3 relative z-10">
+                    <i data-lucide="users" class="w-4 h-4 {% if request.resolver_match.app_name != 'users' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'users' %}font-semibold{% else %}font-medium{% endif %}">Users</span>
+                </div>
             </a>
 
             <!-- COUPONS -->
-            <a href="#" class="flex items-center gap-3 py-3 px-4 text-auraMuted hover:text-white hover:bg-auraSurface/50 rounded-sm transition-all duration-300 group">
-                <i data-lucide="ticket" class="w-4 h-4 group-hover:text-auraGold transition-colors duration-300"></i>
-                <span class="text-xs uppercase tracking-widest font-medium">Coupons</span>
+            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'coupons' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                <div class="flex items-center gap-3 relative z-10">
+                    <i data-lucide="ticket" class="w-4 h-4 {% if request.resolver_match.app_name != 'coupons' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'coupons' %}font-semibold{% else %}font-medium{% endif %}">Coupons</span>
+                </div>
             </a>
 
             <!-- SALES REPORT -->
-            <a href="#" class="flex items-center gap-3 py-3 px-4 text-auraMuted hover:text-white hover:bg-auraSurface/50 rounded-sm transition-all duration-300 group">
-                <i data-lucide="bar-chart-2" class="w-4 h-4 group-hover:text-auraGold transition-colors duration-300"></i>
-                <span class="text-xs uppercase tracking-widest font-medium">Sales Report</span>
+            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'reports' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                <div class="flex items-center gap-3 relative z-10">
+                    <i data-lucide="bar-chart-2" class="w-4 h-4 {% if request.resolver_match.app_name != 'reports' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'reports' %}font-semibold{% else %}font-medium{% endif %}">Sales Report</span>
+                </div>
             </a>
         </nav>
 
@@ -152,6 +173,18 @@
     <!-- Initialize Lucide Icons -->
     <script>
         lucide.createIcons();
+    </script>
+    <script>
+        /*
+         * BFCache (Back/Forward Cache) Defence
+         * Forces a full server reload if this admin page is restored from BFCache
+         * via the Back button, ensuring session & permission checks always run.
+         */
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
     </script>
 </body>
 </html>

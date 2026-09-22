@@ -1,0 +1,369 @@
+{% extends "dashboard/base_admin.html" %}
+
+{% block breadcrumbs %}ADMIN / <span class="text-auraGold">USERS</span>{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header & Controls Section -->
+<div class="mb-10">
+    <div class="flex justify-between items-end border-b border-[#D4AF37]/30 pb-4 mb-6">
+        <div>
+            <h2 class="font-serif text-4xl tracking-wide text-[#F4F4F5] mb-2">User Management</h2>
+            <div class="inline-flex items-center justify-center px-4 py-1 border border-[#D4AF37]/50 bg-[#D4AF37]/10 rounded-full">
+                <span class="text-[10px] uppercase tracking-widest text-[#D4AF37] font-semibold">{{ total_count|default:"0" }} Registered Customers</span>
+            </div>
+        </div>
+        
+        <!-- Search Bar UI with Clear Button -->
+        <form method="GET" class="relative flex items-center w-80">
+            <input type="hidden" name="status" value="{{ status_filter|default:'all' }}">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i data-lucide="search" class="w-4 h-4 text-[#A1A1AA]"></i>
+            </div>
+            <input type="text" name="search" value="{{ search_query|default:'' }}" placeholder="Search by customer name or email..."
+                   class="w-full bg-[#12141C] border border-[#27272A] rounded-sm py-2.5 pl-10 pr-10 text-xs text-[#F4F4F5] placeholder-[#A1A1AA]/50 focus:outline-none focus:border-[#D4AF37]/50 transition-colors">
+            
+            {% if search_query %}
+            <a href="?status={{ status_filter|default:'all' }}" class="absolute inset-y-0 right-0 pr-3 flex items-center text-[#A1A1AA] hover:text-[#D4AF37] transition-colors" title="Clear Search">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="flex gap-8">
+        <a href="?status=all&search={{ search_query|default:'' }}" 
+           class="text-[11px] uppercase tracking-widest font-semibold pb-2 border-b-2 transition-colors duration-300 {% if status_filter == 'all' or not status_filter %}text-[#D4AF37] border-[#D4AF37]{% else %}text-[#A1A1AA] border-transparent hover:text-[#F4F4F5] hover:border-[#F4F4F5]/30{% endif %}">
+            All
+        </a>
+        <a href="?status=active&search={{ search_query|default:'' }}" 
+           class="text-[11px] uppercase tracking-widest font-semibold pb-2 border-b-2 transition-colors duration-300 {% if status_filter == 'active' %}text-[#D4AF37] border-[#D4AF37]{% else %}text-[#A1A1AA] border-transparent hover:text-[#F4F4F5] hover:border-[#F4F4F5]/30{% endif %}">
+            Active
+        </a>
+        <a href="?status=blocked&search={{ search_query|default:'' }}" 
+           class="text-[11px] uppercase tracking-widest font-semibold pb-2 border-b-2 transition-colors duration-300 {% if status_filter == 'blocked' %}text-[#D4AF37] border-[#D4AF37]{% else %}text-[#A1A1AA] border-transparent hover:text-[#F4F4F5] hover:border-[#F4F4F5]/30{% endif %}">
+            Blocked
+        </a>
+    </div>
+</div>
+
+<!-- Customer Table Structure -->
+<div class="bg-[#12141C] border border-[#27272A] rounded-xl shadow-2xl overflow-hidden mb-8">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse whitespace-nowrap">
+            <thead>
+                <tr class="border-b border-[#27272A] bg-[#18181B]">
+                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#A1A1AA] font-semibold w-1/4">Customer</th>
+                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#A1A1AA] font-semibold w-1/4">Email</th>
+                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#A1A1AA] font-semibold w-1/6">Date Joined</th>
+                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#A1A1AA] font-semibold w-1/6">Status</th>
+                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#A1A1AA] font-semibold text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#27272A]">
+                {% for user_obj in users %}
+                <tr class="hover:bg-[#18181B]/50 transition-colors duration-300 ease-in-out group">
+                    <td class="py-5 px-6 flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-[#18181B] border border-[#D4AF37]/30 flex items-center justify-center group-hover:border-[#D4AF37] transition-colors shadow-[0_0_10px_rgba(212,175,55,0.05)]">
+                            <span class="text-xs font-serif text-[#D4AF37]">{{ user_obj.get_full_name|default:user_obj.username|slice:":1"|upper }}</span>
+                        </div>
+                        <span class="text-sm font-medium text-[#F4F4F5]">{{ user_obj.get_full_name|default:user_obj.username }}</span>
+                    </td>
+                    <td class="py-5 px-6 text-sm text-[#A1A1AA]">{{ user_obj.email }}</td>
+                    <td class="py-5 px-6 text-sm text-[#A1A1AA]">{{ user_obj.date_joined|date:"M d, Y" }}</td>
+                    <td class="py-5 px-6" id="status-cell-{{ user_obj.id }}">
+                        {% if user_obj.is_active %}
+                            <span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-sm w-28 justify-center">Active</span>
+                        {% else %}
+                            <span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-sm w-28 justify-center">Blocked</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-5 px-6 text-right">
+                        <button type="button" class="toggle-status-btn inline-flex items-center gap-2 px-4 py-2 border text-[10px] uppercase tracking-widest font-semibold transition-all duration-300 rounded-sm
+                            {% if user_obj.is_active %}
+                                border-[#27272A] text-[#A1A1AA] hover:border-rose-500/50 hover:text-rose-400 hover:bg-rose-500/5
+                            {% else %}
+                                border-[#D4AF37]/50 text-[#D4AF37] hover:border-[#D4AF37] hover:bg-[#D4AF37]/10 hover:shadow-[0_0_15px_rgba(212,175,55,0.15)]
+                            {% endif %}"
+                            data-user-id="{{ user_obj.id }}"
+                            data-user-name="{{ user_obj.get_full_name|default:user_obj.username }}"
+                            data-current-status="{% if user_obj.is_active %}active{% else %}blocked{% endif %}">
+                            
+                            {% if user_obj.is_active %}
+                                <i data-lucide="lock" class="w-3 h-3"></i> Block Access
+                            {% else %}
+                                <i data-lucide="unlock" class="w-3 h-3"></i> Unblock
+                            {% endif %}
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="py-20 px-6 text-center">
+                        <div class="flex flex-col items-center justify-center">
+                            <div class="w-16 h-16 rounded-full bg-[#18181B] border border-[#27272A] flex items-center justify-center mb-4">
+                                <i data-lucide="search-x" class="w-6 h-6 text-[#A1A1AA]"></i>
+                            </div>
+                            <h3 class="font-serif text-2xl text-[#F4F4F5] mb-2">No customers found</h3>
+                            <p class="text-sm text-[#A1A1AA] mb-6">No customers matching '{{ search_query }}' in the current filter.</p>
+                            <a href="?status=all" class="inline-flex items-center gap-2 px-6 py-2.5 border border-[#D4AF37] text-[#D4AF37] text-[10px] uppercase tracking-widest font-medium hover:bg-[#D4AF37]/10 transition-colors rounded-sm">
+                                Clear Filters <i data-lucide="x" class="w-3 h-3"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pagination Controls -->
+{% if users.has_other_pages %}
+<div class="flex items-center justify-between">
+    <p class="text-[10px] uppercase tracking-widest text-[#A1A1AA] font-medium">
+        Page <span class="text-[#F4F4F5]">{{ users.number }}</span> of <span class="text-[#F4F4F5]">{{ users.paginator.num_pages }}</span>
+    </p>
+    
+    <div class="flex gap-2">
+        {% if users.has_previous %}
+        <a href="?page={{ users.previous_page_number }}&search={{ search_query|default:'' }}&status={{ status_filter|default:'all' }}" class="px-4 py-2 bg-[#12141C] border border-[#27272A] rounded-sm text-[10px] uppercase tracking-widest text-[#A1A1AA] hover:text-[#D4AF37] hover:border-[#D4AF37]/50 transition-colors flex items-center gap-2">
+            <i data-lucide="chevron-left" class="w-3 h-3"></i> Prev
+        </a>
+        {% else %}
+        <span class="px-4 py-2 bg-[#12141C] border border-[#27272A] rounded-sm text-[10px] uppercase tracking-widest text-[#A1A1AA]/30 cursor-not-allowed flex items-center gap-2">
+            <i data-lucide="chevron-left" class="w-3 h-3"></i> Prev
+        </span>
+        {% endif %}
+
+        {% if users.has_next %}
+        <a href="?page={{ users.next_page_number }}&search={{ search_query|default:'' }}&status={{ status_filter|default:'all' }}" class="px-4 py-2 bg-[#12141C] border border-[#27272A] rounded-sm text-[10px] uppercase tracking-widest text-[#A1A1AA] hover:text-[#D4AF37] hover:border-[#D4AF37]/50 transition-colors flex items-center gap-2">
+            Next <i data-lucide="chevron-right" class="w-3 h-3"></i>
+        </a>
+        {% else %}
+        <span class="px-4 py-2 bg-[#12141C] border border-[#27272A] rounded-sm text-[10px] uppercase tracking-widest text-[#A1A1AA]/30 cursor-not-allowed flex items-center gap-2">
+            Next <i data-lucide="chevron-right" class="w-3 h-3"></i>
+        </span>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Interactive Block/Unblock Confirmation Modal -->
+<div id="status-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-[#0B0C10]/80 backdrop-blur-sm" id="modal-backdrop"></div>
+    
+    <!-- Modal Content -->
+    <div class="relative bg-[#12141C]/95 backdrop-blur-md border border-[#D4AF37]/30 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-xl w-full max-w-md p-8 transform scale-95 opacity-0 transition-all duration-300" id="modal-panel">
+        
+        <div class="flex items-center gap-4 mb-6">
+            <div id="modal-icon-container" class="w-12 h-12 rounded-full border flex items-center justify-center">
+                <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-serif text-2xl text-[#F4F4F5] tracking-wide" id="modal-title">Confirm Action</h3>
+        </div>
+        
+        <p class="text-sm text-[#A1A1AA] leading-relaxed mb-8" id="modal-message">
+            Are you sure you want to perform this action?
+        </p>
+
+        <form id="toggle-status-form">
+            {% csrf_token %}
+            <div class="flex justify-end gap-4">
+                <button type="button" id="cancel-modal" class="px-6 py-2.5 border border-[#27272A] text-[#A1A1AA] text-[10px] uppercase tracking-widest font-semibold hover:bg-[#18181B] hover:text-[#F4F4F5] transition-colors rounded-sm">
+                    Cancel
+                </button>
+                <button type="submit" id="confirm-modal" class="px-6 py-2.5 border text-[10px] uppercase tracking-widest font-semibold transition-colors rounded-sm flex items-center gap-2">
+                    <span id="confirm-text">Confirm</span>
+                    <i data-lucide="loader-2" class="w-3 h-3 animate-spin hidden" id="confirm-spinner"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Luxury Toast Container -->
+<div id="admin-toast-container" class="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-3 w-full max-w-sm px-4 pointer-events-none"></div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Modal Logic ---
+        const modal = document.getElementById('status-modal');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalPanel = document.getElementById('modal-panel');
+        const cancelBtn = document.getElementById('cancel-modal');
+        const toggleForm = document.getElementById('toggle-status-form');
+        const confirmBtn = document.getElementById('confirm-modal');
+        const confirmText = document.getElementById('confirm-text');
+        const confirmSpinner = document.getElementById('confirm-spinner');
+        
+        // Modal Dynamic Elements
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalIconContainer = document.getElementById('modal-icon-container');
+        const modalIcon = modalIconContainer.querySelector('i');
+
+        let currentUserId = null;
+        let currentStatus = null;
+        let currentButton = null;
+
+        const openModal = () => {
+            modal.classList.remove('hidden');
+            // Trigger reflow
+            void modal.offsetWidth;
+            modalPanel.classList.remove('scale-95', 'opacity-0');
+            modalPanel.classList.add('scale-100', 'opacity-100');
+        };
+
+        const closeModal = () => {
+            modalPanel.classList.remove('scale-100', 'opacity-100');
+            modalPanel.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        };
+
+        cancelBtn.addEventListener('click', closeModal);
+        modalBackdrop.addEventListener('click', closeModal);
+
+        // Attach listeners to all toggle buttons
+        document.querySelectorAll('.toggle-status-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const target = e.currentTarget;
+                currentUserId = target.getAttribute('data-user-id');
+                const userName = target.getAttribute('data-user-name');
+                currentStatus = target.getAttribute('data-current-status');
+                currentButton = target;
+
+                if (currentStatus === 'active') {
+                    // Prepare block modal
+                    modalTitle.textContent = "Block User";
+                    modalMessage.innerHTML = `Are you sure you want to block <strong class="text-[#F4F4F5]">${userName}</strong>? This will instantly restrict their access across both email/password login and Google SSO login methods.`;
+                    
+                    modalIconContainer.className = "w-12 h-12 rounded-full border border-rose-500/20 bg-rose-500/10 flex items-center justify-center";
+                    modalIconContainer.innerHTML = '<i data-lucide="lock" class="w-5 h-5 text-rose-400"></i>';
+                    
+                    confirmBtn.className = "px-6 py-2.5 border border-rose-500/50 bg-rose-500/10 text-rose-400 text-[10px] uppercase tracking-widest font-semibold hover:bg-rose-500/20 transition-colors rounded-sm flex items-center gap-2";
+                    confirmText.textContent = "Block Access";
+                } else {
+                    // Prepare unblock modal
+                    modalTitle.textContent = "Unblock User";
+                    modalMessage.innerHTML = `Are you sure you want to unblock <strong class="text-[#F4F4F5]">${userName}</strong>? This will restore their access across all authentication pathways.`;
+                    
+                    modalIconContainer.className = "w-12 h-12 rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 flex items-center justify-center";
+                    modalIconContainer.innerHTML = '<i data-lucide="unlock" class="w-5 h-5 text-[#D4AF37]"></i>';
+                    
+                    confirmBtn.className = "px-6 py-2.5 border border-[#D4AF37]/50 bg-[#D4AF37]/10 text-[#D4AF37] text-[10px] uppercase tracking-widest font-semibold hover:bg-[#D4AF37]/20 transition-colors rounded-sm flex items-center gap-2";
+                    confirmText.textContent = "Unblock Access";
+                }
+                
+                // Re-render lucide icons inside modal
+                lucide.createIcons();
+                openModal();
+            });
+        });
+
+        // --- Toast Logic ---
+        const showToast = (message, type = 'success') => {
+            const container = document.getElementById('admin-toast-container');
+            const toast = document.createElement('div');
+            
+            let borderColor = type === 'success' ? 'border-[#D4AF37]' : 'border-rose-500';
+            let iconHtml = type === 'success' 
+                ? '<i data-lucide="check-circle-2" class="w-4 h-4 text-[#D4AF37]"></i>' 
+                : '<i data-lucide="x-circle" class="w-4 h-4 text-rose-500"></i>';
+
+            toast.className = `bg-[#12141C]/90 backdrop-blur-md border-l-2 ${borderColor} rounded-sm shadow-lg p-4 flex items-start gap-3 transform -translate-y-4 opacity-0 transition-all duration-300`;
+            toast.innerHTML = `
+                <div class="mt-0.5">${iconHtml}</div>
+                <p class="text-xs text-[#F4F4F5] font-medium tracking-wide leading-relaxed">${message}</p>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            // Animate in
+            requestAnimationFrame(() => {
+                toast.classList.remove('-translate-y-4', 'opacity-0');
+                toast.classList.add('translate-y-0', 'opacity-100');
+            });
+
+            // Animate out after 3s
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('-translate-y-4', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        };
+
+        // --- AJAX Form Submit ---
+        toggleForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUserId) return;
+
+            // Loading state
+            confirmBtn.disabled = true;
+            confirmText.textContent = "Processing...";
+            confirmSpinner.classList.remove('hidden');
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            // Build the dynamic URL (assuming the URL pattern is /admin-panel/users/toggle-status/<user_id>/)
+            // A safer way if the URL changes is to hardcode the pattern or fetch from a data attribute.
+            // Using a generic template string approach based on typical Django URL structures:
+            let toggleUrl = `{% url 'users:toggle_status' user_id=0 %}`.replace('0', currentUserId);
+
+            try {
+                const response = await fetch(toggleUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    closeModal();
+                    
+                    const isNowActive = data.is_active; // Assumes backend returns new status boolean
+                    
+                    // Update the status cell
+                    const statusCell = document.getElementById(`status-cell-${currentUserId}`);
+                    if (isNowActive) {
+                        statusCell.innerHTML = `<span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-sm w-28 justify-center">Active</span>`;
+                    } else {
+                        statusCell.innerHTML = `<span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-sm w-28 justify-center">Blocked</span>`;
+                    }
+
+                    // Update the action button
+                    currentButton.setAttribute('data-current-status', isNowActive ? 'active' : 'blocked');
+                    if (isNowActive) {
+                        currentButton.className = `toggle-status-btn inline-flex items-center gap-2 px-4 py-2 border text-[10px] uppercase tracking-widest font-semibold transition-all duration-300 rounded-sm border-[#27272A] text-[#A1A1AA] hover:border-rose-500/50 hover:text-rose-400 hover:bg-rose-500/5`;
+                        currentButton.innerHTML = `<i data-lucide="lock" class="w-3 h-3"></i> Block Access`;
+                    } else {
+                        currentButton.className = `toggle-status-btn inline-flex items-center gap-2 px-4 py-2 border text-[10px] uppercase tracking-widest font-semibold transition-all duration-300 rounded-sm border-[#D4AF37]/50 text-[#D4AF37] hover:border-[#D4AF37] hover:bg-[#D4AF37]/10 hover:shadow-[0_0_15px_rgba(212,175,55,0.15)]`;
+                        currentButton.innerHTML = `<i data-lucide="unlock" class="w-3 h-3"></i> Unblock`;
+                    }
+                    
+                    lucide.createIcons(); // re-init icons for the new innerHTML
+                    showToast(data.message || 'User status updated successfully.', 'success');
+                } else {
+                    closeModal();
+                    showToast(data.error || 'Failed to update user status.', 'error');
+                }
+            } catch (error) {
+                console.error("Status toggle error:", error);
+                closeModal();
+                showToast('A network error occurred. Please try again.', 'error');
+            } finally {
+                // Reset loading state
+                confirmBtn.disabled = false;
+                confirmSpinner.classList.add('hidden');
+            }
+        });
+    });
+</script>
+{% endblock %}
