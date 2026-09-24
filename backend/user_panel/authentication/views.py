@@ -42,7 +42,7 @@ def generate_signup_otp(email):
     otp = str(random.randint(100000, 999999))
 
     expires_at = (
-        timezone.now() + timedelta(minutes=5)
+        timezone.now() + timedelta(minutes=2)
     )
 
     SignupOTP.objects.filter(
@@ -60,7 +60,7 @@ def generate_signup_otp(email):
         subject="AURA | Email Verification",
         message=(
             f"Your AURA verification code is: {otp}\n\n"
-            "This code will expire in 5 minutes."
+            "This code will expire in 2 minutes."
         ),
         from_email=None,
         recipient_list=[email],
@@ -74,7 +74,7 @@ def generate_password_reset_otp(email):
     otp = str(random.randint(100000, 999999))
 
     expires_at = (
-        timezone.now() + timedelta(minutes=5)
+        timezone.now() + timedelta(minutes=2)
     )
 
     PasswordResetOTP.objects.filter(
@@ -91,7 +91,7 @@ def generate_password_reset_otp(email):
         subject="AURA | Password Reset",
         message=(
             f"Your AURA password reset code is: {otp}\n\n"
-            "This code will expire in 5 minutes."
+            "This code will expire in 2 minutes."
         ),
         from_email=None,
         recipient_list=[email],
@@ -467,12 +467,29 @@ def forgot_password(request):
                 status=HTTPStatus.BAD_REQUEST,
             )
 
-        user_exists = User.objects.filter(
+        user = User.objects.filter(
             email__iexact=email,
             is_active=True,
-        ).exists()
+        ).first()
 
-        if user_exists:
+        # Block Google-only (OAuth) accounts from the password reset flow.
+        # Django sets an unusable password for all social-auth-only accounts.
+        if user is not None and not user.has_usable_password():
+            return render(
+                request,
+                "authentication/forgot_password.html",
+                {
+                    "email": email,
+                    "error": (
+                        "This account uses Google Sign-In. "
+                        "Please log in using the 'Continue with Google' button."
+                    ),
+                    "is_google_account": True,
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        if user is not None:
 
             generate_password_reset_otp(email)
 
