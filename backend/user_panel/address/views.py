@@ -39,8 +39,8 @@ def add_address(request):
             status=HTTPStatus.METHOD_NOT_ALLOWED,
         )
 
-    # ── Extract & normalise form data ─────────────────────────────────────────
-    # Strip outer whitespace first, then collapse any internal multiple spaces.
+    #  Extract & normalise form data 
+    
     full_name     = re.sub(r"\s+", " ", request.POST.get("full_name",     "").strip())
     phone_number  =                      request.POST.get("phone_number",  "").strip()
     address_line1 = re.sub(r"\s+", " ", request.POST.get("address_line1", "").strip())
@@ -52,7 +52,7 @@ def add_address(request):
     address_type  =                      request.POST.get("address_type",  "HOME").strip().upper()
     is_default    = request.POST.get("is_default") in ["true", "True", "1", True, "on"]
 
-    # ── Field validations ─────────────────────────────────────────────────────
+    # Field validations 
     errors = {}
 
     if not full_name:
@@ -107,7 +107,7 @@ def add_address(request):
     elif not re.match(r"^[1-9][0-9]{5}$", pincode):
         errors["pincode"] = "Please enter a valid 6-digit postal pincode."
 
-    # ── Address type sanitisation ──────────────────────────────────────────────
+    #  Address type sanitisation 
     valid_types = [choice[0] for choice in Address.ADDRESS_TYPE_CHOICES]
     if address_type not in valid_types:
         address_type = "HOME"
