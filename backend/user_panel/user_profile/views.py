@@ -136,7 +136,7 @@ def send_email_change_otp(request):
     )
 
     expires_at = (
-        timezone.now() + timedelta(minutes=5)
+        timezone.now() + timedelta(minutes=2)
     )
 
     try:
@@ -158,7 +158,7 @@ def send_email_change_otp(request):
             subject="AURA | Email Change Verification",
             message=(
                 f"Your AURA email change verification code is: {otp}\n\n"
-                "This code will expire in 5 minutes."
+                "This code will expire in 2 minutes."
             ),
             from_email=None,
             recipient_list=[new_email],
@@ -220,7 +220,7 @@ def send_email_change_otp(request):
                 "to your new email address."
             ),
         },
-        status=200,
+        status=HTTPStatus.OK,
     )
 
 @login_required
@@ -270,8 +270,19 @@ def resend_email_change_otp(request):
             status=HTTPStatus.BAD_REQUEST,
         )
 
+    # ─── Throttle guard ───────────────────────────────────────────
+    if timezone.now() < otp_record.expires_at:
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Please wait until the current OTP expires before requesting a new one.",
+            },
+            status=HTTPStatus.TOO_MANY_REQUESTS,
+        )
+    # ─────────────────────────────────────────────────────────────
+
     new_otp = str(random.randint(100000, 999999))
-    expires_at = timezone.now() + timedelta(minutes=5)
+    expires_at = timezone.now() + timedelta(minutes=2)
 
     otp_record.code = new_otp
     otp_record.expires_at = expires_at
@@ -289,7 +300,7 @@ def resend_email_change_otp(request):
             subject="Your AURA Email Change Verification Code",
             message=(
                 f"Your new AURA verification code is: {new_otp}\n\n"
-                "This code will expire in 5 minutes."
+                "This code will expire in 2 minutes."
             ),
             from_email=None,
             recipient_list=[otp_record.new_email],
