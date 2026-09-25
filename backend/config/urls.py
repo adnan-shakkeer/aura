@@ -35,6 +35,9 @@ urlpatterns = [
     
     path("admin-panel/users/", include("admin_panel.users.urls")),
 
+    path("admin-panel/categories/", include("admin_panel.categories.urls")),
+
+
 
     # User Panel Routes
     path("",include("user_panel.home.urls")),
