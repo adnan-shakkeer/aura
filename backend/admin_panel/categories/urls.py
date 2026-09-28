@@ -8,9 +8,9 @@ urlpatterns = [
 
     path("add/",views.CategoryCreateView.as_view(), name="add"),
 
-    path("edit//",views.CategoryUpdateView.as_view(), name="edit"),
+    path("edit/<int:category_id>/", views.CategoryUpdateView.as_view(), name="edit"),
 
-    path("delete//",views.CategoryDeleteView.as_view(), name="delete"),
+    path("delete/<int:category_id>/", views.CategoryDeleteView.as_view(), name="delete"),
 
 
 ]

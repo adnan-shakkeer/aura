@@ -183,8 +183,7 @@
     </div>
 </div>
 
-<!-- Luxury Toast Container -->
-<div id="admin-toast-container" class="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-3 w-full max-w-sm px-4 pointer-events-none"></div>
+{% comment %}Notifications use the shared Admin toast system (dashboard/partials/admin_toasts.html).{% endcomment %}
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -264,38 +263,7 @@
             });
         });
 
-        // --- Toast Logic ---
-        const showToast = (message, type = 'success') => {
-            const container = document.getElementById('admin-toast-container');
-            const toast = document.createElement('div');
-            
-            let borderColor = type === 'success' ? 'border-[#D4AF37]' : 'border-rose-500';
-            let iconHtml = type === 'success' 
-                ? '<i data-lucide="check-circle-2" class="w-4 h-4 text-[#D4AF37]"></i>' 
-                : '<i data-lucide="x-circle" class="w-4 h-4 text-rose-500"></i>';
-
-            toast.className = `bg-[#12141C]/90 backdrop-blur-md border-l-2 ${borderColor} rounded-sm shadow-lg p-4 flex items-start gap-3 transform -translate-y-4 opacity-0 transition-all duration-300`;
-            toast.innerHTML = `
-                <div class="mt-0.5">${iconHtml}</div>
-                <p class="text-xs text-[#F4F4F5] font-medium tracking-wide leading-relaxed">${message}</p>
-            `;
-
-            container.appendChild(toast);
-            lucide.createIcons();
-
-            // Animate in
-            requestAnimationFrame(() => {
-                toast.classList.remove('-translate-y-4', 'opacity-0');
-                toast.classList.add('translate-y-0', 'opacity-100');
-            });
-
-            // Animate out after 3s
-            setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('-translate-y-4', 'opacity-0');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        };
+        // --- Toasts use the shared Admin system (window.showAdminToast) ---
 
         // --- AJAX Form Submit ---
         toggleForm.addEventListener('submit', async (e) => {
@@ -349,15 +317,15 @@
                     }
                     
                     lucide.createIcons(); // re-init icons for the new innerHTML
-                    showToast(data.message || 'User status updated successfully.', 'success');
+                    showAdminToast(data.message || 'User status updated successfully.', 'success');
                 } else {
                     closeModal();
-                    showToast(data.error || 'Failed to update user status.', 'error');
+                    showAdminToast(data.error || 'Failed to update user status.', 'error');
                 }
             } catch (error) {
                 console.error("Status toggle error:", error);
                 closeModal();
-                showToast('A network error occurred. Please try again.', 'error');
+                showAdminToast('A network error occurred. Please try again.', 'error');
             } finally {
                 // Reset loading state
                 confirmBtn.disabled = false;

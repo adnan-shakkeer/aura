@@ -77,7 +77,7 @@
             </a>
 
             <!-- CATEGORIES -->
-            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'categories' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
+            <a href="{% url 'categories:list' %}" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'categories' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
                 <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                 <div class="flex items-center gap-3 relative z-10">
                     <i data-lucide="layers" class="w-4 h-4 {% if request.resolver_match.app_name != 'categories' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
@@ -186,5 +186,8 @@
             }
         });
     </script>
+
+    <!-- Shared Admin toast notification system (reusable on all Admin pages) -->
+    {% include "dashboard/partials/admin_toasts.html" %}
 </body>
 </html>

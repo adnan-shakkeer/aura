@@ -1,0 +1,96 @@
+{% comment %}
+  Reusable Admin toast notification system (AURA Admin design language).
+
+  Usage (any template extending dashboard/base_admin.html gets this automatically):
+    - Django messages are rendered as toasts on page load, mapped by message.tags
+      to one of: success | error | warning | info.
+    - From JavaScript: showAdminToast('Message text', 'success' | 'error' | 'warning' | 'info')
+
+  Behavior (preserved from the original User Management implementation):
+    - Visible for 3000ms, then 300ms fade/slide-out transition before removal.
+{% endcomment %}
+<div id="admin-toast-container" class="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-3 w-full max-w-sm px-4 pointer-events-none"></div>
+
+{% if messages %}
+<div id="django-messages" class="hidden">
+    {% for message in messages %}
+    <div class="django-message" data-tags="{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<script>
+    window.showAdminToast = (message, type = 'success') => {
+        const container = document.getElementById('admin-toast-container');
+        if (!container) return;
+        const toast = document.createElement('div');
+
+        // Per-type visual treatment: accent border + tinted icon chip + type label.
+        // Success keeps the AURA gold brand treatment; error/warning/info use
+        // restrained rose/amber/sky accents consistent with the Admin palette.
+        const styles = {
+            success: {
+                label: 'Success',
+                border: 'border-[#D4AF37]',
+                chip: 'border-[#D4AF37]/30 bg-[#D4AF37]/10',
+                icon: '<i data-lucide="check-circle-2" class="w-4 h-4 text-[#D4AF37]"></i>',
+                labelColor: 'text-[#D4AF37]'
+            },
+            error: {
+                label: 'Error',
+                border: 'border-rose-500',
+                chip: 'border-rose-500/30 bg-rose-500/10',
+                icon: '<i data-lucide="x-circle" class="w-4 h-4 text-rose-500"></i>',
+                labelColor: 'text-rose-400'
+            },
+            warning: {
+                label: 'Warning',
+                border: 'border-amber-500',
+                chip: 'border-amber-500/30 bg-amber-500/10',
+                icon: '<i data-lucide="alert-triangle" class="w-4 h-4 text-amber-500"></i>',
+                labelColor: 'text-amber-400'
+            },
+            info: {
+                label: 'Info',
+                border: 'border-sky-500',
+                chip: 'border-sky-500/30 bg-sky-500/10',
+                icon: '<i data-lucide="info" class="w-4 h-4 text-sky-500"></i>',
+                labelColor: 'text-sky-400'
+            }
+        };
+        const style = styles[type] || styles.info;
+
+        toast.className = `bg-[#12141C]/90 backdrop-blur-md border-l-2 ${style.border} rounded-sm shadow-lg p-4 flex items-start gap-3 transform -translate-y-4 opacity-0 transition-all duration-300`;
+        toast.innerHTML = `
+            <div class="w-7 h-7 rounded-full border ${style.chip} flex items-center justify-center shrink-0">${style.icon}</div>
+            <div class="flex flex-col gap-0.5 min-w-0">
+                <span class="text-[9px] uppercase tracking-[0.2em] font-semibold ${style.labelColor}">${style.label}</span>
+                <p class="text-xs text-[#F4F4F5] font-medium tracking-wide leading-relaxed">${message}</p>
+            </div>
+        `;
+
+        container.appendChild(toast);
+        lucide.createIcons();
+
+        // Animate in
+        requestAnimationFrame(() => {
+            toast.classList.remove('-translate-y-4', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+        });
+
+        // Animate out after 3s (same timing as the original User Management behavior)
+        setTimeout(() => {
+            toast.classList.remove('translate-y-0', 'opacity-100');
+            toast.classList.add('-translate-y-4', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    };
+
+    // Render server-side Django messages as toasts
+    document.querySelectorAll('#django-messages .django-message').forEach(el => {
+        const tags = (el.dataset.tags || '').split(' ');
+        const type = ['success', 'error', 'warning', 'info'].find(t => tags.includes(t)) || 'info';
+        window.showAdminToast(el.textContent.trim(), type);
+        el.remove();
+    });
+</script>

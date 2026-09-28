@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "admin_panel.dashboard",
     "admin_panel.users",
     "admin_panel.categories",
+    "admin_panel.products",
 
     # User Panel Apps
     "user_panel.authentication",
