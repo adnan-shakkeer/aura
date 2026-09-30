@@ -1,12 +1,13 @@
 from django.db import models
-from admin_panel.categories.models import Category
+
+from admin_panel.brands.models import Brand
 
 
 class Product(models.Model):
-    category = models.ForeignKey(
-        Category,
-        on_delete=models.CASCADE,
-        related_name="products",  # Connects to Count("products") in CategoryListView
+    brand = models.ForeignKey(
+        Brand,
+        on_delete=models.PROTECT,
+        related_name="products",
     )
     name = models.CharField(max_length=200)
     is_deleted = models.BooleanField(default=False)
@@ -14,5 +15,3 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
-
-# Create your models here.

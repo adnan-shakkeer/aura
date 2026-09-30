@@ -37,6 +37,8 @@ urlpatterns = [
 
     path("admin-panel/categories/", include("admin_panel.categories.urls")),
 
+    path("admin-panel/brands/", include("admin_panel.brands.urls")),
+
 
 
     # User Panel Routes

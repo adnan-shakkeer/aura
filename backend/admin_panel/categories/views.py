@@ -21,7 +21,7 @@ class CategoryListView(View):
 
         # Annotate total active product count for each category
         queryset = queryset.annotate(
-            products_count=Count("products", filter=Q(products__is_deleted=False))
+            products_count=Count("brands__products", filter=Q(brands__products__is_deleted=False))
         )
 
         # 2. Search Query Handling (Restricted to Category Name)
@@ -202,25 +202,39 @@ class CategoryUpdateView(View):
     
 
 class CategoryDeleteView(View):
-    """
-    Handles soft-deleting an existing category via POST using AJAX.
-    URL pattern expects: /admin/categories//delete/
-    """
-
     def post(self, request, category_id):
-        # 1. Fetch Target Category
-        category = get_object_or_404(Category, id=category_id, is_deleted=False)
+        category = get_object_or_404(
+            Category,
+            id=category_id,
+            is_deleted=False,
+        )
+
+        if category.brands.filter(is_deleted=False).exists():
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": (
+                        f"Cannot delete '{category.name}' — "
+                        "it still has active brands assigned."
+                    ),
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
 
         category_name = category.name
-
-        # 2. Perform Soft Delete
         category.is_deleted = True
         category.save()
 
-        # 3. Attach success message for next page render
-        messages.success(request, f"Category '{category_name}' deleted successfully!")
+        messages.success(
+            request,
+            f"Category '{category_name}' deleted successfully!",
+        )
 
         return JsonResponse(
-            {"success": True, "message": f"Category '{category_name}' deleted successfully!"},
+            {
+                "success": True,
+                "message": f"Category '{category_name}' deleted successfully!",
+            },
             status=HTTPStatus.OK,
         )
+
