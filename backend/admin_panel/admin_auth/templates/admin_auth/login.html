@@ -18,13 +18,13 @@
             theme: {
                 extend: {
                     colors: {
-                        auraDark: '#0B0C10',
-                        auraSurface: '#12141C',
-                        auraGold: '#D4AF37',
-                        auraGoldMuted: 'rgba(212, 175, 55, 0.4)',
-                        auraText: '#F5F5F5',
-                        auraMuted: '#A0A0A0',
-                        auraBorder: '#2A2A2A',
+                        auraDark: '#F7F5F1',
+                        auraSurface: '#FFFFFF',
+                        auraGold: '#A8842C',
+                        auraGoldMuted: 'rgba(168, 132, 44, 0.4)',
+                        auraText: '#141414',
+                        auraMuted: '#6E6A63',
+                        auraBorder: '#E3DFD7',
                     },
                     fontFamily: {
                         serif: ['"Cormorant Garamond"', 'serif'],
@@ -51,25 +51,25 @@
     </script>
     
     <style>
-        /* Custom Scrollbar for dark theme */
+        /* Custom Scrollbar for light theme */
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0B0C10; }
-        ::-webkit-scrollbar-thumb { background: #2A2A2A; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #D4AF37; }
+        ::-webkit-scrollbar-track { background: #F7F5F1; }
+        ::-webkit-scrollbar-thumb { background: #D8D4CC; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #A8842C; }
 
-        /* Input Autofill override for dark mode */
+        /* Input Autofill override for light mode */
         input:-webkit-autofill,
         input:-webkit-autofill:hover, 
         input:-webkit-autofill:focus, 
         input:-webkit-autofill:active {
-            -webkit-box-shadow: 0 0 0 30px #12141C inset !important;
-            -webkit-text-fill-color: #F5F5F5 !important;
+            -webkit-box-shadow: 0 0 0 30px #FFFFFF inset !important;
+            -webkit-text-fill-color: #141414 !important;
             transition: background-color 5000s ease-in-out 0s;
         }
 
         /* Glassmorphism for Toast */
         .glass-toast {
-            background: rgba(18, 20, 28, 0.7);
+            background: rgba(255, 255, 255, 0.88);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
         }
@@ -91,9 +91,9 @@
             
             <!-- Logo & Header -->
             <div class="text-center mb-10">
-                <h1 class="font-serif text-3xl md:text-4xl tracking-[0.25em] text-white mb-2 uppercase">AURA</h1>
+                <h1 class="font-serif text-3xl md:text-4xl tracking-[0.25em] text-[#141414] mb-2 uppercase">AURA</h1>
                 <div class="w-12 h-[1px] bg-auraGold mx-auto mb-6"></div>
-                <h2 class="font-serif text-2xl tracking-[0.1em] text-white mb-2 italic">Welcome Back</h2>
+                <h2 class="font-serif text-2xl tracking-[0.1em] text-[#141414] mb-2 italic">Welcome Back</h2>
                 <p class="text-xs uppercase tracking-[0.3em] text-auraGold font-medium">Atelier Control Center</p>
             </div>
 
@@ -106,7 +106,7 @@
                     <label for="username" class="block text-[10px] uppercase tracking-widest text-auraMuted font-semibold">Username or Email</label>
                     <div class="relative">
                         <input type="text" id="username" name="username" required autocomplete="username"
-                            class="w-full bg-transparent border-b border-auraBorder py-3 px-1 text-sm text-white placeholder-auraMuted/40 focus:outline-none focus:border-auraGold transition-colors duration-300"
+                            class="w-full bg-transparent border-b border-auraBorder py-3 px-1 text-sm text-[#141414] placeholder-auraMuted/40 focus:outline-none focus:border-auraGold transition-colors duration-300"
                             placeholder="Enter your admin credentials">
                     </div>
                 </div>
@@ -118,7 +118,7 @@
                     </div>
                     <div class="relative">
                         <input type="password" id="password" name="password" required autocomplete="current-password"
-                            class="w-full bg-transparent border-b border-auraBorder py-3 px-1 pr-10 text-sm text-white placeholder-auraMuted/40 focus:outline-none focus:border-auraGold transition-colors duration-300"
+                            class="w-full bg-transparent border-b border-auraBorder py-3 px-1 pr-10 text-sm text-[#141414] placeholder-auraMuted/40 focus:outline-none focus:border-auraGold transition-colors duration-300"
                             placeholder="••••••••">
                         
                         <!-- Toggle Button -->
@@ -139,8 +139,8 @@
                 <!-- Submit Button -->
                 <div class="pt-4">
                     <button type="submit" id="submit-btn" 
-                        class="w-full relative group overflow-hidden bg-transparent border border-auraGold text-auraGold hover:text-auraDark py-4 text-xs uppercase tracking-[0.2em] font-semibold transition-all duration-500 ease-out flex justify-center items-center gap-3">
-                        <span class="absolute inset-0 w-full h-full bg-auraGold transform -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out z-0"></span>
+                        class="w-full relative group overflow-hidden bg-transparent border border-[#141414] text-[#141414] hover:text-white py-4 text-xs uppercase tracking-[0.2em] font-semibold transition-all duration-500 ease-out flex justify-center items-center gap-3">
+                        <span class="absolute inset-0 w-full h-full bg-[#141414] transform -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out z-0"></span>
                         <span id="btn-text" class="relative z-10">Authenticate</span>
                         
                         <!-- Spinner (Hidden by default) -->
@@ -199,21 +199,21 @@
                 const toast = document.createElement('div');
                 
                 // Styling based on type
-                let borderColor = type === 'success' ? 'border-auraGold' : (type === 'error' ? 'border-red-500' : 'border-yellow-400');
+                let borderColor = type === 'success' ? 'border-auraGold' : (type === 'error' ? 'border-[#B42318]' : 'border-[#B54708]');
                 let iconHtml = '';
                 
                 if (type === 'success') {
                     iconHtml = `<svg class="w-4 h-4 text-auraGold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
                 } else if (type === 'error') {
-                    iconHtml = `<svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+                    iconHtml = `<svg class="w-4 h-4 text-[#B42318]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
                 } else {
-                    iconHtml = `<svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+                    iconHtml = `<svg class="w-4 h-4 text-[#B54708]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
                 }
 
                 toast.className = `glass-toast border-l-2 ${borderColor} rounded shadow-lg p-4 flex items-start gap-3 animate-slide-in`;
                 toast.innerHTML = `
                     <div class="mt-0.5">${iconHtml}</div>
-                    <p class="text-xs text-white font-medium tracking-wide leading-relaxed">${message}</p>
+                    <p class="text-xs text-[#141414] font-medium tracking-wide leading-relaxed">${message}</p>
                 `;
 
                 toastContainer.appendChild(toast);

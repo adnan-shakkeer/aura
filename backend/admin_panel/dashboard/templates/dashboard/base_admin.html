@@ -21,13 +21,13 @@
             theme: {
                 extend: {
                     colors: {
-                        auraBg: '#0D0D0E',
-                        auraSurface: '#18181B',
-                        auraBorder: '#2E2E34',
-                        auraText: '#F4F4F5',
-                        auraMuted: '#A1A1AA',
-                        auraGold: '#D4AF37',
-                        auraGoldMuted: 'rgba(212, 175, 55, 0.1)',
+                        auraBg: '#FFFFFF',
+                        auraSurface: '#FFFFFF',
+                        auraBorder: '#E8E5DF',
+                        auraText: '#141414',
+                        auraMuted: '#6E6A63',
+                        auraGold: '#A8842C',
+                        auraGoldMuted: 'rgba(168, 132, 44, 0.08)',
                     },
                     fontFamily: {
                         serif: ['"Cormorant Garamond"', 'serif'],
@@ -39,93 +39,93 @@
     </script>
 
     <style>
-        /* Custom Scrollbar for dark theme */
+        /* Custom Scrollbar for light theme */
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0D0D0E; }
-        ::-webkit-scrollbar-thumb { background: #2E2E34; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #D4AF37; }
+        ::-webkit-scrollbar-track { background: #F4F1EB; }
+        ::-webkit-scrollbar-thumb { background: #D8D4CC; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #A8842C; }
     </style>
 </head>
 <body class="bg-auraBg font-sans text-auraText min-h-screen flex selection:bg-auraGold selection:text-auraBg">
 
     <!-- Left Sidebar [A] -->
-    <aside class="w-64 bg-auraBg border-r border-auraBorder flex flex-col fixed h-full z-20">
+    <aside class="w-64 bg-[#0B0B0C] border-r border-white/10 flex flex-col fixed h-full z-20">
         <!-- Logo Area -->
         <div class="p-8 pb-10">
             <h1 class="font-serif text-3xl tracking-[0.25em] text-white uppercase mb-2">AURA</h1>
-            <p class="text-[9px] uppercase tracking-[0.3em] text-auraMuted font-medium">Luxury Fragrance Admin</p>
+            <p class="text-[9px] uppercase tracking-[0.3em] text-[#8A8F98] font-medium">Luxury Fragrance Admin</p>
         </div>
 
         <!-- Navigation Items -->
         <nav class="flex-1 px-4 space-y-2">
             <!-- DASHBOARD -->
-            <a href="{% url 'dashboard:index' %}" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'dashboard' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
-                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+            <a href="{% url 'dashboard:index' %}" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'dashboard' %}bg-white/10 border-r-2 border-white text-white{% else %}text-[#8A8F98] hover:text-white hover:bg-white/5{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                 <div class="flex items-center gap-3 relative z-10">
-                    <i data-lucide="layout-grid" class="w-4 h-4 {% if request.resolver_match.app_name != 'dashboard' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <i data-lucide="layout-grid" class="w-4 h-4 {% if request.resolver_match.app_name != 'dashboard' %}group-hover:text-white transition-colors duration-300{% endif %}"></i>
                     <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'dashboard' %}font-semibold{% else %}font-medium{% endif %}">Dashboard</span>
                 </div>
             </a>
             
             <!-- PRODUCTS -->
-            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'products' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
-                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'products' %}bg-white/10 border-r-2 border-white text-white{% else %}text-[#8A8F98] hover:text-white hover:bg-white/5{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                 <div class="flex items-center gap-3 relative z-10">
-                    <i data-lucide="box" class="w-4 h-4 {% if request.resolver_match.app_name != 'products' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <i data-lucide="box" class="w-4 h-4 {% if request.resolver_match.app_name != 'products' %}group-hover:text-white transition-colors duration-300{% endif %}"></i>
                     <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'products' %}font-semibold{% else %}font-medium{% endif %}">Products</span>
                 </div>
             </a>
 
             <!-- CATEGORIES -->
-            <a href="{% url 'categories:list' %}" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'categories' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
-                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+            <a href="{% url 'categories:list' %}" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'categories' %}bg-white/10 border-r-2 border-white text-white{% else %}text-[#8A8F98] hover:text-white hover:bg-white/5{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                 <div class="flex items-center gap-3 relative z-10">
-                    <i data-lucide="layers" class="w-4 h-4 {% if request.resolver_match.app_name != 'categories' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <i data-lucide="layers" class="w-4 h-4 {% if request.resolver_match.app_name != 'categories' %}group-hover:text-white transition-colors duration-300{% endif %}"></i>
                     <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'categories' %}font-semibold{% else %}font-medium{% endif %}">Categories</span>
                 </div>
             </a>
 
             <!-- BRANDS -->
-            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'brands' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
-                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+            <a href="{% url 'brands:list' %}" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'brands' %}bg-white/10 border-r-2 border-white text-white{% else %}text-[#8A8F98] hover:text-white hover:bg-white/5{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                 <div class="flex items-center gap-3 relative z-10">
-                    <i data-lucide="gem" class="w-4 h-4 {% if request.resolver_match.app_name != 'brands' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <i data-lucide="gem" class="w-4 h-4 {% if request.resolver_match.app_name != 'brands' %}group-hover:text-white transition-colors duration-300{% endif %}"></i>
                     <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'brands' %}font-semibold{% else %}font-medium{% endif %}">Brands</span>
                 </div>
             </a>
 
             <!-- ORDERS -->
-            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'orders' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
-                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'orders' %}bg-white/10 border-r-2 border-white text-white{% else %}text-[#8A8F98] hover:text-white hover:bg-white/5{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                 <div class="flex items-center gap-3 relative z-10">
-                    <i data-lucide="shopping-bag" class="w-4 h-4 {% if request.resolver_match.app_name != 'orders' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <i data-lucide="shopping-bag" class="w-4 h-4 {% if request.resolver_match.app_name != 'orders' %}group-hover:text-white transition-colors duration-300{% endif %}"></i>
                     <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'orders' %}font-semibold{% else %}font-medium{% endif %}">Orders</span>
                 </div>
             </a>
 
             <!-- USERS -->
-            <a href="{% url 'users:index' %}" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'users' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
-                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+            <a href="{% url 'users:index' %}" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'users' %}bg-white/10 border-r-2 border-white text-white{% else %}text-[#8A8F98] hover:text-white hover:bg-white/5{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                 <div class="flex items-center gap-3 relative z-10">
-                    <i data-lucide="users" class="w-4 h-4 {% if request.resolver_match.app_name != 'users' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <i data-lucide="users" class="w-4 h-4 {% if request.resolver_match.app_name != 'users' %}group-hover:text-white transition-colors duration-300{% endif %}"></i>
                     <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'users' %}font-semibold{% else %}font-medium{% endif %}">Users</span>
                 </div>
             </a>
 
             <!-- COUPONS -->
-            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'coupons' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
-                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'coupons' %}bg-white/10 border-r-2 border-white text-white{% else %}text-[#8A8F98] hover:text-white hover:bg-white/5{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                 <div class="flex items-center gap-3 relative z-10">
-                    <i data-lucide="ticket" class="w-4 h-4 {% if request.resolver_match.app_name != 'coupons' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <i data-lucide="ticket" class="w-4 h-4 {% if request.resolver_match.app_name != 'coupons' %}group-hover:text-white transition-colors duration-300{% endif %}"></i>
                     <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'coupons' %}font-semibold{% else %}font-medium{% endif %}">Coupons</span>
                 </div>
             </a>
 
             <!-- SALES REPORT -->
-            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'reports' %}bg-auraSurface border-r-2 border-auraGold text-auraGold{% else %}text-auraMuted hover:text-white hover:bg-auraSurface/50{% endif %}">
-                <span class="absolute inset-0 w-full h-full bg-auraGoldMuted opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'reports' %}bg-white/10 border-r-2 border-white text-white{% else %}text-[#8A8F98] hover:text-white hover:bg-white/5{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                 <div class="flex items-center gap-3 relative z-10">
-                    <i data-lucide="bar-chart-2" class="w-4 h-4 {% if request.resolver_match.app_name != 'reports' %}group-hover:text-auraGold transition-colors duration-300{% endif %}"></i>
+                    <i data-lucide="bar-chart-2" class="w-4 h-4 {% if request.resolver_match.app_name != 'reports' %}group-hover:text-white transition-colors duration-300{% endif %}"></i>
                     <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'reports' %}font-semibold{% else %}font-medium{% endif %}">Sales Report</span>
                 </div>
             </a>
@@ -135,7 +135,7 @@
         <div class="p-4 mt-auto border-t border-auraBorder">
             <form action="{% url 'admin_auth:logout' %}" method="POST">
                 {% csrf_token %}
-                <button type="submit" class="w-full flex items-center gap-3 py-3 px-4 text-auraMuted hover:text-white hover:bg-auraSurface/50 rounded-sm transition-all duration-300 group">
+                <button type="submit" class="w-full flex items-center gap-3 py-3 px-4 text-[#8A8F98] hover:text-white hover:bg-white/5 rounded-sm transition-all duration-300 group">
                     <i data-lucide="log-out" class="w-4 h-4 group-hover:text-red-400 transition-colors duration-300"></i>
                     <span class="text-xs uppercase tracking-widest font-medium">Logout</span>
                 </button>
@@ -164,7 +164,7 @@
         </header>
 
         <!-- Dashboard Content -->
-        <div class="flex-1 p-10 bg-[#0A0A0B]"> <!-- Slightly darker content area -->
+        <div class="flex-1 p-10 bg-white"> <!-- Light content area -->
             {% block admin_content %}
             {% endblock %}
         </div>
