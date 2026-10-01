@@ -43,23 +43,24 @@
 
     <!-- Filter & Sort -->
     <div class="flex justify-between items-center flex-wrap gap-4">
-        <div class="flex items-center gap-8">
-            <!-- Status Filter Tabs -->
-            <div class="flex gap-8">
-                <a href="?status=all&search={{ search_query|default:'' }}&category={{ category_filter|default:'' }}&sort={{ sort_by|default:'newest' }}"
-                   class="text-[11px] uppercase tracking-widest font-semibold pb-2 border-b-2 transition-colors duration-300 {% if status_filter == 'all' or not status_filter %}text-[#A8842C] border-[#A8842C]{% else %}text-[#6E6A63] border-transparent hover:text-[#141414] hover:border-[#141414]/30{% endif %}">
-                    All
-                </a>
-                <a href="?status=active&search={{ search_query|default:'' }}&category={{ category_filter|default:'' }}&sort={{ sort_by|default:'newest' }}"
-                   class="text-[11px] uppercase tracking-widest font-semibold pb-2 border-b-2 transition-colors duration-300 {% if status_filter == 'active' %}text-[#A8842C] border-[#A8842C]{% else %}text-[#6E6A63] border-transparent hover:text-[#141414] hover:border-[#141414]/30{% endif %}">
-                    Active
-                </a>
-                <a href="?status=inactive&search={{ search_query|default:'' }}&category={{ category_filter|default:'' }}&sort={{ sort_by|default:'newest' }}"
-                   class="text-[11px] uppercase tracking-widest font-semibold pb-2 border-b-2 transition-colors duration-300 {% if status_filter == 'inactive' %}text-[#A8842C] border-[#A8842C]{% else %}text-[#6E6A63] border-transparent hover:text-[#141414] hover:border-[#141414]/30{% endif %}">
-                    Inactive
-                </a>
-            </div>
+        <!-- Status Filter Tabs -->
+        <div class="flex gap-8">
+            <a href="?status=all&search={{ search_query|default:'' }}&category={{ category_filter|default:'' }}&sort={{ sort_by|default:'newest' }}"
+               class="text-[11px] uppercase tracking-widest font-semibold pb-2 border-b-2 transition-colors duration-300 {% if status_filter == 'all' or not status_filter %}text-[#A8842C] border-[#A8842C]{% else %}text-[#6E6A63] border-transparent hover:text-[#141414] hover:border-[#141414]/30{% endif %}">
+                All
+            </a>
+            <a href="?status=active&search={{ search_query|default:'' }}&category={{ category_filter|default:'' }}&sort={{ sort_by|default:'newest' }}"
+               class="text-[11px] uppercase tracking-widest font-semibold pb-2 border-b-2 transition-colors duration-300 {% if status_filter == 'active' %}text-[#A8842C] border-[#A8842C]{% else %}text-[#6E6A63] border-transparent hover:text-[#141414] hover:border-[#141414]/30{% endif %}">
+                Active
+            </a>
+            <a href="?status=inactive&search={{ search_query|default:'' }}&category={{ category_filter|default:'' }}&sort={{ sort_by|default:'newest' }}"
+               class="text-[11px] uppercase tracking-widest font-semibold pb-2 border-b-2 transition-colors duration-300 {% if status_filter == 'inactive' %}text-[#A8842C] border-[#A8842C]{% else %}text-[#6E6A63] border-transparent hover:text-[#141414] hover:border-[#141414]/30{% endif %}">
+                Inactive
+            </a>
+        </div>
 
+        <!-- Right-side controls: Category Filter + Sorting -->
+        <div class="flex items-center gap-6 flex-wrap">
             <!-- Category Filter -->
             <form method="GET" class="flex items-center gap-2">
                 <input type="hidden" name="status" value="{{ status_filter|default:'all' }}">
@@ -73,21 +74,21 @@
                     {% endfor %}
                 </select>
             </form>
-        </div>
 
-        <!-- Sorting -->
-        <form method="GET" class="flex items-center gap-2">
-            <input type="hidden" name="status" value="{{ status_filter|default:'all' }}">
-            <input type="hidden" name="search" value="{{ search_query|default:'' }}">
-            <input type="hidden" name="category" value="{{ category_filter|default:'' }}">
-            <span class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Sort:</span>
-            <select name="sort" onchange="this.form.submit()" aria-label="Sort brands" class="bg-white border border-[#E8E5DF] rounded-sm py-1.5 px-3 text-[11px] uppercase tracking-widest text-[#141414] focus:outline-none focus:border-[#A8842C]/60">
-                <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
-                <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest First</option>
-                <option value="a-z" {% if sort_by == 'a-z' %}selected{% endif %}>Name (A-Z)</option>
-                <option value="z-a" {% if sort_by == 'z-a' %}selected{% endif %}>Name (Z-A)</option>
-            </select>
-        </form>
+            <!-- Sorting -->
+            <form method="GET" class="flex items-center gap-2">
+                <input type="hidden" name="status" value="{{ status_filter|default:'all' }}">
+                <input type="hidden" name="search" value="{{ search_query|default:'' }}">
+                <input type="hidden" name="category" value="{{ category_filter|default:'' }}">
+                <span class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Sort:</span>
+                <select name="sort" onchange="this.form.submit()" aria-label="Sort brands" class="bg-white border border-[#E8E5DF] rounded-sm py-1.5 px-3 text-[11px] uppercase tracking-widest text-[#141414] focus:outline-none focus:border-[#A8842C]/60">
+                    <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
+                    <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest First</option>
+                    <option value="a-z" {% if sort_by == 'a-z' %}selected{% endif %}>Name (A-Z)</option>
+                    <option value="z-a" {% if sort_by == 'z-a' %}selected{% endif %}>Name (Z-A)</option>
+                </select>
+            </form>
+        </div>
     </div>
 </div>
 

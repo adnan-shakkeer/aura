@@ -29,6 +29,10 @@ class BrandListView(View):
             )
         )
 
+        categories = Category.objects.filter(
+            is_deleted=False
+        ).order_by("name")
+
         search_query = request.GET.get("search", "").strip()
         if search_query:
             queryset = queryset.filter(name__icontains=search_query)
@@ -65,6 +69,7 @@ class BrandListView(View):
 
         context = {
             "brands": brands,
+            "categories": categories,
             "search_query": search_query,
             "status_filter": status_filter,
             "category_filter": category_filter,
@@ -167,12 +172,8 @@ class BrandCreateView(View):
 
             try:
                 image = Image.open(image_file)
-                width, height = image.size
-
-                if min(width, height) < 800:
-                    field_errors[field_name] = (
-                        "Image must be at least 800px on its shorter side."
-                    )
+                image.verify()
+                image_file.seek(0)
 
             except Exception:
                 field_errors[field_name] = "Invalid image file."
@@ -261,6 +262,7 @@ class BrandUpdateView(View):
         hero_description = request.POST.get(
             "hero_description", ""
         ).strip()
+        is_listed_input = request.POST.get("is_listed")
 
         listing_image = request.FILES.get("listing_image")
         hero_image = request.FILES.get("hero_image")
@@ -331,12 +333,8 @@ class BrandUpdateView(View):
 
             try:
                 image = Image.open(image_file)
-                width, height = image.size
-
-                if min(width, height) < 800:
-                    field_errors[field_name] = (
-                        "Image must be at least 800px on its shorter side."
-                    )
+                image.verify()
+                image_file.seek(0)
 
             except Exception:
                 field_errors[field_name] = "Invalid image file."
@@ -374,6 +372,12 @@ class BrandUpdateView(View):
         brand.description = description
         brand.listing_description = listing_description
         brand.hero_description = hero_description
+        brand.is_listed = is_listed_input in [
+            "on",
+            "true",
+            "True",
+            True,
+        ]
 
         # Replace listing image if a new one was uploaded
         if listing_image:
