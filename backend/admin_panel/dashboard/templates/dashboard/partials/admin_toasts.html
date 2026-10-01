@@ -26,46 +26,46 @@
         const toast = document.createElement('div');
 
         // Per-type visual treatment: accent border + tinted icon chip + type label.
-        // Success keeps the AURA gold brand treatment; error/warning/info use
-        // restrained rose/amber/sky accents consistent with the Admin palette.
+        // Restrained deep tones on a light card, harmonized with the Figma-inspired
+        // Admin palette: success/deep-green, error/deep-red, warning/amber, info/blue.
         const styles = {
             success: {
                 label: 'Success',
-                border: 'border-[#D4AF37]',
-                chip: 'border-[#D4AF37]/30 bg-[#D4AF37]/10',
-                icon: '<i data-lucide="check-circle-2" class="w-4 h-4 text-[#D4AF37]"></i>',
-                labelColor: 'text-[#D4AF37]'
+                border: 'border-[#1E7E4D]',
+                chip: 'border-[#1E7E4D]/30 bg-[#1E7E4D]/10',
+                icon: '<i data-lucide="check-circle-2" class="w-4 h-4 text-[#1E7E4D]"></i>',
+                labelColor: 'text-[#1E7E4D]'
             },
             error: {
                 label: 'Error',
-                border: 'border-rose-500',
-                chip: 'border-rose-500/30 bg-rose-500/10',
-                icon: '<i data-lucide="x-circle" class="w-4 h-4 text-rose-500"></i>',
-                labelColor: 'text-rose-400'
+                border: 'border-[#B42318]',
+                chip: 'border-[#B42318]/30 bg-[#B42318]/10',
+                icon: '<i data-lucide="x-circle" class="w-4 h-4 text-[#B42318]"></i>',
+                labelColor: 'text-[#B42318]'
             },
             warning: {
                 label: 'Warning',
-                border: 'border-amber-500',
-                chip: 'border-amber-500/30 bg-amber-500/10',
-                icon: '<i data-lucide="alert-triangle" class="w-4 h-4 text-amber-500"></i>',
-                labelColor: 'text-amber-400'
+                border: 'border-[#B54708]',
+                chip: 'border-[#B54708]/30 bg-[#B54708]/10',
+                icon: '<i data-lucide="alert-triangle" class="w-4 h-4 text-[#B54708]"></i>',
+                labelColor: 'text-[#B54708]'
             },
             info: {
                 label: 'Info',
-                border: 'border-sky-500',
-                chip: 'border-sky-500/30 bg-sky-500/10',
-                icon: '<i data-lucide="info" class="w-4 h-4 text-sky-500"></i>',
-                labelColor: 'text-sky-400'
+                border: 'border-[#175CD3]',
+                chip: 'border-[#175CD3]/30 bg-[#175CD3]/10',
+                icon: '<i data-lucide="info" class="w-4 h-4 text-[#175CD3]"></i>',
+                labelColor: 'text-[#175CD3]'
             }
         };
         const style = styles[type] || styles.info;
 
-        toast.className = `bg-[#12141C]/90 backdrop-blur-md border-l-2 ${style.border} rounded-sm shadow-lg p-4 flex items-start gap-3 transform -translate-y-4 opacity-0 transition-all duration-300`;
+        toast.className = `bg-white/95 backdrop-blur-md border border-[#EDE9E1] border-l-2 ${style.border} rounded-sm shadow-lg p-4 flex items-start gap-3 transform -translate-y-4 opacity-0 transition-all duration-300`;
         toast.innerHTML = `
             <div class="w-7 h-7 rounded-full border ${style.chip} flex items-center justify-center shrink-0">${style.icon}</div>
             <div class="flex flex-col gap-0.5 min-w-0">
                 <span class="text-[9px] uppercase tracking-[0.2em] font-semibold ${style.labelColor}">${style.label}</span>
-                <p class="text-xs text-[#F4F4F5] font-medium tracking-wide leading-relaxed">${message}</p>
+                <p class="text-xs text-[#141414] font-medium tracking-wide leading-relaxed">${message}</p>
             </div>
         `;
 
