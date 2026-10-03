@@ -1,0 +1,520 @@
+{% extends "dashboard/base_admin.html" %}
+
+{% block breadcrumbs %}ADMIN / <a href="{% url 'products:list' %}" class="hover:text-[#141414] transition-colors">PRODUCTS</a> / <span class="text-auraGold">ADD PRODUCT</span>{% endblock %}
+
+{% block admin_content %}
+{% comment %}Notifications use the shared Admin toast system (dashboard/partials/admin_toasts.html, included by base_admin.html).{% endcomment %}
+
+<!-- Page Header -->
+<div class="mb-10">
+    <div class="flex justify-between items-end border-b border-[#A8842C]/30 pb-4 mb-6">
+        <div>
+            <h2 class="font-serif text-4xl tracking-wide text-[#141414] mb-2">Add Product</h2>
+            <p class="text-sm text-[#6E6A63]">Create a new fragrance product with its first purchasable variant.</p>
+        </div>
+        <a href="{% url 'products:list' %}" class="inline-flex items-center gap-2 px-6 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-[10px] uppercase tracking-widest font-semibold hover:bg-[#F5F3EE] hover:text-[#141414] transition-colors rounded-sm">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Products
+        </a>
+    </div>
+</div>
+
+<!-- Product Creation Form -->
+<form id="product-form" method="POST" enctype="multipart/form-data" action="{% url 'products:add' %}" class="max-w-4xl" novalidate>
+    {% csrf_token %}
+
+    <!-- SECTION A: Product Information -->
+    <div class="bg-white border border-[#E8E5DF] rounded-xl shadow-2xl overflow-hidden mb-8">
+        <div class="px-8 py-6 border-b border-[#E8E5DF] bg-[#F7F5F0]">
+            <h3 class="text-[11px] uppercase tracking-[0.2em] text-[#141414] font-semibold">Product Information</h3>
+        </div>
+        <div class="p-8 space-y-6">
+            <!-- Product Name -->
+            <div>
+                <label for="name" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Product Name <span class="text-[#B42318]">*</span></label>
+                <input type="text" id="name" name="name" placeholder="Enter product name" autocomplete="off"
+                       class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors">
+                <p id="error_name" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+            </div>
+
+            <!-- Brand -->
+            <div>
+                <label for="brand" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Brand <span class="text-[#B42318]">*</span></label>
+                <select id="brand" name="brand"
+                        class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] focus:outline-none focus:border-[#A8842C]/60 transition-colors">
+                    <option value="">Select Brand</option>
+                    {% for b in brands %}
+                    <option value="{{ b.id }}" data-category="{{ b.category.name }}">{{ b.name }}</option>
+                    {% endfor %}
+                </select>
+                <p id="brand-category-hint" class="mt-1.5 text-[11px] tracking-wide text-[#A8A29A] font-medium hidden">Category: <span id="brand-category-name" class="text-[#6E6A63]"></span></p>
+                <p id="error_brand" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Short Description -->
+                <div class="md:col-span-2">
+                    <div class="flex items-center justify-between mb-2">
+                        <label for="short_description" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Short Description</label>
+                        <span id="counter_short_description" class="text-[10px] tracking-widest text-[#A8A29A] font-medium">0 / 300</span>
+                    </div>
+                    <input type="text" id="short_description" name="short_description" maxlength="300" placeholder="One-line highlight shown on the product card"
+                           class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors">
+                    <p id="error_short_description" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+                </div>
+
+                <!-- Description -->
+                <div class="md:col-span-2">
+                    <label for="description" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Description <span class="text-[#B42318]">*</span></label>
+                    <textarea id="description" name="description" rows="4" placeholder="Describe the fragrance, its character and story..."
+                              class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors resize-y"></textarea>
+                    <p id="error_description" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+                </div>
+
+                <!-- Fragrance Concentration -->
+                <div>
+                    <label for="fragrance_concentration" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Fragrance Concentration <span class="text-[#B42318]">*</span></label>
+                    <select id="fragrance_concentration" name="fragrance_concentration"
+                            class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] focus:outline-none focus:border-[#A8842C]/60 transition-colors">
+                        <option value="">Select Concentration</option>
+                        {% for value, label in fragrance_concentrations %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <p id="error_fragrance_concentration" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+                </div>
+
+                <!-- Status -->
+                <div class="flex flex-col justify-end">
+                    <label class="flex items-center gap-3 cursor-pointer group mb-2.5">
+                        <span class="relative flex items-center">
+                            <input type="checkbox" id="is_listed" name="is_listed" class="peer sr-only" checked>
+                            <span class="block w-10 h-5 bg-[#E3DFD7] rounded-full peer-checked:bg-[#A8842C]/20 transition-colors border border-[#D8D4CC] peer-checked:border-[#A8842C]/50"></span>
+                            <span class="absolute left-1 top-1 w-3 h-3 bg-[#A8A29A] rounded-full peer-checked:translate-x-5 peer-checked:bg-[#A8842C] transition-all duration-300"></span>
+                        </span>
+                        <span class="text-xs uppercase tracking-widest text-[#6E6A63] group-hover:text-[#141414] transition-colors font-medium">Listed / Active</span>
+                    </label>
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label for="top_notes" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Top Notes</label>
+                    <textarea id="top_notes" name="top_notes" rows="2" placeholder="e.g. Bergamot, Cardamom..."
+                              class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors resize-y"></textarea>
+                </div>
+                <div>
+                    <label for="heart_notes" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Heart Notes</label>
+                    <textarea id="heart_notes" name="heart_notes" rows="2" placeholder="e.g. Rose, Oud..."
+                              class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors resize-y"></textarea>
+                </div>
+                <div class="md:col-span-2">
+                    <label for="base_notes" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Base Notes</label>
+                    <textarea id="base_notes" name="base_notes" rows="2" placeholder="e.g. Amber, Musk, Sandalwood..."
+                              class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors resize-y"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION B: Variations Setup -->
+    <div class="bg-white border border-[#E8E5DF] rounded-xl shadow-2xl overflow-hidden mb-8">
+        <div class="px-8 py-6 border-b border-[#E8E5DF] bg-[#F7F5F0] flex items-center justify-between">
+            <h3 class="text-[11px] uppercase tracking-[0.2em] text-[#141414] font-semibold">Variations Setup</h3>
+            <span class="text-[10px] uppercase tracking-widest text-[#A8A29A] font-medium">First variant required</span>
+        </div>
+        <div class="p-8">
+            <!-- Empty state -->
+            <div id="variant-empty" class="flex flex-col items-center justify-center py-8">
+                <div class="w-16 h-16 rounded-full bg-[#F5F3EE] border border-[#E8E5DF] flex items-center justify-center mb-4">
+                    <i data-lucide="layers" class="w-6 h-6 text-[#6E6A63]"></i>
+                </div>
+                <h4 class="font-serif text-2xl text-[#141414] mb-2">No variants added yet</h4>
+                <p class="text-sm text-[#6E6A63] mb-6">A product needs at least one purchasable variant with 3–5 images.</p>
+                <button type="button" onclick="openVariantModal()" class="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold hover:bg-black transition-colors rounded-sm">
+                    <i data-lucide="plus" class="w-3 h-3"></i> Add First Variant
+                </button>
+            </div>
+
+            <!-- Variant summary (shown after modal confirm) -->
+            <div id="variant-summary" class="hidden">
+                <div class="flex items-center gap-5 border border-[#E8E5DF] rounded-sm p-5">
+                    <img id="summary-image" src="" alt="Variant primary image" class="w-20 h-20 rounded-sm object-cover border border-[#E8E5DF] shrink-0">
+                    <div class="min-w-0 flex-1">
+                        <p class="font-serif text-xl text-[#141414]"><span id="summary-size">—</span></p>
+                        <p class="text-xs text-[#6E6A63] mt-1">SKU: <span id="summary-sku" class="text-[#141414] font-medium">—</span></p>
+                        <p class="text-xs text-[#6E6A63] mt-0.5"><span id="summary-price">—</span> · Stock: <span id="summary-stock">—</span> · <span id="summary-status">—</span> · <span id="summary-count">—</span></p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button type="button" onclick="openVariantModal()" title="Edit variant" aria-label="Edit variant" class="w-8 h-8 rounded-sm bg-white border border-[#E8E5DF] flex items-center justify-center text-[#6E6A63] hover:text-[#141414] hover:border-[#141414]/30 transition-colors">
+                            <i data-lucide="pencil" class="w-4 h-4"></i>
+                        </button>
+                        <button type="button" onclick="removeFirstVariant()" title="Remove variant" aria-label="Remove variant" class="w-8 h-8 rounded-sm bg-white border border-[#E8E5DF] flex items-center justify-center text-[#6E6A63] hover:text-[#B42318] hover:border-[#B42318]/50 hover:bg-[#B42318]/5 transition-colors">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <p id="error_variant_images" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+        </div>
+    </div>
+
+    <!-- Bottom Actions -->
+    <div class="flex justify-end gap-4 mb-10">
+        <a href="{% url 'products:list' %}" class="px-6 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-[10px] uppercase tracking-widest font-semibold hover:bg-[#F5F3EE] hover:text-[#141414] transition-colors rounded-sm">
+            Cancel
+        </a>
+        <button type="submit" id="submit-btn" class="px-6 py-2.5 bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold hover:bg-black transition-colors rounded-sm shadow-[0_0_15px_rgba(0,0,0,0.15)] flex items-center gap-2 disabled:opacity-60">
+            <span id="submit-text">Create Product</span>
+            <i data-lucide="loader-2" class="w-3 h-3 animate-spin hidden" id="submit-spinner"></i>
+        </button>
+    </div>
+
+    <!-- First Variant Modal (fields belong to #product-form; submitted together) -->
+    <div id="variant-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-[#141414]/40 backdrop-blur-sm modal-backdrop"></div>
+        <div class="relative bg-white backdrop-blur-md border border-[#E8E5DF] shadow-[0_20px_50px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-2xl p-8 transform scale-95 opacity-0 transition-all duration-300 modal-panel max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-serif text-2xl text-[#141414] tracking-wide" id="variant-modal-title">Add First Variant</h3>
+                <button type="button" class="close-variant-modal text-[#6E6A63] hover:text-[#141414] transition-colors" aria-label="Close variant modal">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="variant_size" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Size <span class="text-[#B42318]">*</span></label>
+                    <input type="text" id="variant_size" name="variant_size" placeholder="e.g. 50ml"
+                           class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors">
+                    <p id="error_variant_size" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+                </div>
+                <div>
+                    <label for="variant_sku" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">SKU <span class="text-[#B42318]">*</span></label>
+                    <input type="text" id="variant_sku" name="variant_sku" placeholder="e.g. AURA-OUD-50" autocomplete="off"
+                           class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors">
+                    <p id="error_variant_sku" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+                </div>
+                <div>
+                    <label for="variant_price" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Price (₹) <span class="text-[#B42318]">*</span></label>
+                    <input type="number" id="variant_price" name="variant_price" min="0" step="0.01" placeholder="e.g. 12500.00"
+                           class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors">
+                    <p id="error_variant_price" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+                </div>
+                <div>
+                    <label for="variant_stock" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Stock <span class="text-[#B42318]">*</span></label>
+                    <input type="number" id="variant_stock" name="variant_stock" min="0" step="1" placeholder="e.g. 15"
+                           class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors">
+                    <p id="error_variant_stock" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+                </div>
+                <div class="md:col-span-2 flex items-center gap-6">
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <span class="relative flex items-center">
+                            <input type="checkbox" id="variant_is_listed" name="variant_is_listed" class="peer sr-only" checked>
+                            <span class="block w-10 h-5 bg-[#E3DFD7] rounded-full peer-checked:bg-[#A8842C]/20 transition-colors border border-[#D8D4CC] peer-checked:border-[#A8842C]/50"></span>
+                            <span class="absolute left-1 top-1 w-3 h-3 bg-[#A8A29A] rounded-full peer-checked:translate-x-5 peer-checked:bg-[#A8842C] transition-all duration-300"></span>
+                        </span>
+                        <span class="text-xs uppercase tracking-widest text-[#6E6A63] group-hover:text-[#141414] transition-colors font-medium">Listed / Active</span>
+                    </label>
+                </div>
+                <div class="md:col-span-2">
+                    <label for="variant_images" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Product Images (3–5) <span class="text-[#B42318]">*</span></label>
+                    <label for="variant_images" id="dropzone_variant_images" class="block border border-dashed border-[#C9C4BB] rounded-sm p-5 cursor-pointer hover:border-[#A8842C]/60 transition-colors bg-white">
+                        <input type="file" id="variant_images" name="variant_images" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" aria-label="Select variant images">
+                        <div id="preview_variant_images" class="flex flex-wrap gap-3"></div>
+                        <div id="placeholder_variant_images" class="flex items-center gap-4">
+                            <div class="w-16 h-16 rounded-sm bg-[#F5F3EE] border border-[#E8E5DF] flex items-center justify-center shrink-0">
+                                <i data-lucide="image" class="w-5 h-5 text-[#A8A29A]"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-[#141414] font-medium">Click to select 3–5 images</p>
+                                <p class="text-xs text-[#6E6A63] mt-1">JPEG, PNG or WebP · First image is the primary / front-facing image</p>
+                            </div>
+                        </div>
+                    </label>
+                    <p id="error_variant_images" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-end gap-4">
+                <button type="button" class="close-variant-modal px-6 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-[10px] uppercase tracking-widest font-semibold hover:bg-[#F5F3EE] hover:text-[#141414] transition-colors rounded-sm">
+                    Cancel
+                </button>
+                <button type="button" onclick="confirmFirstVariant()" class="px-6 py-2.5 bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold hover:bg-black transition-colors rounded-sm">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('product-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const submitText = document.getElementById('submit-text');
+        const submitSpinner = document.getElementById('submit-spinner');
+
+        const ERROR_INPUT_CLASSES = ['border-[#B42318]/50', 'focus:border-[#B42318]/50', 'focus:ring-[#B42318]/30', 'focus:ring-1'];
+        const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+        // --- Error helpers ---
+        const clearErrors = () => {
+            form.querySelectorAll('input:not([type="file"]):not([type="checkbox"]), select, textarea').forEach(input => {
+                input.classList.remove(...ERROR_INPUT_CLASSES);
+            });
+            form.querySelectorAll('p[id^="error_"]').forEach(el => {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+            const dz = document.getElementById('dropzone_variant_images');
+            if (dz) dz.classList.remove('border-[#B42318]/50');
+        };
+
+        const showError = (field, message) => {
+            const errorEl = document.getElementById(`error_${field}`);
+            if (errorEl) {
+                errorEl.textContent = message;
+                errorEl.classList.remove('hidden');
+            }
+            if (field === 'variant_images') {
+                const dz = document.getElementById('dropzone_variant_images');
+                if (dz) dz.classList.add('border-[#B42318]/50');
+                return;
+            }
+            const input = document.getElementById(field);
+            if (input) input.classList.add(...ERROR_INPUT_CLASSES);
+        };
+
+        // --- Short description counter (model limit: 300) ---
+        const shortDesc = document.getElementById('short_description');
+        const shortCounter = document.getElementById('counter_short_description');
+        const updateShortCounter = () => {
+            shortCounter.textContent = `${shortDesc.value.length} / 300`;
+        };
+        shortDesc.addEventListener('input', updateShortCounter);
+        updateShortCounter();
+
+        // --- Brand -> Category hint (read-only contextual info) ---
+        const brandSelect = document.getElementById('brand');
+        const catHint = document.getElementById('brand-category-hint');
+        const catName = document.getElementById('brand-category-name');
+        brandSelect.addEventListener('change', () => {
+            const opt = brandSelect.options[brandSelect.selectedIndex];
+            if (opt && opt.dataset.category) {
+                catName.textContent = opt.dataset.category;
+                catHint.classList.remove('hidden');
+            } else {
+                catHint.classList.add('hidden');
+            }
+        });
+
+        // --- Variant modal ---
+        const modal = document.getElementById('variant-modal');
+        const modalPanel = modal.querySelector('.modal-panel');
+        const variantImagesInput = document.getElementById('variant_images');
+        const previewBox = document.getElementById('preview_variant_images');
+        const placeholderBox = document.getElementById('placeholder_variant_images');
+        let previewUrls = [];
+
+        const closeVariantModal = () => {
+            modalPanel.classList.remove('scale-100', 'opacity-100');
+            modalPanel.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        };
+
+        window.openVariantModal = () => {
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modalPanel.classList.remove('scale-95', 'opacity-0');
+            modalPanel.classList.add('scale-100', 'opacity-100');
+        };
+
+        document.querySelectorAll('.close-variant-modal, .modal-backdrop').forEach(btn => {
+            btn.addEventListener('click', closeVariantModal);
+        });
+
+        const renderPreviews = () => {
+            previewUrls.forEach(u => URL.revokeObjectURL(u));
+            previewUrls = [];
+            previewBox.innerHTML = '';
+            if (!selectedImages.length) {
+                placeholderBox.classList.remove('hidden');
+                return;
+            }
+            placeholderBox.classList.add('hidden');
+            selectedImages.forEach((file, idx) => {
+                const url = URL.createObjectURL(file);
+                previewUrls.push(url);
+                const wrap = document.createElement('div');
+                wrap.className = 'relative w-20 h-20 shrink-0';
+                wrap.innerHTML = `
+                    <img src="${url}" alt="Variant image ${idx + 1}" class="w-20 h-20 rounded-sm object-cover border ${idx === 0 ? 'border-[#A8842C]/60' : 'border-[#E8E5DF]'}">
+                    ${idx === 0 ? '<span class="absolute bottom-1 left-1 px-1.5 py-0.5 bg-[#0D0D0E] text-white text-[8px] uppercase tracking-widest rounded-sm">Primary</span>' : ''}
+                    <button type="button" data-remove-image="${idx}" aria-label="Remove image ${idx + 1}" class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white border border-[#E8E5DF] text-[#6E6A63] hover:text-[#B42318] hover:border-[#B42318]/50 text-xs leading-none flex items-center justify-center">&times;</button>
+                `;
+                previewBox.appendChild(wrap);
+            });
+            lucide.createIcons();
+        };
+
+        previewBox.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-remove-image]');
+            if (!btn) return;
+            const idx = parseInt(btn.dataset.removeImage, 10);
+            selectedImages.splice(idx, 1);
+            renderPreviews();
+        });
+
+        // Separate collection: the file input only ever holds the latest
+        // picker selection, so newly picked files are appended here instead
+        // of replacing the previous ones. Max 5 images total.
+        const MAX_VARIANT_IMAGES = 5;
+        let selectedImages = [];
+
+        const hideVariantImagesError = () => {
+            const errorEl = document.getElementById('error_variant_images');
+            if (errorEl) {
+                errorEl.classList.add('hidden');
+                errorEl.textContent = '';
+            }
+            const dz = document.getElementById('dropzone_variant_images');
+            if (dz) dz.classList.remove('border-[#B42318]/50');
+        };
+
+        const addFilesToCollection = (fileList) => {
+            const incoming = Array.from(fileList || []);
+            variantImagesInput.value = '';
+            if (!incoming.length) return;
+
+            const bad = incoming.find(f => !ACCEPTED_TYPES.includes(f.type));
+            if (bad) {
+                showError('variant_images', 'Only JPEG, PNG, and WebP images are allowed.');
+                return;
+            }
+            const fresh = incoming.filter(f => !selectedImages.some(
+                s => s.name === f.name && s.size === f.size && s.lastModified === f.lastModified
+            ));
+            if (!fresh.length) return;
+
+            const room = MAX_VARIANT_IMAGES - selectedImages.length;
+            if (room <= 0) {
+                showAdminToast('A maximum of 5 product images is allowed.', 'error');
+                return;
+            }
+            if (fresh.length > room) {
+                showError('variant_images', `Only ${room} more image${room === 1 ? '' : 's'} can be added (maximum 5).`);
+                return;
+            }
+            selectedImages = selectedImages.concat(fresh);
+            hideVariantImagesError();
+            renderPreviews();
+        };
+
+        variantImagesInput.addEventListener('change', () => {
+            addFilesToCollection(variantImagesInput.files);
+        });
+
+        // Confirm variant -> summary card (values stay in the modal inputs for submit)
+        window.confirmFirstVariant = () => {
+            const size = document.getElementById('variant_size').value.trim();
+            const sku = document.getElementById('variant_sku').value.trim();
+            const price = document.getElementById('variant_price').value.trim();
+            const stock = document.getElementById('variant_stock').value.trim();
+            const listed = document.getElementById('variant_is_listed').checked;
+            const count = selectedImages.length;
+            let valid = true;
+
+            if (!size || !sku || !price || !stock) {
+                showAdminToast('Please complete size, SKU, price and stock first.', 'error');
+                valid = false;
+            }
+            if (count < 3 || count > 5) {
+                showError('variant_images', count === 0 ? 'At least 3 product images are required.' : (count < 3 ? 'At least 3 product images are required.' : 'A maximum of 5 product images is allowed.'));
+                valid = false;
+            }
+            if (!valid) return;
+
+            document.getElementById('summary-size').textContent = size;
+            document.getElementById('summary-sku').textContent = sku;
+            document.getElementById('summary-price').textContent = `₹${price}`;
+            document.getElementById('summary-stock').textContent = stock;
+            document.getElementById('summary-status').textContent = listed ? 'Active' : 'Inactive';
+            document.getElementById('summary-count').textContent = `${count} image${count === 1 ? '' : 's'}`;
+            const first = selectedImages[0];
+            if (first) {
+                const url = URL.createObjectURL(first);
+                previewUrls.push(url);
+                document.getElementById('summary-image').src = url;
+            }
+            document.getElementById('variant-empty').classList.add('hidden');
+            document.getElementById('variant-summary').classList.remove('hidden');
+            closeVariantModal();
+        };
+
+        window.removeFirstVariant = () => {
+            selectedImages = [];
+            variantImagesInput.value = '';
+            renderPreviews();
+            ['variant_size', 'variant_sku', 'variant_price', 'variant_stock'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('variant_is_listed').checked = true;
+            document.getElementById('variant-summary').classList.add('hidden');
+            document.getElementById('variant-empty').classList.remove('hidden');
+        };
+
+        // --- AJAX multipart submit ---
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearErrors();
+
+            submitBtn.disabled = true;
+            submitText.textContent = 'Creating Product...';
+            submitSpinner.classList.remove('hidden');
+
+            let data = null;
+            let response = null;
+            try {
+                // Rebuild file payload from the collection: the file input only
+                // ever holds the latest picker selection.
+                const formData = new FormData(form);
+                formData.delete('variant_images');
+                selectedImages.forEach(f => formData.append('variant_images', f, f.name));
+                response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    data = await response.json();
+                }
+
+                if (response.ok && data && data.success) {
+                    showAdminToast(data.message || 'Product created successfully!', 'success');
+                    setTimeout(() => {
+                        window.location.href = "{% url 'products:list' %}";
+                    }, 1200);
+                } else if (data && data.errors) {
+                    Object.entries(data.errors).forEach(([field, msg]) => {
+                        showError(field, msg);
+                    });
+                    const hasVariantErrors = Object.keys(data.errors).some(k => k.startsWith('variant_'));
+                    if (hasVariantErrors) openVariantModal();
+                    showAdminToast('Please fix the highlighted errors.', 'error');
+                } else {
+                    showAdminToast((data && data.message) || 'Could not create product.', 'error');
+                }
+            } catch (error) {
+                console.error('Error creating product:', error);
+                showAdminToast('A network error occurred. Please try again.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitText.textContent = 'Create Product';
+                submitSpinner.classList.add('hidden');
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% comment %}
+  Reusable Add/Edit Variant modal for Product Variant Management.
+
+  Expected on the including page:
+    - const VARIANT_ADD_URL  (e.g. "{% url 'products:variant_add' product.id %}")
+    - const VARIANT_EDIT_URL_TEMPLATE (e.g. "{% url 'products:variant_edit' 0 %}")
+    - window.refreshVariantRow or a page reload after successful save.
+
+  Modes are switched from page JS:
+    openAddVariant()  -> POSTs to VARIANT_ADD_URL
+    openEditVariant({...}) -> POSTs to VARIANT_EDIT_URL_TEMPLATE with variant id.
+{% endcomment %}
+<div id="variant-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-[#141414]/40 backdrop-blur-sm variant-modal-backdrop"></div>
+    <div class="relative bg-white backdrop-blur-md border border-[#E8E5DF] shadow-[0_20px_50px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-2xl p-8 transform scale-95 opacity-0 transition-all duration-300 variant-modal-panel max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="font-serif text-2xl text-[#141414] tracking-wide" id="variant-modal-title">Add Variant</h3>
+            <button type="button" class="close-variant-modal text-[#6E6A63] hover:text-[#141414] transition-colors" aria-label="Close variant modal">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <form id="variant-form" method="POST" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            <input type="hidden" id="variant_id" value="">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="variant_size" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Size <span class="text-[#B42318]">*</span></label>
+                    <input type="text" id="variant_size" name="size" placeholder="e.g. 50ml"
+                           class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors">
+                    <p id="error_size" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+                </div>
+                <div>
+                    <label for="variant_sku" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">SKU <span class="text-[#B42318]">*</span></label>
+                    <input type="text" id="variant_sku" name="sku" placeholder="e.g. AURA-OUD-50" autocomplete="off"
+                           class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors">
+                    <p id="error_sku" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+                </div>
+                <div>
+                    <label for="variant_price" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Price (₹) <span class="text-[#B42318]">*</span></label>
+                    <input type="number" id="variant_price" name="price" min="0" step="0.01" placeholder="e.g. 12500.00"
+                           class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors">
+                    <p id="error_price" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+                </div>
+                <div>
+                    <label for="variant_stock" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Stock <span class="text-[#B42318]">*</span></label>
+                    <input type="number" id="variant_stock" name="stock" min="0" step="1" placeholder="e.g. 15"
+                           class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C]/60 transition-colors">
+                    <p id="error_stock" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+                </div>
+                <div class="md:col-span-2 flex items-center">
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <span class="relative flex items-center">
+                            <input type="checkbox" id="variant_is_listed" name="is_listed" class="peer sr-only" checked>
+                            <span class="block w-10 h-5 bg-[#E3DFD7] rounded-full peer-checked:bg-[#A8842C]/20 transition-colors border border-[#D8D4CC] peer-checked:border-[#A8842C]/50"></span>
+                            <span class="absolute left-1 top-1 w-3 h-3 bg-[#A8A29A] rounded-full peer-checked:translate-x-5 peer-checked:bg-[#A8842C] transition-all duration-300"></span>
+                        </span>
+                        <span class="text-xs uppercase tracking-widest text-[#6E6A63] group-hover:text-[#141414] transition-colors font-medium">Listed / Active</span>
+                    </label>
+                </div>
+
+                <!-- Existing images (edit mode only) -->
+                <div class="md:col-span-2 hidden" id="existing-images-wrap">
+                    <span class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Current Images <span class="text-[#A8A29A] font-medium normal-case tracking-normal">(first is Primary / front-facing — kept as-is)</span></span>
+                    <div id="existing-images" class="flex flex-wrap gap-3"></div>
+                </div>
+
+                <!-- New images -->
+                <div class="md:col-span-2">
+                    <label for="variant_images" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2"><span id="variant-images-label">Product Images (3–5)</span> <span class="text-[#B42318]">*</span></label>
+                    <label for="variant_images" id="dropzone_variant_images" class="block border border-dashed border-[#C9C4BB] rounded-sm p-5 cursor-pointer hover:border-[#A8842C]/60 transition-colors bg-white">
+                        <input type="file" id="variant_images" name="images" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" aria-label="Select variant images">
+                        <div id="preview_variant_images" class="flex flex-wrap gap-3"></div>
+                        <div id="placeholder_variant_images" class="flex items-center gap-4">
+                            <div class="w-16 h-16 rounded-sm bg-[#F5F3EE] border border-[#E8E5DF] flex items-center justify-center shrink-0">
+                                <i data-lucide="image" class="w-5 h-5 text-[#A8A29A]"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-[#141414] font-medium">Click to select images</p>
+                                <p class="text-xs text-[#6E6A63] mt-1">JPEG, PNG or WebP · First image is the primary / front-facing image</p>
+                            </div>
+                        </div>
+                    </label>
+                    <p id="error_images" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-end gap-4">
+                <button type="button" class="close-variant-modal px-6 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-[10px] uppercase tracking-widest font-semibold hover:bg-[#F5F3EE] hover:text-[#141414] transition-colors rounded-sm">
+                    Cancel
+                </button>
+                <button type="submit" id="variant-submit-btn" class="px-6 py-2.5 bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold hover:bg-black transition-colors rounded-sm shadow-[0_0_15px_rgba(0,0,0,0.15)] flex items-center gap-2 disabled:opacity-60">
+                    <span id="variant-submit-text">Add Variant</span>
+                    <i data-lucide="loader-2" class="w-3 h-3 animate-spin hidden" id="variant-submit-spinner"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

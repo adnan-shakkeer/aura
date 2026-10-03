@@ -68,7 +68,7 @@
             </a>
             
             <!-- PRODUCTS -->
-            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'products' %}bg-white/10 border-r-2 border-white text-white{% else %}text-[#8A8F98] hover:text-white hover:bg-white/5{% endif %}">
+            <a href="{% url 'products:list' %}" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'products' %}bg-white/10 border-r-2 border-white text-white{% else %}text-[#8A8F98] hover:text-white hover:bg-white/5{% endif %}">
                 <span class="absolute inset-0 w-full h-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                 <div class="flex items-center gap-3 relative z-10">
                     <i data-lucide="box" class="w-4 h-4 {% if request.resolver_match.app_name != 'products' %}group-hover:text-white transition-colors duration-300{% endif %}"></i>

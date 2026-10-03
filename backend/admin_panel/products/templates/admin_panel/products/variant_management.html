@@ -1,0 +1,524 @@
+{% extends "dashboard/base_admin.html" %}
+
+{% block breadcrumbs %}ADMIN / <a href="{% url 'products:list' %}" class="hover:text-[#141414] transition-colors">PRODUCTS</a> / <a href="{% url 'products:edit' product.id %}" class="hover:text-[#141414] transition-colors">{{ product.name|upper }}</a> / <span class="text-auraGold">VARIANTS</span>{% endblock %}
+
+{% block admin_content %}
+{% comment %}Notifications use the shared Admin toast system (dashboard/partials/admin_toasts.html, included by base_admin.html).{% endcomment %}
+
+<!-- Product Summary Header -->
+<div class="mb-10">
+    <div class="flex justify-between items-end border-b border-[#A8842C]/30 pb-4 mb-6">
+        <div class="flex items-center gap-5">
+            <div class="relative w-16 h-16 shrink-0">
+                <div class="absolute inset-0 rounded-sm bg-[#F5F3EE] border border-[#E8E5DF] flex items-center justify-center">
+                    <i data-lucide="package" class="w-6 h-6 text-[#A8A29A]"></i>
+                </div>
+                {% for variant in variants %}
+                    {% if not variant.is_deleted %}
+                        {% for vimg in variant.images.all %}
+                            {% if forloop.first %}
+                            <img src="{{ vimg.image.url }}" alt="{{ product.name }}" class="absolute inset-0 w-16 h-16 rounded-sm object-cover border border-[#E8E5DF]">
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <div>
+                <p class="text-[10px] uppercase tracking-[0.2em] text-[#A8842C] font-semibold mb-1">{{ product.brand.name }} · {{ product.brand.category.name }}</p>
+                <h2 class="font-serif text-4xl tracking-wide text-[#141414]">{{ product.name }}</h2>
+                <p class="text-sm text-[#6E6A63] mt-1">Manage Variants · {{ product.fragrance_concentration }}</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <a href="{% url 'products:list' %}" class="inline-flex items-center gap-2 px-6 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-[10px] uppercase tracking-widest font-semibold hover:bg-[#F5F3EE] hover:text-[#141414] transition-colors rounded-sm">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Products
+            </a>
+            <button type="button" onclick="openAddVariant()" class="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold hover:bg-black transition-colors rounded-sm shadow-[0_0_15px_rgba(0,0,0,0.15)]">
+                <i data-lucide="plus" class="w-4 h-4"></i> Add Variant
+            </button>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="flex justify-between items-center">
+        <form method="GET" class="relative flex items-center w-80">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i data-lucide="search" class="w-4 h-4 text-[#141414]"></i>
+            </div>
+            <input type="text" name="search" value="{{ search_query|default:'' }}" placeholder="Search by size or SKU..." aria-label="Search variants"
+                   class="w-full bg-white border border-[#2B2B2B] rounded-sm py-2.5 pl-10 pr-10 text-xs text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#141414] transition-colors">
+            {% if search_query %}
+            <a href="?" class="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6E6A63] hover:text-[#141414] transition-colors" title="Clear Search" aria-label="Clear search">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Variant Table -->
+<div class="bg-white border border-[#E8E5DF] rounded-xl shadow-2xl overflow-hidden mb-8">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse whitespace-nowrap">
+            <thead>
+                <tr class="border-b border-[#E8E5DF] bg-[#F7F5F0]">
+                    <th class="py-5 px-8 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-[12%]">Front Image</th>
+                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-[12%]">Size</th>
+                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-[14%]">Price</th>
+                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-[12%]">Stock</th>
+                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-[18%]">SKU</th>
+                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-[14%]">Status</th>
+                    <th class="py-5 px-8 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#EFECE6]" id="variant-tbody">
+                {% for variant in variants %}
+                <tr class="hover:bg-[#FAF8F4] transition-colors duration-300 ease-in-out group" id="variant-row-{{ variant.id }}">
+                    <td class="py-5 px-8 align-middle">
+                        {% with primary=variant.images.all.0 %}
+                            {% if primary %}
+                            <img src="{{ primary.image.url }}" alt="{{ product.name }} {{ variant.size }} front image" class="w-14 h-14 rounded-sm object-cover border border-[#E8E5DF] shrink-0">
+                            {% else %}
+                            <div class="w-14 h-14 rounded-sm bg-[#F5F3EE] border border-[#E8E5DF] flex items-center justify-center shrink-0">
+                                <i data-lucide="image" class="w-5 h-5 text-[#A8A29A]"></i>
+                            </div>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td class="py-5 px-6 align-middle">
+                        <span class="font-serif text-xl leading-snug tracking-wide text-[#141414]">{{ variant.size }}</span>
+                    </td>
+                    <td class="py-5 px-6 align-middle">
+                        <span class="text-sm font-medium tabular-nums text-[#141414]">₹{{ variant.price }}</span>
+                    </td>
+                    <td class="py-5 px-6 align-middle">
+                        <span class="text-sm tabular-nums text-[#6E6A63]">{{ variant.stock }}</span>
+                    </td>
+                    <td class="py-5 px-6 align-middle">
+                        <span class="text-xs tracking-wider text-[#141414] font-medium">{{ variant.sku }}</span>
+                    </td>
+                    <td class="py-5 px-6 align-middle">
+                        {% if variant.is_listed %}
+                            <span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest bg-[#1E7E4D]/10 text-[#1E7E4D] border border-[#1E7E4D]/25 rounded-sm w-24 justify-center">Active</span>
+                        {% else %}
+                            <span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest bg-[#6E6A63]/10 text-[#6E6A63] border border-[#6E6A63]/25 rounded-sm w-24 justify-center">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-5 px-8 align-middle text-right">
+                        <div class="flex items-center justify-end gap-2.5">
+                            <button type="button" onclick="openEditVariant('{{ variant.id }}', '{{ variant.size|escapejs }}', '{{ variant.sku|escapejs }}', '{{ variant.price }}', '{{ variant.stock }}', '{{ variant.is_listed|yesno:'true,false' }}', '{% for im in variant.images.all %}{{ im.image.url }}{% if not forloop.last %}|{% endif %}{% endfor %}')" title="Edit" aria-label="Edit variant {{ variant.size }}" class="w-8 h-8 rounded-sm bg-white border border-[#E8E5DF] flex items-center justify-center text-[#6E6A63] hover:text-[#141414] hover:border-[#141414]/30 transition-colors">
+                                <i data-lucide="pencil" class="w-4 h-4"></i>
+                            </button>
+                            <button type="button" onclick="openDeleteVariantModal('{{ variant.id }}', '{{ variant.size|escapejs }}')" title="Delete" aria-label="Delete variant {{ variant.size }}" class="w-8 h-8 rounded-sm bg-white border border-[#E8E5DF] flex items-center justify-center text-[#6E6A63] hover:text-[#B42318] hover:border-[#B42318]/50 hover:bg-[#B42318]/5 transition-colors">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="py-20 px-6 text-center">
+                        <div class="flex flex-col items-center justify-center">
+                            <div class="w-16 h-16 rounded-full bg-[#F5F3EE] border border-[#E8E5DF] flex items-center justify-center mb-4">
+                                <i data-lucide="layers" class="w-6 h-6 text-[#6E6A63]"></i>
+                            </div>
+                            {% if search_query %}
+                            <h3 class="font-serif text-2xl text-[#141414] mb-2">No Variants Found</h3>
+                            <p class="text-sm text-[#6E6A63] mb-6">No variants matching your search.</p>
+                            <a href="?" class="inline-flex items-center gap-2 px-6 py-2.5 border border-[#A8842C] text-[#A8842C] text-[10px] uppercase tracking-widest font-medium hover:bg-[#FAF3E3] transition-colors rounded-sm">
+                                Clear Search <i data-lucide="x" class="w-3 h-3"></i>
+                            </a>
+                            {% else %}
+                            <h3 class="font-serif text-2xl text-[#141414] mb-2">No Variants Yet</h3>
+                            <p class="text-sm text-[#6E6A63] mb-6">Add the first purchasable variant for this product.</p>
+                            <button type="button" onclick="openAddVariant()" class="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold hover:bg-black transition-colors rounded-sm">
+                                <i data-lucide="plus" class="w-3 h-3"></i> Add Variant
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% include "admin_panel/products/partials/variant_modal.html" %}
+
+<!-- Delete Variant Confirmation Modal -->
+<div id="delete-variant-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-[#141414]/40 backdrop-blur-sm delete-variant-backdrop"></div>
+    <div class="relative bg-white backdrop-blur-md border border-[#B42318]/25 shadow-[0_20px_50px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-md p-8 transform scale-95 opacity-0 transition-all duration-300 delete-variant-panel">
+
+        <div class="flex items-center gap-4 mb-6">
+            <div class="w-12 h-12 rounded-full border border-[#B42318]/20 bg-[#B42318]/10 flex items-center justify-center">
+                <i data-lucide="trash-2" class="w-5 h-5 text-[#B42318]"></i>
+            </div>
+            <h3 class="font-serif text-2xl text-[#141414] tracking-wide">Delete Variant</h3>
+        </div>
+
+        <p class="text-sm text-[#6E6A63] leading-relaxed mb-8">
+            Are you sure you want to delete variant <strong class="text-[#141414]" id="delete-variant-name"></strong>? This variant will no longer be available for active use.
+        </p>
+
+        <form id="delete-variant-form" method="POST">
+            {% csrf_token %}
+            <input type="hidden" id="delete_variant_id" value="">
+            <div class="flex justify-end gap-4">
+                <button type="button" class="close-delete-variant-modal px-6 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-[10px] uppercase tracking-widest font-semibold hover:bg-[#F5F3EE] hover:text-[#141414] transition-colors rounded-sm">
+                    Cancel
+                </button>
+                <button type="submit" id="confirm-delete-variant-btn" class="px-6 py-2.5 border border-[#B42318]/50 bg-[#B42318]/10 text-[#B42318] text-[10px] uppercase tracking-widest font-semibold hover:bg-[#B42318]/15 transition-colors rounded-sm flex items-center gap-2">
+                    <span id="delete-variant-submit-text">Delete Variant</span>
+                    <i data-lucide="loader-2" class="w-3 h-3 animate-spin hidden" id="delete-variant-submit-spinner"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- URLs for JS -->
+<script>
+    const VARIANT_ADD_URL = "{% url 'products:variant_add' product.id %}";
+    const VARIANT_EDIT_URL_TEMPLATE = "{% url 'products:variant_edit' 0 %}";
+    const VARIANT_DELETE_URL_TEMPLATE = "{% url 'products:variant_delete' 0 %}";
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+        const ERROR_INPUT_CLASSES = ['border-[#B42318]/50', 'focus:border-[#B42318]/50', 'focus:ring-[#B42318]/30', 'focus:ring-1'];
+
+        // --- Variant modal state ---
+        const modal = document.getElementById('variant-modal');
+        const modalPanel = modal.querySelector('.variant-modal-panel');
+        const form = document.getElementById('variant-form');
+        const modalTitle = document.getElementById('variant-modal-title');
+        const submitText = document.getElementById('variant-submit-text');
+        const submitSpinner = document.getElementById('variant-submit-spinner');
+        const submitBtn = document.getElementById('variant-submit-btn');
+        const imagesInput = document.getElementById('variant_images');
+        const previewBox = document.getElementById('preview_variant_images');
+        const placeholderBox = document.getElementById('placeholder_variant_images');
+        const existingWrap = document.getElementById('existing-images-wrap');
+        const existingBox = document.getElementById('existing-images');
+        const imagesLabel = document.getElementById('variant-images-label');
+        let previewUrls = [];
+        let editVariantId = null;
+        // Separate collection: the file input only ever holds the latest
+        // picker selection, so newly picked files are appended here instead
+        // of replacing the previous ones. Max 5 images total.
+        const MAX_VARIANT_IMAGES = 5;
+        let selectedImages = [];
+        let existingImageCount = 0;
+
+        const clearVariantErrors = () => {
+            form.querySelectorAll('input:not([type="file"]):not([type="checkbox"]), select, textarea').forEach(input => {
+                input.classList.remove(...ERROR_INPUT_CLASSES);
+            });
+            form.querySelectorAll('p[id^="error_"]').forEach(el => {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+            document.getElementById('dropzone_variant_images').classList.remove('border-[#B42318]/50');
+        };
+
+        const showVariantError = (field, message) => {
+            const errorEl = document.getElementById(`error_${field}`);
+            if (errorEl) {
+                errorEl.textContent = message;
+                errorEl.classList.remove('hidden');
+            }
+            if (field === 'images') {
+                document.getElementById('dropzone_variant_images').classList.add('border-[#B42318]/50');
+                return;
+            }
+            const input = document.getElementById(`variant_${field}`);
+            if (input) input.classList.add(...ERROR_INPUT_CLASSES);
+        };
+
+        const openModal = () => {
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modalPanel.classList.remove('scale-95', 'opacity-0');
+            modalPanel.classList.add('scale-100', 'opacity-100');
+        };
+
+        const closeModal = () => {
+            modalPanel.classList.remove('scale-100', 'opacity-100');
+            modalPanel.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        };
+
+        document.querySelectorAll('.close-variant-modal, .variant-modal-backdrop').forEach(btn => {
+            btn.addEventListener('click', closeModal);
+        });
+
+        const resetVariantForm = () => {
+            form.reset();
+            document.getElementById('variant_id').value = '';
+            editVariantId = null;
+            selectedImages = [];
+            existingImageCount = 0;
+            imagesInput.value = '';
+            previewUrls.forEach(u => URL.revokeObjectURL(u));
+            previewUrls = [];
+            previewBox.innerHTML = '';
+            placeholderBox.classList.remove('hidden');
+            existingBox.innerHTML = '';
+            existingWrap.classList.add('hidden');
+            imagesLabel.textContent = 'Product Images (3–5)';
+            clearVariantErrors();
+        };
+
+        // Open Add Variant
+        window.openAddVariant = () => {
+            resetVariantForm();
+            modalTitle.textContent = 'Add Variant';
+            submitText.textContent = 'Add Variant';
+            openModal();
+        };
+
+        // Open Edit Variant (existing images shown read-only; backend appends new uploads)
+        window.openEditVariant = (id, size, sku, price, stock, isListed, imagesPipe) => {
+            resetVariantForm();
+            editVariantId = id;
+            document.getElementById('variant_id').value = id;
+            document.getElementById('variant_size').value = size;
+            document.getElementById('variant_sku').value = sku;
+            document.getElementById('variant_price').value = price;
+            document.getElementById('variant_stock').value = stock;
+            document.getElementById('variant_is_listed').checked = (isListed === 'true');
+            modalTitle.textContent = 'Edit Variant';
+            submitText.textContent = 'Update Variant';
+            imagesLabel.textContent = 'Add Images (optional)';
+
+            const urls = (imagesPipe || '').split('|').filter(u => u);
+            existingImageCount = urls.length;
+            if (urls.length) {
+                existingWrap.classList.remove('hidden');
+                urls.forEach((url, idx) => {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'relative w-20 h-20 shrink-0';
+                    wrap.innerHTML = `
+                        <img src="${url}" alt="Existing variant image ${idx + 1}" class="w-20 h-20 rounded-sm object-cover border ${idx === 0 ? 'border-[#A8842C]/60' : 'border-[#E8E5DF]'}">
+                        ${idx === 0 ? '<span class="absolute bottom-1 left-1 px-1.5 py-0.5 bg-[#0D0D0E] text-white text-[8px] uppercase tracking-widest rounded-sm">Primary</span>' : ''}
+                    `;
+                    existingBox.appendChild(wrap);
+                });
+                lucide.createIcons();
+            }
+            openModal();
+        };
+
+        // New-image previews with Primary badge + remove (rendered from the collection)
+        const renderNewPreviews = () => {
+            previewUrls.forEach(u => URL.revokeObjectURL(u));
+            previewUrls = [];
+            previewBox.innerHTML = '';
+            if (!selectedImages.length) {
+                placeholderBox.classList.remove('hidden');
+                return;
+            }
+            placeholderBox.classList.add('hidden');
+            selectedImages.forEach((file, idx) => {
+                const url = URL.createObjectURL(file);
+                previewUrls.push(url);
+                const wrap = document.createElement('div');
+                wrap.className = 'relative w-20 h-20 shrink-0';
+                wrap.innerHTML = `
+                    <img src="${url}" alt="New variant image ${idx + 1}" class="w-20 h-20 rounded-sm object-cover border ${idx === 0 && existingImageCount === 0 ? 'border-[#A8842C]/60' : 'border-[#E8E5DF]'}">
+                    ${idx === 0 && existingImageCount === 0 ? '<span class="absolute bottom-1 left-1 px-1.5 py-0.5 bg-[#0D0D0E] text-white text-[8px] uppercase tracking-widest rounded-sm">Primary</span>' : ''}
+                    <button type="button" data-remove-image="${idx}" aria-label="Remove image ${idx + 1}" class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white border border-[#E8E5DF] text-[#6E6A63] hover:text-[#B42318] hover:border-[#B42318]/50 text-xs leading-none flex items-center justify-center">&times;</button>
+                `;
+                previewBox.appendChild(wrap);
+            });
+            lucide.createIcons();
+        };
+
+        const hideImagesError = () => {
+            const errorEl = document.getElementById('error_images');
+            if (errorEl) {
+                errorEl.classList.add('hidden');
+                errorEl.textContent = '';
+            }
+            document.getElementById('dropzone_variant_images').classList.remove('border-[#B42318]/50');
+        };
+
+        const addFilesToCollection = (fileList) => {
+            const incoming = Array.from(fileList || []);
+            imagesInput.value = '';
+            if (!incoming.length) return;
+
+            const bad = incoming.find(f => !ACCEPTED_TYPES.includes(f.type));
+            if (bad) {
+                showVariantError('images', 'Only JPEG, PNG, and WebP images are allowed.');
+                return;
+            }
+            const fresh = incoming.filter(f => !selectedImages.some(
+                s => s.name === f.name && s.size === f.size && s.lastModified === f.lastModified
+            ));
+            if (!fresh.length) return;
+
+            const room = MAX_VARIANT_IMAGES - existingImageCount - selectedImages.length;
+            if (room <= 0) {
+                showAdminToast('A maximum of 5 product images is allowed.', 'error');
+                return;
+            }
+            if (fresh.length > room) {
+                showVariantError('images', `Only ${room} more image${room === 1 ? '' : 's'} can be added (maximum 5).`);
+                return;
+            }
+            selectedImages = selectedImages.concat(fresh);
+            hideImagesError();
+            renderNewPreviews();
+        };
+
+        imagesInput.addEventListener('change', () => {
+            addFilesToCollection(imagesInput.files);
+        });
+
+        previewBox.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-remove-image]');
+            if (!btn) return;
+            const idx = parseInt(btn.dataset.removeImage, 10);
+            selectedImages.splice(idx, 1);
+            renderNewPreviews();
+        });
+
+        // Variant submit (add or edit)
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearVariantErrors();
+
+            submitBtn.disabled = true;
+            const idleText = editVariantId ? 'Update Variant' : 'Add Variant';
+            const busyText = editVariantId ? 'Updating...' : 'Adding...';
+            submitText.textContent = busyText;
+            submitSpinner.classList.remove('hidden');
+
+            const url = editVariantId
+                ? VARIANT_EDIT_URL_TEMPLATE.replace('0', editVariantId)
+                : VARIANT_ADD_URL;
+
+            let data = null;
+            let response = null;
+            try {
+                // Rebuild file payload from the collection: the file input only
+                // ever holds the latest picker selection.
+                const formData = new FormData(form);
+                formData.delete('images');
+                selectedImages.forEach(f => formData.append('images', f, f.name));
+                response = await fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    data = await response.json();
+                }
+
+                if (response.ok && data && data.success) {
+                    closeModal();
+                    showAdminToast(data.message || 'Variant saved successfully!', 'success');
+                    setTimeout(() => window.location.reload(), 900);
+                } else if (data && data.errors) {
+                    Object.entries(data.errors).forEach(([field, msg]) => {
+                        showVariantError(field, msg);
+                    });
+                    showAdminToast('Please fix the highlighted errors.', 'error');
+                } else {
+                    showAdminToast((data && data.message) || 'Could not save variant.', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving variant:', error);
+                showAdminToast('A network error occurred. Please try again.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitText.textContent = idleText;
+                submitSpinner.classList.add('hidden');
+            }
+        });
+
+        // --- Delete Variant ---
+        const deleteModal = document.getElementById('delete-variant-modal');
+        const deletePanel = deleteModal.querySelector('.delete-variant-panel');
+        const deleteForm = document.getElementById('delete-variant-form');
+
+        document.querySelectorAll('.close-delete-variant-modal, .delete-variant-backdrop').forEach(btn => {
+            btn.addEventListener('click', () => {
+                deletePanel.classList.remove('scale-100', 'opacity-100');
+                deletePanel.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => deleteModal.classList.add('hidden'), 300);
+            });
+        });
+
+        window.openDeleteVariantModal = (id, size) => {
+            document.getElementById('delete_variant_id').value = id;
+            document.getElementById('delete-variant-name').textContent = size;
+
+            deleteModal.classList.remove('hidden');
+            void deleteModal.offsetWidth;
+            deletePanel.classList.remove('scale-95', 'opacity-0');
+            deletePanel.classList.add('scale-100', 'opacity-100');
+        };
+
+        deleteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('confirm-delete-variant-btn');
+            const submitText = document.getElementById('delete-variant-submit-text');
+            const submitSpinner = document.getElementById('delete-variant-submit-spinner');
+
+            submitBtn.disabled = true;
+            submitText.textContent = 'Deleting...';
+            submitSpinner.classList.remove('hidden');
+
+            const variantId = document.getElementById('delete_variant_id').value;
+            const url = VARIANT_DELETE_URL_TEMPLATE.replace('0', variantId);
+            const formData = new FormData(deleteForm);
+
+            let data = null;
+            let response = null;
+            try {
+                response = await fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    data = await response.json();
+                }
+
+                if (response.ok && data && data.success) {
+                    const row = document.getElementById(`variant-row-${variantId}`);
+                    if (row) row.remove();
+                    deletePanel.classList.remove('scale-100', 'opacity-100');
+                    deletePanel.classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => deleteModal.classList.add('hidden'), 300);
+                    showAdminToast(data.message || 'Variant deleted successfully!', 'success');
+                } else {
+                    showAdminToast((data && data.message) || 'Could not delete variant.', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting variant:', error);
+                showAdminToast('A network error occurred. Please try again.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitText.textContent = 'Delete Variant';
+                submitSpinner.classList.add('hidden');
+            }
+        });
+    });
+</script>
+{% endblock %}
