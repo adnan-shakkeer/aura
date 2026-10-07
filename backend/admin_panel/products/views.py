@@ -215,7 +215,7 @@ class ProductCreateView(View):
             "fragrance_concentrations": (
                 Product.FragranceConcentration.choices
             ),
-        }
+            }
 
         return render(
             request,
@@ -1139,12 +1139,47 @@ class VariantUpdateView(View):
                     "Please enter a valid stock quantity."
                 )
 
+        raw_remove_ids = request.POST.getlist(
+            "remove_image_ids",
+        )
+
+        parsed_remove_ids = set()
+
+        for raw_id in raw_remove_ids:
+            try:
+                parsed_remove_ids.add(
+                    int(str(raw_id).strip())
+                )
+            except (TypeError, ValueError):
+                continue
+
+        if parsed_remove_ids:
+            images_to_remove = list(
+                variant.images.filter(
+                    id__in=parsed_remove_ids,
+                ).order_by(
+                    "display_order",
+                    "created_at",
+                    "id",
+                )
+            )
+        else:
+            images_to_remove = []
+
+        remove_count = len(images_to_remove)
+
         existing_image_count = variant.images.count()
+
+        final_image_count = (
+            existing_image_count
+            - remove_count
+            + len(new_images)
+        )
 
         if new_images:
 
             if (
-                existing_image_count + len(new_images)
+                final_image_count
                 > MAX_VARIANT_IMAGES
             ):
                 field_errors["images"] = (
@@ -1176,7 +1211,7 @@ class VariantUpdateView(View):
                     break
 
         if (
-            existing_image_count + len(new_images)
+            final_image_count
             < MIN_VARIANT_IMAGES
         ):
             field_errors["images"] = (
@@ -1208,13 +1243,34 @@ class VariantUpdateView(View):
 
                 variant.save()
 
-                current_image_count = (
-                    variant.images.count()
+                for image_record in images_to_remove:
+                    image_record.image.delete(
+                        save=False,
+                    )
+                    image_record.delete()
+
+                remaining_images = list(
+                    variant.images.order_by(
+                        "display_order",
+                        "created_at",
+                        "id",
+                    )
                 )
+
+                for order, image_record in enumerate(
+                    remaining_images,
+                ):
+                    if image_record.display_order != order:
+                        image_record.display_order = order
+                        image_record.save(
+                            update_fields=[
+                                "display_order",
+                            ]
+                        )
 
                 for index, image_file in enumerate(
                     new_images,
-                    start=current_image_count,
+                    start=len(remaining_images),
                 ):
                     VariantImage.objects.create(
                         variant=variant,
@@ -1253,37 +1309,16 @@ class VariantDeleteView(View):
             ProductVariant,
             id=variant_id,
             is_deleted=False,
-            product__is_deleted=False,
         )
-
-        active_variant_count = (
-            ProductVariant.objects.filter(
-                product=variant.product,
-                is_deleted=False,
-            ).count()
-        )
-
-        if active_variant_count <= 1:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "A product must have at least "
-                        "one active variant."
-                    ),
-                },
-                status=HTTPStatus.BAD_REQUEST,
-            )
 
         variant.is_deleted = True
         variant.is_listed = False
-
         variant.save(
             update_fields=[
                 "is_deleted",
                 "is_listed",
                 "updated_at",
-            ],
+            ]
         )
 
         return JsonResponse(
@@ -1291,7 +1326,7 @@ class VariantDeleteView(View):
                 "success": True,
                 "message": (
                     f"Variant '{variant.size}' "
-                    "deleted successfully!"
+                    "deleted successfully."
                 ),
             },
             status=HTTPStatus.OK,

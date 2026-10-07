@@ -40,7 +40,6 @@ urlpatterns = [
     path("admin-panel/brands/", include("admin_panel.brands.urls")),
 
     path("admin-panel/products/", include("admin_panel.products.urls")),
-
     # User Panel Routes
     path("",include("user_panel.home.urls")),
 

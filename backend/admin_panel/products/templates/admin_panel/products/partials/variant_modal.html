@@ -61,7 +61,8 @@
 
                 <!-- Existing images (edit mode only) -->
                 <div class="md:col-span-2 hidden" id="existing-images-wrap">
-                    <span class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Current Images <span class="text-[#A8A29A] font-medium normal-case tracking-normal">(first is Primary / front-facing — kept as-is)</span></span>
+                    <span class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Current Images <span class="text-[#A8A29A] font-medium normal-case tracking-normal">(First image is Primary / front-facing)</span></span>
+                    <p class="text-[11px] text-[#6E6A63] mb-2">If the primary image is removed, the first remaining image becomes primary after saving.</p>
                     <div id="existing-images" class="flex flex-wrap gap-3"></div>
                 </div>
 
@@ -81,6 +82,7 @@
                             </div>
                         </div>
                     </label>
+                    <p id="images_count_hint" class="mt-1.5 text-[#6E6A63] text-[11px] tracking-wide hidden"></p>
                     <p id="error_images" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
                 </div>
             </div>
