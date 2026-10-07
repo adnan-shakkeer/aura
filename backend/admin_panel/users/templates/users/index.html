@@ -265,10 +265,45 @@
 
         // --- Toasts use the shared Admin system (window.showAdminToast) ---
 
+        // Current tab determines row behavior after a status change:
+        // ALL keeps the row (status/action update in place);
+        // ACTIVE/BLOCKED remove the row when it no longer matches the filter.
+        const activeTab = "{{ status_filter|default:'all' }}";
+        const searchQuery = "{{ search_query|default:''|escapejs }}";
+
+        // Empty-state row (same markup as the server-rendered empty block).
+        const buildEmptyRow = () => {
+            const message = searchQuery
+                ? `No customers matching '${searchQuery}' in the current filter.`
+                : "No customers in the current filter.";
+            return `<tr id="users-empty-row">
+                    <td colspan="5" class="py-20 px-6 text-center">
+                        <div class="flex flex-col items-center justify-center">
+                            <div class="w-16 h-16 rounded-full bg-[#F5F3EE] border border-[#E8E5DF] flex items-center justify-center mb-4">
+                                <i data-lucide="search-x" class="w-6 h-6 text-[#6E6A63]"></i>
+                            </div>
+                            <h3 class="font-serif text-2xl text-[#141414] mb-2">No customers found</h3>
+                            <p class="text-sm text-[#6E6A63] mb-6">${message}</p>
+                            <a href="?status=all" class="inline-flex items-center gap-2 px-6 py-2.5 border border-[#A8842C] text-[#A8842C] text-[10px] uppercase tracking-widest font-medium hover:bg-[#FAF3E3] transition-colors rounded-sm">
+                                Clear Filters <i data-lucide="x" class="w-3 h-3"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>`;
+        };
+
+        const maybeShowEmptyState = () => {
+            const tbody = document.querySelector('tbody.divide-y');
+            if (tbody && !tbody.querySelector('tr:not(#users-empty-row)')) {
+                tbody.insertAdjacentHTML('beforeend', buildEmptyRow());
+                lucide.createIcons();
+            }
+        };
+
         // --- AJAX Form Submit ---
         toggleForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!currentUserId) return;
+            if (!currentUserId || confirmBtn.disabled) return;
 
             // Loading state
             confirmBtn.disabled = true;
@@ -295,28 +330,38 @@
 
                 if (response.ok && data.success) {
                     closeModal();
-                    
-                    const isNowActive = data.is_active; // Assumes backend returns new status boolean
-                    
-                    // Update the status cell
-                    const statusCell = document.getElementById(`status-cell-${currentUserId}`);
-                    if (isNowActive) {
-                        statusCell.innerHTML = `<span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest bg-[#1E7E4D]/10 text-[#1E7E4D] border border-[#1E7E4D]/25 rounded-sm w-28 justify-center">Active</span>`;
+
+                    const isNowActive = data.is_active; // Backend returns new status boolean
+                    const row = currentButton ? currentButton.closest('tr') : null;
+
+                    if (activeTab === 'all') {
+                        // ALL tab: keep the row, update status + action in place.
+                        const statusCell = document.getElementById(`status-cell-${currentUserId}`);
+                        if (isNowActive) {
+                            statusCell.innerHTML = `<span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest bg-[#1E7E4D]/10 text-[#1E7E4D] border border-[#1E7E4D]/25 rounded-sm w-28 justify-center">Active</span>`;
+                        } else {
+                            statusCell.innerHTML = `<span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest bg-[#B42318]/10 text-[#B42318] border border-[#B42318]/25 rounded-sm w-28 justify-center">Blocked</span>`;
+                        }
+
+                        // Update the action button
+                        currentButton.setAttribute('data-current-status', isNowActive ? 'active' : 'blocked');
+                        if (isNowActive) {
+                            currentButton.className = `toggle-status-btn inline-flex items-center gap-2 px-4 py-2 border text-[10px] uppercase tracking-widest font-semibold transition-all duration-300 rounded-sm border-[#E8E5DF] text-[#6E6A63] hover:border-[#B42318]/50 hover:text-[#B42318] hover:bg-[#B42318]/5`;
+                            currentButton.innerHTML = `<i data-lucide="lock" class="w-3 h-3"></i> Block Access`;
+                        } else {
+                            currentButton.className = `toggle-status-btn inline-flex items-center gap-2 px-4 py-2 border text-[10px] uppercase tracking-widest font-semibold transition-all duration-300 rounded-sm border-[#141414]/60 text-[#141414] hover:border-[#141414] hover:bg-[#141414]/5 hover:shadow-[0_0_15px_rgba(0,0,0,0.10)]`;
+                            currentButton.innerHTML = `<i data-lucide="unlock" class="w-3 h-3"></i> Unblock`;
+                        }
+
+                        lucide.createIcons(); // re-init icons for the new innerHTML
                     } else {
-                        statusCell.innerHTML = `<span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest bg-[#B42318]/10 text-[#B42318] border border-[#B42318]/25 rounded-sm w-28 justify-center">Blocked</span>`;
+                        // ACTIVE/BLOCKED tab: the user no longer matches the
+                        // filter, so remove only their row (no page reload).
+                        if (row) row.remove();
+                        maybeShowEmptyState();
                     }
 
-                    // Update the action button
-                    currentButton.setAttribute('data-current-status', isNowActive ? 'active' : 'blocked');
-                    if (isNowActive) {
-                        currentButton.className = `toggle-status-btn inline-flex items-center gap-2 px-4 py-2 border text-[10px] uppercase tracking-widest font-semibold transition-all duration-300 rounded-sm border-[#E8E5DF] text-[#6E6A63] hover:border-[#B42318]/50 hover:text-[#B42318] hover:bg-[#B42318]/5`;
-                        currentButton.innerHTML = `<i data-lucide="lock" class="w-3 h-3"></i> Block Access`;
-                    } else {
-                        currentButton.className = `toggle-status-btn inline-flex items-center gap-2 px-4 py-2 border text-[10px] uppercase tracking-widest font-semibold transition-all duration-300 rounded-sm border-[#141414]/60 text-[#141414] hover:border-[#141414] hover:bg-[#141414]/5 hover:shadow-[0_0_15px_rgba(0,0,0,0.10)]`;
-                        currentButton.innerHTML = `<i data-lucide="unlock" class="w-3 h-3"></i> Unblock`;
-                    }
-                    
-                    lucide.createIcons(); // re-init icons for the new innerHTML
+                    currentButton = null;
                     showAdminToast(data.message || 'User status updated successfully.', 'success');
                 } else {
                     closeModal();
