@@ -59,26 +59,20 @@
                     </label>
                 </div>
 
-                <!-- Existing images (edit mode only) -->
-                <div class="md:col-span-2 hidden" id="existing-images-wrap">
-                    <span class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Current Images <span class="text-[#A8A29A] font-medium normal-case tracking-normal">(First image is Primary / front-facing)</span></span>
-                    <p class="text-[11px] text-[#6E6A63] mb-2">If the primary image is removed, the first remaining image becomes primary after saving.</p>
-                    <div id="existing-images" class="flex flex-wrap gap-3"></div>
-                </div>
-
-                <!-- New images -->
+                <!-- Variant images collection (ordered; first image is Primary) -->
                 <div class="md:col-span-2">
-                    <label for="variant_images" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2"><span id="variant-images-label">Product Images (3–5)</span> <span class="text-[#B42318]">*</span></label>
+                    <span class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2"><span id="variant-images-label">Product Images (3–5)</span></span>
+                    <p class="text-[11px] text-[#6E6A63] mb-2">Drag to reorder · First image is the primary / front-facing image · Use the pencil icon to edit an image.</p>
+                    <div id="variant-images-list" class="flex flex-wrap gap-3 mb-3 min-h-[5rem]"></div>
                     <label for="variant_images" id="dropzone_variant_images" class="block border border-dashed border-[#C9C4BB] rounded-sm p-5 cursor-pointer hover:border-[#A8842C]/60 transition-colors bg-white">
                         <input type="file" id="variant_images" name="images" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" aria-label="Select variant images">
-                        <div id="preview_variant_images" class="flex flex-wrap gap-3"></div>
                         <div id="placeholder_variant_images" class="flex items-center gap-4">
                             <div class="w-16 h-16 rounded-sm bg-[#F5F3EE] border border-[#E8E5DF] flex items-center justify-center shrink-0">
                                 <i data-lucide="image" class="w-5 h-5 text-[#A8A29A]"></i>
                             </div>
                             <div>
                                 <p class="text-sm text-[#141414] font-medium">Click to select images</p>
-                                <p class="text-xs text-[#6E6A63] mt-1">JPEG, PNG or WebP · First image is the primary / front-facing image</p>
+                                <p class="text-xs text-[#6E6A63] mt-1">JPEG, PNG or WebP · Each new image opens in the Image Editor</p>
                             </div>
                         </div>
                     </label>

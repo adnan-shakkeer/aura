@@ -216,16 +216,16 @@
                 </div>
                 <div class="md:col-span-2">
                     <label for="variant_images" class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Product Images (3–5) <span class="text-[#B42318]">*</span></label>
+                    <div id="variant-images-list" class="flex flex-wrap gap-3 mb-3 min-h-[5rem]"></div>
                     <label for="variant_images" id="dropzone_variant_images" class="block border border-dashed border-[#C9C4BB] rounded-sm p-5 cursor-pointer hover:border-[#A8842C]/60 transition-colors bg-white">
                         <input type="file" id="variant_images" name="variant_images" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" aria-label="Select variant images">
-                        <div id="preview_variant_images" class="flex flex-wrap gap-3"></div>
                         <div id="placeholder_variant_images" class="flex items-center gap-4">
                             <div class="w-16 h-16 rounded-sm bg-[#F5F3EE] border border-[#E8E5DF] flex items-center justify-center shrink-0">
                                 <i data-lucide="image" class="w-5 h-5 text-[#A8A29A]"></i>
                             </div>
                             <div>
                                 <p class="text-sm text-[#141414] font-medium">Click to select 3–5 images</p>
-                                <p class="text-xs text-[#6E6A63] mt-1">JPEG, PNG or WebP · First image is the primary / front-facing image</p>
+                                <p class="text-xs text-[#6E6A63] mt-1">JPEG, PNG or WebP · Each new image opens in the Image Editor · Drag to reorder, first image is primary</p>
                             </div>
                         </div>
                     </label>
@@ -245,6 +245,8 @@
     </div>
 </form>
 
+{% include "admin_panel/products/partials/image_editor.html" %}
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('product-form');
@@ -253,7 +255,6 @@
         const submitSpinner = document.getElementById('submit-spinner');
 
         const ERROR_INPUT_CLASSES = ['border-[#B42318]/50', 'focus:border-[#B42318]/50', 'focus:ring-[#B42318]/30', 'focus:ring-1'];
-        const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
         // --- Error helpers ---
         const clearErrors = () => {
@@ -310,9 +311,37 @@
         const modal = document.getElementById('variant-modal');
         const modalPanel = modal.querySelector('.modal-panel');
         const variantImagesInput = document.getElementById('variant_images');
-        const previewBox = document.getElementById('preview_variant_images');
+        const imagesList = document.getElementById('variant-images-list');
         const placeholderBox = document.getElementById('placeholder_variant_images');
-        let previewUrls = [];
+
+        // Unified staging (Add / Edit / Remove / Reorder / Primary).
+        // Array index === intended display_order. See image_editor.html.
+        const MAX_VARIANT_IMAGES = 5;
+        let collection = null;
+
+        const onCollectionChange = () => {
+            const staged = collection ? collection.stagedCount() : 0;
+            if (staged > 0) placeholderBox.classList.add('hidden');
+            else placeholderBox.classList.remove('hidden');
+        };
+
+        const ensureCollection = () => {
+            if (collection) return collection;
+            collection = window.AURAImageCollection.create({
+                listEl: imagesList,
+                maxImages: MAX_VARIANT_IMAGES,
+                showToast: window.showAdminToast,
+                onChange: onCollectionChange,
+                onEdit: (key) => {
+                    window.AURAImageCollection.editWithEditor(
+                        collection, key, window.showAdminToast
+                    ).then((applied) => {
+                        if (applied) hideVariantImagesError();
+                    });
+                }
+            });
+            return collection;
+        };
 
         const closeVariantModal = () => {
             modalPanel.classList.remove('scale-100', 'opacity-100');
@@ -331,44 +360,6 @@
             btn.addEventListener('click', closeVariantModal);
         });
 
-        const renderPreviews = () => {
-            previewUrls.forEach(u => URL.revokeObjectURL(u));
-            previewUrls = [];
-            previewBox.innerHTML = '';
-            if (!selectedImages.length) {
-                placeholderBox.classList.remove('hidden');
-                return;
-            }
-            placeholderBox.classList.add('hidden');
-            selectedImages.forEach((file, idx) => {
-                const url = URL.createObjectURL(file);
-                previewUrls.push(url);
-                const wrap = document.createElement('div');
-                wrap.className = 'relative w-20 h-20 shrink-0';
-                wrap.innerHTML = `
-                    <img src="${url}" alt="Variant image ${idx + 1}" class="w-20 h-20 rounded-sm object-cover border ${idx === 0 ? 'border-[#A8842C]/60' : 'border-[#E8E5DF]'}">
-                    ${idx === 0 ? '<span class="absolute bottom-1 left-1 px-1.5 py-0.5 bg-[#0D0D0E] text-white text-[8px] uppercase tracking-widest rounded-sm">Primary</span>' : ''}
-                    <button type="button" data-remove-image="${idx}" aria-label="Remove image ${idx + 1}" class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white border border-[#E8E5DF] text-[#6E6A63] hover:text-[#B42318] hover:border-[#B42318]/50 text-xs leading-none flex items-center justify-center">&times;</button>
-                `;
-                previewBox.appendChild(wrap);
-            });
-            lucide.createIcons();
-        };
-
-        previewBox.addEventListener('click', (e) => {
-            const btn = e.target.closest('[data-remove-image]');
-            if (!btn) return;
-            const idx = parseInt(btn.dataset.removeImage, 10);
-            selectedImages.splice(idx, 1);
-            renderPreviews();
-        });
-
-        // Separate collection: the file input only ever holds the latest
-        // picker selection, so newly picked files are appended here instead
-        // of replacing the previous ones. Max 5 images total.
-        const MAX_VARIANT_IMAGES = 5;
-        let selectedImages = [];
-
         const hideVariantImagesError = () => {
             const errorEl = document.getElementById('error_variant_images');
             if (errorEl) {
@@ -380,46 +371,34 @@
         };
 
         const addFilesToCollection = (fileList) => {
-            const incoming = Array.from(fileList || []);
+            ensureCollection();
+            const outcome = collection.addFiles(fileList);
             variantImagesInput.value = '';
-            if (!incoming.length) return;
-
-            const bad = incoming.find(f => !ACCEPTED_TYPES.includes(f.type));
-            if (bad) {
-                showError('variant_images', 'Only JPEG, PNG, and WebP images are allowed.');
+            if (outcome.error) {
+                showError('variant_images', outcome.error);
                 return;
             }
-            const fresh = incoming.filter(f => !selectedImages.some(
-                s => s.name === f.name && s.size === f.size && s.lastModified === f.lastModified
-            ));
-            if (!fresh.length) return;
-
-            const room = MAX_VARIANT_IMAGES - selectedImages.length;
-            if (room <= 0) {
-                showAdminToast('A maximum of 5 product images is allowed.', 'error');
-                return;
+            if (outcome.added && outcome.added.length) {
+                hideVariantImagesError();
+                window.AURAImageCollection.autoEditQueue(collection);
             }
-            if (fresh.length > room) {
-                showError('variant_images', `Only ${room} more image${room === 1 ? '' : 's'} can be added (maximum 5).`);
-                return;
-            }
-            selectedImages = selectedImages.concat(fresh);
-            hideVariantImagesError();
-            renderPreviews();
         };
 
         variantImagesInput.addEventListener('change', () => {
             addFilesToCollection(variantImagesInput.files);
         });
 
+        ensureCollection();
+
         // Confirm variant -> summary card (values stay in the modal inputs for submit)
         window.confirmFirstVariant = () => {
+            ensureCollection();
             const size = document.getElementById('variant_size').value.trim();
             const sku = document.getElementById('variant_sku').value.trim();
             const price = document.getElementById('variant_price').value.trim();
             const stock = document.getElementById('variant_stock').value.trim();
             const listed = document.getElementById('variant_is_listed').checked;
-            const count = selectedImages.length;
+            const count = collection.stagedCount();
             let valid = true;
 
             if (!size || !sku || !price || !stock) {
@@ -438,11 +417,9 @@
             document.getElementById('summary-stock').textContent = stock;
             document.getElementById('summary-status').textContent = listed ? 'Active' : 'Inactive';
             document.getElementById('summary-count').textContent = `${count} image${count === 1 ? '' : 's'}`;
-            const first = selectedImages[0];
+            const first = collection.entries.find(e => !e.removed);
             if (first) {
-                const url = URL.createObjectURL(first);
-                previewUrls.push(url);
-                document.getElementById('summary-image').src = url;
+                document.getElementById('summary-image').src = first.previewUrl;
             }
             document.getElementById('variant-empty').classList.add('hidden');
             document.getElementById('variant-summary').classList.remove('hidden');
@@ -450,9 +427,10 @@
         };
 
         window.removeFirstVariant = () => {
-            selectedImages = [];
+            ensureCollection();
+            collection.reset();
             variantImagesInput.value = '';
-            renderPreviews();
+            onCollectionChange();
             ['variant_size', 'variant_sku', 'variant_price', 'variant_stock'].forEach(id => {
                 document.getElementById(id).value = '';
             });
@@ -473,11 +451,12 @@
             let data = null;
             let response = null;
             try {
-                // Rebuild file payload from the collection: the file input only
-                // ever holds the latest picker selection.
+                // Staged payload: ordered tokens (image_order[]) with files
+                // under 'variant_images' in staged order. First staged image
+                // becomes the primary (display_order = 0) server-side.
                 const formData = new FormData(form);
                 formData.delete('variant_images');
-                selectedImages.forEach(f => formData.append('variant_images', f, f.name));
+                collection.buildPayload(formData, 'variant_images');
                 response = await fetch(form.action, {
                     method: 'POST',
                     body: formData,

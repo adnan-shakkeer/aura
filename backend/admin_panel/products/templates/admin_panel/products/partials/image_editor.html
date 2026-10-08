@@ -1,0 +1,861 @@
+{% comment %}
+  Shared AURA Image Editor + Variant image collection controller (v1).
+
+  Title: Image Editor. Proportional transform only (uniform scale + pan,
+  aspect locked). No rotation, no filters, no background operations.
+
+  Provides:
+    - window.AURAImageEditor.open({blob, fileName, mimeType})
+      -> Promise resolving {blob, params:{left,top,side}, mimeType}
+         or null when cancelled. params are the admin-selected square
+         crop as fractions of the source dimensions.
+    - window.AURAImageCollection.create({...}) -> staged collection store
+      owning Add / Edit / Remove / Reorder / Primary state.
+
+  Including page must call lucide.createIcons() on load (base_admin does).
+{% endcomment %}
+
+<div id="aura-image-editor" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Image Editor">
+    <div class="absolute inset-0 bg-[#141414]/40 backdrop-blur-sm" data-editor-backdrop></div>
+    <div class="relative bg-white border border-[#E8E5DF] shadow-[0_20px_50px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-2xl p-8 transform scale-95 opacity-0 transition-all duration-300 max-h-[90vh] overflow-y-auto" data-editor-panel>
+        <div class="flex justify-between items-center mb-1">
+            <h3 class="font-serif text-2xl text-[#141414] tracking-wide">Image Editor</h3>
+            <button type="button" data-editor-close class="text-[#6E6A63] hover:text-[#141414] transition-colors" aria-label="Close image editor">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+        <div class="flex justify-end gap-2 mb-4">
+            <span class="inline-flex items-center px-2.5 py-1 border border-[#E8E5DF] rounded-sm text-[11px] tracking-[0.2em] font-semibold text-[#6E6A63]">1 : 1</span>
+            <span class="inline-flex items-center px-2.5 py-1 border border-[#E8E5DF] rounded-sm text-[11px] tracking-[0.2em] font-semibold text-[#A8A29A]">1200 × 1200</span>
+        </div>
+
+        <div class="mx-auto w-full max-w-[360px]">
+            <p class="text-[11px] text-[#6E6A63] mb-2">What is inside the square becomes the final image. Drag to position.</p>
+            <div class="relative w-full rounded-sm overflow-hidden border border-[#E8E5DF] bg-[#141414]" style="aspect-ratio: 1 / 1;" data-editor-stage>
+                <canvas data-editor-canvas class="absolute inset-0 w-full h-full block cursor-grab" style="touch-action: none;" tabindex="0" aria-label="Crop preview. Drag to position the image inside the square frame."></canvas>
+            </div>
+        </div>
+
+        <div class="mx-auto w-full max-w-[360px] mt-4 flex items-center gap-3">
+            <button type="button" data-editor-zoom-out class="w-8 h-8 shrink-0 rounded-sm bg-white border border-[#E8E5DF] flex items-center justify-center text-[#6E6A63] hover:text-[#141414] hover:border-[#141414]/30 transition-colors" title="Zoom out" aria-label="Zoom out">
+                <i data-lucide="minus" class="w-4 h-4"></i>
+            </button>
+            <input type="range" data-editor-zoom min="1" max="3" step="0.01" value="1" class="flex-1 accent-[#A8842C]" aria-label="Zoom">
+            <button type="button" data-editor-zoom-in class="w-8 h-8 shrink-0 rounded-sm bg-white border border-[#E8E5DF] flex items-center justify-center text-[#6E6A63] hover:text-[#141414] hover:border-[#141414]/30 transition-colors" title="Zoom in" aria-label="Zoom in">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+            </button>
+            <button type="button" data-editor-reset class="w-8 h-8 shrink-0 rounded-sm bg-white border border-[#E8E5DF] flex items-center justify-center text-[#6E6A63] hover:text-[#141414] hover:border-[#141414]/30 transition-colors" title="Reset" aria-label="Reset image">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            </button>
+            <span data-editor-zoom-label class="w-12 shrink-0 text-right text-[11px] tabular-nums text-[#A8A29A]">100%</span>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-4">
+            <button type="button" data-editor-cancel class="px-6 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-[10px] uppercase tracking-widest font-semibold hover:bg-[#F5F3EE] hover:text-[#141414] transition-colors rounded-sm">
+                Cancel
+            </button>
+            <button type="button" data-editor-apply class="px-6 py-2.5 bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold hover:bg-black transition-colors rounded-sm">
+                Apply Crop
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    var STAGE = 600;
+    var FRAME_INSET = 60;
+    var FRAME_SIZE = STAGE - FRAME_INSET * 2;
+    var OUTPUT_SIZE = 1200;
+    var MAX_ZOOM = 4.0;
+
+    var refreshIcons = function () {
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
+        }
+    };
+
+    /* ------------------------------------------------------------------
+     * Image Editor (single image): fixed 1:1 crop-frame composition.
+     *
+     * The square crop frame is FIXED at the stage center and represents
+     * the final 1:1 composition ("what is inside becomes the image").
+     * The source image is transformed UNDERNEATH it with a proportional
+     * transform only (uniform scale + pan, aspect locked).
+     *
+     * Validity constraint (not an automatic crop): pan/zoom are clamped
+     * so the crop frame never extends outside the source image. The
+     * admin therefore always chooses a composition made of source
+     * pixels. There is no fill/background code path by design.
+     * ------------------------------------------------------------------ */
+    var root = null;
+    var panel = null;
+    var canvas = null;
+    var ctx = null;
+    var zoomInput = null;
+    var zoomLabel = null;
+    var session = null;
+
+    var ensureDom = function () {
+        if (root) return true;
+        root = document.getElementById('aura-image-editor');
+        if (!root) return false;
+        panel = root.querySelector('[data-editor-panel]');
+        canvas = root.querySelector('[data-editor-canvas]');
+        ctx = canvas.getContext('2d');
+        canvas.width = STAGE;
+        canvas.height = STAGE;
+        zoomInput = root.querySelector('[data-editor-zoom]');
+        zoomLabel = root.querySelector('[data-editor-zoom-label]');
+        return true;
+    };
+
+    var frameRect = function () {
+        return { x: FRAME_INSET, y: FRAME_INSET, size: FRAME_SIZE };
+    };
+
+    var drawnSize = function () {
+        return {
+            w: session.fitW * session.zoom,
+            h: session.fitH * session.zoom
+        };
+    };
+
+    var drawnOrigin = function () {
+        var d = drawnSize();
+        return {
+            x: (STAGE - d.w) / 2 + session.dx,
+            y: (STAGE - d.h) / 2 + session.dy
+        };
+    };
+
+    var minZoom = function () {
+        return Math.max(
+            FRAME_SIZE / session.fitW,
+            FRAME_SIZE / session.fitH
+        );
+    };
+
+    var clampView = function () {
+        // Zoom is bounded below by the minimum that lets the source cover
+        // the fixed crop frame (validity constraint, not an auto-crop).
+        session.zoom = Math.min(MAX_ZOOM, Math.max(minZoom(), session.zoom));
+        var d = drawnSize();
+        var cx = (STAGE - d.w) / 2;
+        var cy = (STAGE - d.h) / 2;
+        var ox = cx + session.dx;
+        var oy = cy + session.dy;
+        var f = frameRect();
+        // Crop frame must stay inside the drawn source rect:
+        // ox <= f.x and ox + d.w >= f.x + f.size (same for y).
+        var loX = (f.x + f.size) - d.w;
+        var hiX = f.x;
+        var loY = (f.y + f.size) - d.h;
+        var hiY = f.y;
+        session.dx = Math.min(Math.max(ox, Math.min(loX, hiX)), Math.max(loX, hiX)) - cx;
+        session.dy = Math.min(Math.max(oy, Math.min(loY, hiY)), Math.max(loY, hiY)) - cy;
+    };
+
+    var draw = function () {
+        var d = drawnSize();
+        var o = drawnOrigin();
+        var f = frameRect();
+        ctx.clearRect(0, 0, STAGE, STAGE);
+        // 1. Full source image.
+        ctx.drawImage(session.img, o.x, o.y, d.w, d.h);
+        // 2. Dim everything outside the fixed crop frame.
+        ctx.fillStyle = 'rgba(20, 20, 20, 0.55)';
+        ctx.fillRect(0, 0, STAGE, STAGE);
+        // 3. Reveal the selected composition inside the frame.
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(f.x, f.y, f.size, f.size);
+        ctx.clip();
+        ctx.drawImage(session.img, o.x, o.y, d.w, d.h);
+        ctx.restore();
+        // 4. Crop frame border (fixed 1:1 composition).
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(20, 20, 20, 0.35)';
+        ctx.strokeRect(f.x - 1.5, f.y - 1.5, f.size + 3, f.size + 3);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.strokeRect(f.x, f.y, f.size, f.size);
+        // 5. Recommended 75-85% product zone (visual guide only).
+        var zoneInset = f.size * 0.1;
+        ctx.save();
+        ctx.setLineDash([6, 5]);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.strokeRect(
+            f.x + zoneInset, f.y + zoneInset,
+            f.size - zoneInset * 2, f.size - zoneInset * 2
+        );
+        ctx.restore();
+        // 6. Center crosshair.
+        var cx = f.x + f.size / 2;
+        var cy = f.y + f.size / 2;
+        ctx.save();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.beginPath();
+        ctx.moveTo(cx, f.y + 8);
+        ctx.lineTo(cx, f.y + f.size - 8);
+        ctx.moveTo(f.x + 8, cy);
+        ctx.lineTo(f.x + f.size - 8, cy);
+        ctx.stroke();
+        ctx.restore();
+        // 7. Subtle occupancy tag.
+        ctx.save();
+        ctx.font = '600 11px "Plus Jakarta Sans", sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 4;
+        ctx.fillText('75–85%', f.x + 10, f.y + 22);
+        ctx.restore();
+    };
+
+    var syncControls = function () {
+        zoomInput.min = minZoom().toFixed(2);
+        zoomInput.value = String(session.zoom);
+        zoomLabel.textContent = Math.round(session.zoom * 100) + '%';
+    };
+
+    var render = function () {
+        clampView();
+        draw();
+        syncControls();
+    };
+
+    var setZoom = function (value, anchorX, anchorY) {
+        var before = drawnSize();
+        var beforeOrigin = drawnOrigin();
+        var next = Math.min(
+            MAX_ZOOM, Math.max(minZoom(), value || minZoom())
+        );
+        if (next === session.zoom) {
+            render();
+            return;
+        }
+        var ax = anchorX === undefined
+            ? FRAME_INSET + FRAME_SIZE / 2 : anchorX;
+        var ay = anchorY === undefined
+            ? FRAME_INSET + FRAME_SIZE / 2 : anchorY;
+        var k = next / session.zoom;
+        session.zoom = next;
+        var ox = ax - (ax - beforeOrigin.x) * k;
+        var oy = ay - (ay - beforeOrigin.y) * k;
+        var d = drawnSize();
+        session.dx = ox - (STAGE - d.w) / 2;
+        session.dy = oy - (STAGE - d.h) / 2;
+        render();
+    };
+
+    var resetView = function () {
+        session.zoom = minZoom();
+        var d = drawnSize();
+        var cx = (STAGE - d.w) / 2;
+        var cy = (STAGE - d.h) / 2;
+        session.dx = (
+            FRAME_INSET + FRAME_SIZE / 2 - d.w / 2
+        ) - cx;
+        session.dy = (
+            FRAME_INSET + FRAME_SIZE / 2 - d.h / 2
+        ) - cy;
+        render();
+    };
+
+    // Admin-selected square crop, mapped to source-image pixels.
+    var cropSourceRect = function () {
+        var d = drawnSize();
+        var o = drawnOrigin();
+        var f = frameRect();
+        var sx = (f.x - o.x) / d.w * session.imgW;
+        var sy = (f.y - o.y) / d.h * session.imgH;
+        var side = f.size / d.w * session.imgW;
+        return { sx: sx, sy: sy, side: side };
+    };
+
+    // Crop parameters shared with the backend renderer: fractions of the
+    // source dimensions. Same rect drives preview and Apply output.
+    var currentParams = function () {
+        var r = cropSourceRect();
+        var W = session.imgW;
+        var H = session.imgH;
+        var clamp01 = function (v) {
+            return Math.min(1, Math.max(0, v));
+        };
+        return {
+            left: Math.round(clamp01(r.sx / W) * 10000) / 10000,
+            top: Math.round(clamp01(r.sy / H) * 10000) / 10000,
+            side: Math.round(clamp01(r.side / W) * 10000) / 10000
+        };
+    };
+
+    var openModal = function () {
+        root.classList.remove('hidden');
+        void root.offsetWidth;
+        panel.classList.remove('scale-95', 'opacity-0');
+        panel.classList.add('scale-100', 'opacity-100');
+    };
+
+    var closeModal = function (done) {
+        panel.classList.remove('scale-100', 'opacity-100');
+        panel.classList.add('scale-95', 'opacity-0');
+        setTimeout(function () {
+            root.classList.add('hidden');
+            if (done) done();
+        }, 200);
+    };
+
+    var finish = function (result) {
+        var resolve = session && session.resolve;
+        if (session && session.objectUrl) {
+            URL.revokeObjectURL(session.objectUrl);
+        }
+        session = null;
+        closeModal(function () {
+            if (resolve) resolve(result);
+        });
+    };
+
+    var bindOnce = false;
+
+    var bindEditorEvents = function () {
+        if (bindOnce) return;
+        bindOnce = true;
+
+        root.querySelector('[data-editor-backdrop]').addEventListener('click', function () { finish(null); });
+        root.querySelector('[data-editor-close]').addEventListener('click', function () { finish(null); });
+        root.querySelector('[data-editor-cancel]').addEventListener('click', function () { finish(null); });
+
+        root.querySelector('[data-editor-zoom-in]').addEventListener('click', function () {
+            if (session) setZoom(session.zoom + 0.1);
+        });
+        root.querySelector('[data-editor-zoom-out]').addEventListener('click', function () {
+            if (session) setZoom(session.zoom - 0.1);
+        });
+        root.querySelector('[data-editor-reset]').addEventListener('click', function () {
+            if (session) resetView();
+        });
+        zoomInput.addEventListener('input', function () {
+            if (session) setZoom(parseFloat(zoomInput.value));
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (!session) return;
+            if (e.key === 'Escape') { finish(null); return; }
+            if (document.activeElement !== canvas) return;
+            var step = 12;
+            if (e.key === 'ArrowLeft') { session.dx += step; render(); e.preventDefault(); }
+            else if (e.key === 'ArrowRight') { session.dx -= step; render(); e.preventDefault(); }
+            else if (e.key === 'ArrowUp') { session.dy += step; render(); e.preventDefault(); }
+            else if (e.key === 'ArrowDown') { session.dy -= step; render(); e.preventDefault(); }
+            else if (e.key === '+' || e.key === '=') { setZoom(session.zoom + 0.1); e.preventDefault(); }
+            else if (e.key === '-') { setZoom(session.zoom - 0.1); e.preventDefault(); }
+        });
+
+        var pointers = {};
+        var pinchDist = 0;
+        var dragging = false;
+        var lastX = 0;
+        var lastY = 0;
+
+        var stagePoint = function (clientX, clientY) {
+            var rect = canvas.getBoundingClientRect();
+            return {
+                x: (clientX - rect.left) * (STAGE / rect.width),
+                y: (clientY - rect.top) * (STAGE / rect.height)
+            };
+        };
+
+        canvas.addEventListener('pointerdown', function (e) {
+            if (!session) return;
+            pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+            var ids = Object.keys(pointers);
+            if (ids.length === 2) {
+                var a = pointers[ids[0]];
+                var b = pointers[ids[1]];
+                pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
+                dragging = false;
+            } else if (ids.length === 1) {
+                dragging = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+            }
+            try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+            canvas.classList.remove('cursor-grab');
+            canvas.classList.add('cursor-grabbing');
+        });
+        canvas.addEventListener('pointermove', function (e) {
+            if (!session) return;
+            if (!(e.pointerId in pointers)) return;
+            pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+            var ids = Object.keys(pointers);
+            if (ids.length === 2) {
+                var a = pointers[ids[0]];
+                var b = pointers[ids[1]];
+                var dist = Math.hypot(a.x - b.x, a.y - b.y);
+                if (pinchDist > 0 && dist > 0) {
+                    var mid = stagePoint((a.x + b.x) / 2, (a.y + b.y) / 2);
+                    setZoom(session.zoom * (dist / pinchDist), mid.x, mid.y);
+                }
+                pinchDist = dist;
+                return;
+            }
+            if (!dragging) return;
+            var rect = canvas.getBoundingClientRect();
+            var scale = STAGE / rect.width;
+            session.dx += (e.clientX - lastX) * scale;
+            session.dy += (e.clientY - lastY) * scale;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            render();
+        });
+        var endPointer = function (e) {
+            delete pointers[e.pointerId];
+            if (Object.keys(pointers).length < 2) pinchDist = 0;
+            if (Object.keys(pointers).length === 0) {
+                dragging = false;
+                canvas.classList.add('cursor-grab');
+                canvas.classList.remove('cursor-grabbing');
+            }
+        };
+        canvas.addEventListener('pointerup', endPointer);
+        canvas.addEventListener('pointercancel', endPointer);
+        canvas.addEventListener('wheel', function (e) {
+            if (!session) return;
+            e.preventDefault();
+            var p = stagePoint(e.clientX, e.clientY);
+            setZoom(session.zoom + (e.deltaY < 0 ? 0.1 : -0.1), p.x, p.y);
+        }, { passive: false });
+
+        root.querySelector('[data-editor-apply]').addEventListener('click', function () {
+            if (!session) return;
+            // Crop the admin-selected square from the source, then
+            // normalize proportionally to 1200x1200. The same rect drives
+            // the preview, so output matches what the frame showed.
+            var params = currentParams();
+            var r = cropSourceRect();
+            var out = document.createElement('canvas');
+            out.width = OUTPUT_SIZE;
+            out.height = OUTPUT_SIZE;
+            var octx = out.getContext('2d');
+            octx.drawImage(
+                session.img,
+                r.sx, r.sy, r.side, r.side,
+                0, 0, OUTPUT_SIZE, OUTPUT_SIZE
+            );
+            var mime = session.mimeType || 'image/jpeg';
+            var quality = mime === 'image/jpeg' || mime === 'image/webp' ? 0.92 : undefined;
+            out.toBlob(function (blob) {
+                if (!blob) { finish(null); return; }
+                finish({ blob: blob, params: params, mimeType: blob.type || mime });
+            }, mime, quality);
+        });
+    };
+
+    window.AURAImageEditor = {
+        open: function (options) {
+            return new Promise(function (resolve) {
+                if (!ensureDom()) { resolve(null); return; }
+                if (session) { resolve(null); return; }
+                options = options || {};
+                if (!options.blob) { resolve(null); return; }
+                bindEditorEvents();
+                var objectUrl = URL.createObjectURL(options.blob);
+                var img = new Image();
+                img.onload = function () {
+                    var fit = Math.min(
+                        STAGE / img.naturalWidth,
+                        STAGE / img.naturalHeight
+                    );
+                    session = {
+                        img: img,
+                        imgW: img.naturalWidth,
+                        imgH: img.naturalHeight,
+                        fitW: img.naturalWidth * fit,
+                        fitH: img.naturalHeight * fit,
+                        zoom: 1,
+                        dx: 0,
+                        dy: 0,
+                        mimeType: options.mimeType || options.blob.type || 'image/jpeg',
+                        objectUrl: objectUrl,
+                        resolve: resolve
+                    };
+                    resetView();
+                    refreshIcons();
+                    openModal();
+                    if (canvas) canvas.focus({ preventScroll: true });
+                };
+                img.onerror = function () {
+                    URL.revokeObjectURL(objectUrl);
+                    resolve(null);
+                };
+                img.src = objectUrl;
+            });
+        }
+    };
+
+    /* ------------------------------------------------------------------
+     * Image collection controller: unified staging for the variant
+     * image collection (Add / Edit / Remove / Reorder / Primary).
+     *
+     * Entry statuses: 'untouched' | 'edited' | 'new' | 'new_edited'
+     * Removal is a flag on existing entries ('removed': true + Undo).
+     * Order is positional: array index === intended display_order.
+     * ------------------------------------------------------------------ */
+    var keyCounter = 0;
+
+    var editedFileName = function (originalName, mimeType) {
+        var base = (originalName || 'image').split('/').pop().split('\\').pop();
+        var stem = base.replace(/\.[^.]*$/, '') || 'image';
+        stem = stem.replace(/[^a-zA-Z0-9-_]+/g, '-').slice(0, 60) || 'image';
+        var ext = 'jpg';
+        if (mimeType === 'image/png') ext = 'png';
+        else if (mimeType === 'image/webp') ext = 'webp';
+        return stem + '-edited.' + ext;
+    };
+
+    window.AURAImageCollection = {
+        create: function (options) {
+            options = options || {};
+            var listEl = options.listEl;
+            var maxImages = options.maxImages || 5;
+            var showToast = options.showToast || function () {};
+            var onChange = options.onChange || function () {};
+            var acceptedTypes = options.acceptedTypes || ['image/jpeg', 'image/png', 'image/webp'];
+
+            var store = {
+                entries: [],
+
+                reset: function () {
+                    store.entries.forEach(function (entry) {
+                        if (entry.previewUrl && entry.previewOwnsUrl) {
+                            URL.revokeObjectURL(entry.previewUrl);
+                        }
+                    });
+                    store.entries = [];
+                    store.render();
+                    onChange();
+                },
+
+                setExisting: function (items) {
+                    store.reset();
+                    (items || []).forEach(function (item) {
+                        if (!item || !item.url) return;
+                        store.entries.push({
+                            key: 'existing-' + String(item.id),
+                            kind: 'existing',
+                            existingId: String(item.id),
+                            previewUrl: item.url,
+                            previewOwnsUrl: false,
+                            originalFile: null,
+                            editedBlob: null,
+                            editorParams: null,
+                            fileName: null,
+                            status: 'untouched',
+                            removed: false
+                        });
+                    });
+                    store.render();
+                    onChange();
+                },
+
+                stagedCount: function () {
+                    return store.entries.filter(function (e) { return !e.removed; }).length;
+                },
+
+                addFiles: function (fileList) {
+                    var incoming = Array.prototype.slice.call(fileList || []);
+                    if (!incoming.length) return { added: [], error: null };
+                    var bad = incoming.find(function (f) { return acceptedTypes.indexOf(f.type) === -1; });
+                    if (bad) {
+                        return { added: [], error: 'Only JPEG, PNG, and WebP images are allowed.' };
+                    }
+                    var fresh = incoming.filter(function (f) {
+                        return !store.entries.some(function (e) {
+                            return e.kind === 'new' && e.originalFile &&
+                                e.originalFile.name === f.name &&
+                                e.originalFile.size === f.size &&
+                                e.originalFile.lastModified === f.lastModified;
+                        });
+                    });
+                    if (!fresh.length) return { added: [], error: null };
+                    var room = maxImages - store.stagedCount();
+                    if (room <= 0) {
+                        showToast('A maximum of 5 product images is allowed.', 'error');
+                        return { added: [], error: null };
+                    }
+                    if (fresh.length > room) {
+                        return { added: [], error: 'Only ' + room + ' more image' + (room === 1 ? '' : 's') + ' can be added (maximum 5).' };
+                    }
+                    var added = fresh.map(function (file) {
+                        keyCounter += 1;
+                        var entry = {
+                            key: 'new-' + Date.now().toString(36) + '-' + keyCounter,
+                            kind: 'new',
+                            existingId: null,
+                            previewUrl: URL.createObjectURL(file),
+                            previewOwnsUrl: true,
+                            originalFile: file,
+                            editedBlob: null,
+                            editorParams: null,
+                            fileName: file.name,
+                            status: 'new',
+                            removed: false
+                        };
+                        store.entries.push(entry);
+                        return entry;
+                    });
+                    store.render();
+                    onChange();
+                    return { added: added, error: null };
+                },
+
+                removeEntry: function (key) {
+                    var idx = store.entries.findIndex(function (e) { return e.key === key; });
+                    if (idx === -1) return;
+                    var entry = store.entries[idx];
+                    if (entry.kind === 'new') {
+                        if (entry.previewUrl && entry.previewOwnsUrl) URL.revokeObjectURL(entry.previewUrl);
+                        store.entries.splice(idx, 1);
+                    } else {
+                        entry.removed = true;
+                    }
+                    store.render();
+                    onChange();
+                },
+
+                restoreEntry: function (key) {
+                    var entry = store.entries.find(function (e) { return e.key === key; });
+                    if (!entry) return;
+                    entry.removed = false;
+                    store.render();
+                    onChange();
+                },
+
+                moveEntry: function (key, delta) {
+                    var visible = store.entries.filter(function (e) { return !e.removed; });
+                    var pos = visible.findIndex(function (e) { return e.key === key; });
+                    if (pos === -1) return;
+                    var swapWith = visible[pos + delta];
+                    if (!swapWith) return;
+                    var a = store.entries.findIndex(function (e) { return e.key === key; });
+                    var b = store.entries.findIndex(function (e) { return e.key === swapWith.key; });
+                    var tmp = store.entries[a];
+                    store.entries[a] = store.entries[b];
+                    store.entries[b] = tmp;
+                    store.render();
+                    onChange();
+                },
+
+                moveEntryTo: function (key, toIndex) {
+                    var from = store.entries.findIndex(function (e) { return e.key === key; });
+                    if (from === -1) return;
+                    var item = store.entries.splice(from, 1)[0];
+                    store.entries.splice(Math.max(0, Math.min(store.entries.length, toIndex)), 0, item);
+                    store.render();
+                    onChange();
+                },
+
+                applyEdit: function (key, result, sourceName) {
+                    var entry = store.entries.find(function (e) { return e.key === key; });
+                    if (!entry || !result || !result.blob) return false;
+                    if (entry.previewUrl && entry.previewOwnsUrl) URL.revokeObjectURL(entry.previewUrl);
+                    entry.editedBlob = result.blob;
+                    entry.editorParams = result.params || null;
+                    entry.fileName = editedFileName(sourceName || entry.fileName, result.mimeType);
+                    entry.previewUrl = URL.createObjectURL(result.blob);
+                    entry.previewOwnsUrl = true;
+                    entry.status = entry.kind === 'existing' ? 'edited' : 'new_edited';
+                    store.render();
+                    onChange();
+                    return true;
+                },
+
+                nextUneditedNew: function () {
+                    return store.entries.find(function (e) {
+                        return e.kind === 'new' && e.status === 'new' && !e.removed;
+                    }) || null;
+                },
+
+                buildPayload: function (formData, fileField) {
+                    var tokens = [];
+                    var newKeys = [];
+                    var editedNewKeys = [];
+                    var removeIds = [];
+                    store.entries.forEach(function (entry) {
+                        if (entry.kind === 'existing' && entry.removed) {
+                            if (entry.existingId) removeIds.push(entry.existingId);
+                            return;
+                        }
+                        if (entry.removed) return;
+                        if (entry.kind === 'existing') {
+                            tokens.push('e:' + entry.existingId);
+                            if (entry.editedBlob) {
+                                formData.append('edited_image_' + entry.existingId, entry.editedBlob, entry.fileName || 'edited.jpg');
+                                if (entry.editorParams) {
+                                    formData.append('transform_' + entry.existingId, JSON.stringify(entry.editorParams));
+                                }
+                            }
+                        } else {
+                            tokens.push('n:' + entry.key);
+                            newKeys.push(entry.key);
+                            var file = entry.editedBlob || entry.originalFile;
+                            formData.append(fileField, file, entry.editedBlob ? (entry.fileName || 'edited.jpg') : entry.originalFile.name);
+                            if (entry.editedBlob) editedNewKeys.push(entry.key);
+                        }
+                    });
+                    tokens.forEach(function (t) { formData.append('image_order', t); });
+                    newKeys.forEach(function (k) { formData.append('new_image_keys', k); });
+                    editedNewKeys.forEach(function (k) { formData.append('edited_new_keys', k); });
+                    removeIds.forEach(function (id) { formData.append('remove_image_ids', id); });
+                    return { tokens: tokens, removeIds: removeIds };
+                },
+
+                render: function () {
+                    if (!listEl) return;
+                    listEl.innerHTML = '';
+                    var visible = store.entries.filter(function (e) { return !e.removed; });
+                    store.entries.forEach(function (entry) {
+                        var position = visible.indexOf(entry);
+                        var isPrimary = !entry.removed && position === 0;
+                        var wrap = document.createElement('div');
+                        wrap.className = 'relative w-20 h-20 shrink-0 rounded-sm focus:outline-none focus:ring-2 focus:ring-[#A8842C]/60' +
+                            (entry.removed ? ' opacity-50' : '');
+                        wrap.setAttribute('tabindex', '0');
+                        wrap.setAttribute('draggable', 'true');
+                        wrap.dataset.entryKey = entry.key;
+                        wrap.setAttribute('aria-label', 'Variant image. Position ' + (position + 1) + (isPrimary ? ', primary' : '') + (entry.removed ? ', marked for removal' : ''));
+                        var badges = '';
+                        if (isPrimary) badges += '<span class="absolute bottom-1 left-1 px-1.5 py-0.5 bg-[#0D0D0E] text-white text-[8px] uppercase tracking-widest rounded-sm">Primary</span>';
+                        if (entry.editedBlob && !entry.removed) badges += '<span class="absolute top-1 left-1 px-1.5 py-0.5 bg-white/95 border border-[#A8842C]/60 text-[#A8842C] text-[8px] uppercase tracking-widest rounded-sm">Edited</span>';
+                        if (entry.removed) badges += '<span class="absolute top-1 left-1 px-1.5 py-0.5 bg-[#B42318] text-white text-[8px] uppercase tracking-widest rounded-sm">Will remove</span>';
+                        var actions = '';
+                        if (entry.removed) {
+                            actions = '<button type="button" data-act="restore" aria-label="Undo remove image" class="absolute -top-2 -right-2 px-1.5 h-5 rounded-full bg-white border border-[#A8842C]/60 text-[#A8842C] text-[10px] font-semibold leading-none flex items-center justify-center hover:bg-[#FAF3E3]">Undo</button>';
+                        } else {
+                            actions =
+                                '<button type="button" data-act="edit" aria-label="Edit image" title="Edit image" class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white border border-[#E8E5DF] text-[#6E6A63] hover:text-[#141414] hover:border-[#141414]/30 transition-colors flex items-center justify-center"><i data-lucide="pencil" class="w-3 h-3 pointer-events-none"></i></button>' +
+                                '<button type="button" data-act="remove" aria-label="Remove image" title="Remove image" class="absolute -bottom-2 -right-2 w-5 h-5 rounded-full bg-white border border-[#E8E5DF] text-[#6E6A63] hover:text-[#B42318] hover:border-[#B42318]/50 text-xs leading-none flex items-center justify-center">&times;</button>' +
+                                '<button type="button" data-act="left" aria-label="Move image earlier" title="Move earlier" class="absolute bottom-1 right-7 w-5 h-5 rounded-full bg-white/95 border border-[#E8E5DF] text-[#6E6A63] hover:text-[#141414] transition-colors hidden group-hover:flex group-focus-within:flex items-center justify-center">&#8249;</button>' +
+                                '<button type="button" data-act="right" aria-label="Move image later" title="Move later" class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-white/95 border border-[#E8E5DF] text-[#6E6A63] hover:text-[#141414] transition-colors hidden group-hover:flex group-focus-within:flex items-center justify-center">&#8250;</button>';
+                        }
+                        wrap.classList.add('group');
+                        wrap.innerHTML =
+                            '<img src="' + entry.previewUrl + '" alt="Variant image" draggable="false" class="w-20 h-20 rounded-sm object-cover border ' +
+                            (isPrimary ? 'border-[#A8842C]/60' : 'border-[#E8E5DF]') + '">' +
+                            badges + actions +
+                            '<span data-drag-handle title="Drag to reorder" class="absolute top-1 right-1 w-5 h-5 rounded-sm bg-white/90 border border-[#E8E5DF] text-[#A8A29A] hover:text-[#141414] cursor-grab hidden group-hover:flex group-focus-within:flex items-center justify-center"><i data-lucide="grip-vertical" class="w-3 h-3 pointer-events-none"></i></span>';
+                        listEl.appendChild(wrap);
+                    });
+                    refreshIcons();
+                }
+            };
+
+            if (listEl) {
+                listEl.addEventListener('click', function (e) {
+                    var btn = e.target.closest('[data-act]');
+                    if (!btn) return;
+                    var item = e.target.closest('[data-entry-key]');
+                    if (!item) return;
+                    var key = item.dataset.entryKey;
+                    var act = btn.dataset.act;
+                    if (act === 'remove') store.removeEntry(key);
+                    else if (act === 'restore') store.restoreEntry(key);
+                    else if (act === 'left') store.moveEntry(key, -1);
+                    else if (act === 'right') store.moveEntry(key, 1);
+                    else if (act === 'edit' && options.onEdit) options.onEdit(key);
+                });
+
+                listEl.addEventListener('keydown', function (e) {
+                    var item = e.target.closest('[data-entry-key]');
+                    if (!item) return;
+                    if (e.key === 'ArrowLeft') { store.moveEntry(item.dataset.entryKey, -1); e.preventDefault(); item.focus(); }
+                    else if (e.key === 'ArrowRight') { store.moveEntry(item.dataset.entryKey, 1); e.preventDefault(); item.focus(); }
+                });
+
+                var dragKey = null;
+                listEl.addEventListener('dragstart', function (e) {
+                    var item = e.target.closest('[data-entry-key]');
+                    if (!item) return;
+                    if (e.target.closest('[data-act]')) { e.preventDefault(); return; }
+                    dragKey = item.dataset.entryKey;
+                    try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragKey); } catch (err) {}
+                });
+                listEl.addEventListener('dragover', function (e) {
+                    var item = e.target.closest('[data-entry-key]');
+                    if (!item || !dragKey) return;
+                    e.preventDefault();
+                    try { e.dataTransfer.dropEffect = 'move'; } catch (err) {}
+                });
+                listEl.addEventListener('drop', function (e) {
+                    var item = e.target.closest('[data-entry-key]');
+                    if (!item || !dragKey) return;
+                    e.preventDefault();
+                    var to = store.entries.findIndex(function (x) { return x.key === item.dataset.entryKey; });
+                    store.moveEntryTo(dragKey, to);
+                    dragKey = null;
+                });
+                listEl.addEventListener('dragend', function () { dragKey = null; });
+            }
+
+            return store;
+        },
+
+        /* Edit one staged entry via the Image Editor modal.
+         * Existing rows are fetched read-only; stored files stay untouched
+         * until Variant Save. Resolves true when an edit was applied,
+         * false on cancel/failure (entry left as-is). */
+        editWithEditor: function (collection, key, showToast) {
+            return (async function () {
+                var entry = collection.entries.find(function (e) { return e.key === key; });
+                if (!entry || entry.removed) return false;
+                var blob = entry.editedBlob || entry.originalFile || null;
+                var sourceName = entry.fileName || (entry.originalFile && entry.originalFile.name) || 'image.jpg';
+                var mimeType = (blob && blob.type) || 'image/jpeg';
+                if (entry.kind === 'existing' && !entry.editedBlob) {
+                    try {
+                        var resp = await fetch(entry.previewUrl, { credentials: 'same-origin' });
+                        if (!resp.ok) throw new Error('load failed');
+                        blob = await resp.blob();
+                        mimeType = blob.type || mimeType;
+                    } catch (err) {
+                        if (showToast) showToast('Could not load image for editing.', 'error');
+                        return false;
+                    }
+                }
+                if (!blob) return false;
+                // Reopening an already-edited entry starts a fresh session
+                // from the current staged blob.
+                var result = await window.AURAImageEditor.open({
+                    blob: blob,
+                    fileName: sourceName,
+                    mimeType: mimeType
+                });
+                if (result) {
+                    collection.applyEdit(key, result, sourceName);
+                    return true;
+                }
+                return false;
+            })();
+        },
+
+        /* Auto-open the editor for each unedited new pick in turn.
+         * Stops at the first cancel; the remaining picks stay staged
+         * unedited and editable per thumbnail. */
+        autoEditQueue: async function (collection) {
+            var next = collection.nextUneditedNew();
+            while (next) {
+                var key = next.key;
+                var applied = await window.AURAImageCollection.editWithEditor(collection, key);
+                var entry = collection.entries.find(function (e) { return e.key === key; });
+                if (!applied || !entry || entry.status === 'new' || entry.removed) break;
+                next = collection.nextUneditedNew();
+            }
+        }
+    };
+})();
+</script>

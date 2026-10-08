@@ -1,7 +1,10 @@
 from decimal import Decimal, InvalidOperation
 from http import HTTPStatus
+import json
 
 from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.core.files.storage import default_storage
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db import transaction
 from django.db.models import Count, Q
@@ -10,22 +13,230 @@ from django.shortcuts import get_object_or_404, render
 from django.utils.text import slugify
 from django.views import View
 
-from PIL import Image
-
 from admin_panel.brands.models import Brand
 from admin_panel.categories.models import Category
 
+from .image_processing import (
+    ALLOWED_IMAGE_TYPES,
+    ERROR_INVALID_IMAGE,
+    MAX_VARIANT_IMAGES,
+    MIN_VARIANT_IMAGES,
+    TARGET_SIZE,
+    get_image_info,
+    render_standard_image,
+    save_replacement_image,
+    validate_image_file,
+)
 from .models import Product, ProductVariant, VariantImage
 
 
-ALLOWED_IMAGE_TYPES = {
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-}
+def _delete_obsolete_files(file_names):
+    """Delete obsolete media files after a successful DB commit.
 
-MIN_VARIANT_IMAGES = 3
-MAX_VARIANT_IMAGES = 5
+    Filesystem operations do not roll back with database transactions,
+    so this must only run via transaction.on_commit().
+    """
+    for name in file_names or []:
+        if not name:
+            continue
+        try:
+            if default_storage.exists(name):
+                default_storage.delete(name)
+        except Exception:
+            continue
+
+
+def _first_error_message(exc, default):
+    messages = getattr(exc, "messages", None)
+
+    if messages:
+        return messages[0]
+
+    return default
+
+
+def _validate_uploads(files):
+    """Validate incoming image files. Returns an error message or None."""
+    for uploaded_file in files:
+        try:
+            validate_image_file(uploaded_file)
+        except ValidationError as exc:
+            return _first_error_message(exc, ERROR_INVALID_IMAGE)
+
+    return None
+
+
+def _parse_transform(raw_value):
+    if not raw_value:
+        return None
+
+    try:
+        parsed = json.loads(raw_value)
+    except (TypeError, ValueError):
+        return None
+
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _parse_new_file_map(request, files, field_errors, error_key="images"):
+    """Map client image keys to uploaded files.
+
+    The frontend uploads new/edited-new files in staged order and sends the
+    matching ``new_image_keys`` list so order can be resolved safely.
+    """
+    keys = [
+        key.strip()
+        for key in request.POST.getlist("new_image_keys")
+        if key.strip()
+    ]
+
+    if keys and len(keys) != len(files):
+        field_errors[error_key] = (
+            "Image upload data is inconsistent. Please retry."
+        )
+        return None
+
+    if not keys:
+        keys = [f"file-{index}" for index in range(len(files))]
+
+    mapping = {}
+
+    for key, uploaded_file in zip(keys, files):
+        if key in mapping:
+            field_errors[error_key] = (
+                "Duplicate image data received. Please retry."
+            )
+            return None
+
+        mapping[key] = uploaded_file
+
+    return mapping
+
+
+def _edited_new_keys(request):
+    return {
+        key.strip()
+        for key in request.POST.getlist("edited_new_keys")
+        if key.strip()
+    }
+
+
+def _require_standard_square(uploaded_file):
+    """Enforce the 1200x1200 editor contract for explicitly edited blobs."""
+    try:
+        _format, width, height = get_image_info(uploaded_file)
+    except ValidationError as exc:
+        return _first_error_message(exc, ERROR_INVALID_IMAGE)
+
+    if width != TARGET_SIZE or height != TARGET_SIZE:
+        return "Edited image data is invalid. Please re-apply the edit."
+
+    return None
+
+
+def _resolve_edited_file(uploaded_file, transform, fallback_source=None):
+    """Resolve the file to persist for an explicitly edited image.
+
+    Edited blobs are the frontend-rendered 1200x1200 composition and are
+    persisted as-is after validation (no reprocessing). If a blob fails the
+    square check but a transform plus the original source is available, the
+    composition is re-rendered server-side. Returns (file, error).
+    """
+    error = _validate_uploads([uploaded_file])
+
+    if error:
+        return None, error
+
+    square_error = _require_standard_square(uploaded_file)
+
+    if not square_error:
+        try:
+            uploaded_file.seek(0)
+        except Exception:
+            pass
+
+        return uploaded_file, None
+
+    if transform is not None and fallback_source is not None:
+        try:
+            return (
+                render_standard_image(fallback_source, transform),
+                None,
+            )
+        except ValidationError as exc:
+            return None, _first_error_message(exc, ERROR_INVALID_IMAGE)
+
+    return None, square_error
+
+
+def _resolve_ordered_new_files(
+    request,
+    files,
+    field_errors,
+    error_key="images",
+):
+    """Resolve staged order for create flows.
+
+    Returns the uploaded files in final display order, or None when
+    field_errors was populated. Without ``image_order`` tokens the upload
+    order is preserved (legacy behavior).
+    """
+    tokens = [
+        token.strip()
+        for token in request.POST.getlist("image_order")
+        if token.strip()
+    ]
+
+    if not tokens:
+        return list(files)
+
+    file_map = _parse_new_file_map(
+        request,
+        files,
+        field_errors,
+        error_key=error_key,
+    )
+
+    if file_map is None:
+        return None
+
+    edited_keys = _edited_new_keys(request)
+    ordered = []
+    seen = set()
+
+    for token in tokens:
+        if not token.startswith("n:") or token in seen:
+            field_errors[error_key] = (
+                "Invalid image order data. Please retry."
+            )
+            return None
+
+        seen.add(token)
+        key = token[2:]
+
+        if not key or key not in file_map:
+            field_errors[error_key] = (
+                "Image upload data is inconsistent. Please retry."
+            )
+            return None
+
+        ordered.append(file_map[key])
+
+    if len(ordered) != len(files):
+        field_errors[error_key] = (
+            "Image upload data is inconsistent. Please retry."
+        )
+        return None
+
+    for token, uploaded_file in zip(tokens, ordered):
+        if token[2:] in edited_keys:
+            square_error = _require_standard_square(uploaded_file)
+
+            if square_error:
+                field_errors[error_key] = square_error
+                return None
+
+    return ordered
 
 
 class ProductListView(View):
@@ -384,6 +595,16 @@ class ProductCreateView(View):
                 f"SKU '{variant_sku}' already exists."
             )
 
+        ordered_variant_images = None
+
+        if not field_errors:
+            ordered_variant_images = _resolve_ordered_new_files(
+                request,
+                variant_images,
+                field_errors,
+                error_key="variant_images",
+            )
+
         if field_errors:
             return JsonResponse(
                 {
@@ -453,7 +674,7 @@ class ProductCreateView(View):
                 # -------------------------
 
                 for index, image_file in enumerate(
-                    variant_images,
+                    ordered_variant_images,
                 ):
                     VariantImage.objects.create(
                         variant=variant,
@@ -582,28 +803,11 @@ class ProductCreateView(View):
             )
             return
 
-        for image_file in images:
+        upload_error = _validate_uploads(images)
 
-            if image_file.content_type not in (
-                ALLOWED_IMAGE_TYPES
-            ):
-                field_errors[f"{prefix}images"] = (
-                    "Only JPEG, PNG, and WebP images "
-                    "are allowed."
-                )
-                return
-
-            try:
-                image = Image.open(image_file)
-                image.verify()
-                image_file.seek(0)
-
-            except Exception:
-                field_errors[f"{prefix}images"] = (
-                    "One or more uploaded files "
-                    "are not valid images."
-                )
-                return
+        if upload_error:
+            field_errors[f"{prefix}images"] = upload_error
+            return
 
 
 class ProductUpdateView(View):
@@ -981,6 +1185,15 @@ class VariantCreateView(View):
                 f"SKU '{sku}' already exists."
             )
 
+        ordered_images = None
+
+        if not field_errors:
+            ordered_images = _resolve_ordered_new_files(
+                request,
+                images,
+                field_errors,
+            )
+
         if field_errors:
             return JsonResponse(
                 {
@@ -1010,7 +1223,7 @@ class VariantCreateView(View):
                 )
 
                 for index, image_file in enumerate(
-                    images,
+                    ordered_images,
                 ):
                     VariantImage.objects.create(
                         variant=variant,
@@ -1153,6 +1366,27 @@ class VariantUpdateView(View):
             except (TypeError, ValueError):
                 continue
 
+        order_tokens = [
+            token.strip()
+            for token in request.POST.getlist("image_order")
+            if token.strip()
+        ]
+
+        if order_tokens:
+            return self._save_with_staged_order(
+                request=request,
+                variant=variant,
+                size=size,
+                sku=sku,
+                price=price,
+                stock=stock,
+                is_listed_input=is_listed_input,
+                new_images=new_images,
+                field_errors=field_errors,
+                order_tokens=order_tokens,
+                parsed_remove_ids=parsed_remove_ids,
+            )
+
         if parsed_remove_ids:
             images_to_remove = list(
                 variant.images.filter(
@@ -1186,29 +1420,11 @@ class VariantUpdateView(View):
                     "A maximum of 5 product images "
                     "is allowed."
                 )
+            else:
+                upload_error = _validate_uploads(new_images)
 
-            for image_file in new_images:
-
-                if image_file.content_type not in (
-                    ALLOWED_IMAGE_TYPES
-                ):
-                    field_errors["images"] = (
-                        "Only JPEG, PNG, and WebP images "
-                        "are allowed."
-                    )
-                    break
-
-                try:
-                    image = Image.open(image_file)
-                    image.verify()
-                    image_file.seek(0)
-
-                except Exception:
-                    field_errors["images"] = (
-                        "One or more uploaded files "
-                        "are not valid images."
-                    )
-                    break
+                if upload_error:
+                    field_errors["images"] = upload_error
 
         if (
             final_image_count
@@ -1239,14 +1455,17 @@ class VariantUpdateView(View):
         ]
 
         try:
+            obsolete_file_names = []
+
             with transaction.atomic():
 
                 variant.save()
 
                 for image_record in images_to_remove:
-                    image_record.image.delete(
-                        save=False,
-                    )
+                    if image_record.image:
+                        obsolete_file_names.append(
+                            image_record.image.name,
+                        )
                     image_record.delete()
 
                 remaining_images = list(
@@ -1277,6 +1496,309 @@ class VariantUpdateView(View):
                         image=image_file,
                         display_order=index,
                     )
+
+            if obsolete_file_names:
+                transaction.on_commit(
+                    lambda: _delete_obsolete_files(
+                        obsolete_file_names,
+                    )
+                )
+
+        except Exception:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": (
+                        "Something went wrong while "
+                        "updating the variant."
+                    ),
+                },
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "message": (
+                    f"Variant '{variant.size}' "
+                    "updated successfully!"
+                ),
+            },
+            status=HTTPStatus.OK,
+        )
+
+    def _save_with_staged_order(
+        self,
+        request,
+        variant,
+        size,
+        sku,
+        price,
+        stock,
+        is_listed_input,
+        new_images,
+        field_errors,
+        order_tokens,
+        parsed_remove_ids,
+    ):
+        """Merge staged image state sent by the Image Editor collection.
+
+        Token grammar (``image_order[]``): ``e:<id>`` for surviving existing
+        images, ``n:<key>`` for newly uploaded files. Tokens must cover
+        exactly the surviving existing images plus every uploaded new file.
+        Untouched existing rows are never read or rewritten.
+        """
+        if field_errors:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "errors": field_errors,
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        existing = {
+            image.id: image
+            for image in variant.images.all()
+        }
+
+        for remove_id in parsed_remove_ids:
+            if remove_id not in existing:
+                field_errors["images"] = (
+                    "Invalid image selection. Please retry."
+                )
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "errors": field_errors,
+                    },
+                    status=HTTPStatus.BAD_REQUEST,
+                )
+
+        removed_ids = set(parsed_remove_ids)
+        survivor_ids = set(existing) - removed_ids
+
+        replacements = {}
+
+        for survivor_id in survivor_ids:
+            uploaded = request.FILES.get(
+                f"edited_image_{survivor_id}"
+            )
+
+            if uploaded is not None:
+                replacements[survivor_id] = (
+                    uploaded,
+                    _parse_transform(
+                        request.POST.get(f"transform_{survivor_id}")
+                    ),
+                )
+
+        new_file_map = _parse_new_file_map(
+            request,
+            new_images,
+            field_errors,
+        )
+
+        if new_file_map is None:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "errors": field_errors,
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        edited_new_keys = _edited_new_keys(request)
+        ordered = []
+        seen_tokens = set()
+
+        for token in order_tokens:
+            if token in seen_tokens:
+                field_errors["images"] = (
+                    "Invalid image order data. Please retry."
+                )
+                break
+
+            seen_tokens.add(token)
+
+            if token.startswith("e:"):
+                try:
+                    image_id = int(token[2:])
+                except (TypeError, ValueError):
+                    field_errors["images"] = (
+                        "Invalid image order data. Please retry."
+                    )
+                    break
+
+                if image_id not in survivor_ids:
+                    field_errors["images"] = (
+                        "Invalid image order data. Please retry."
+                    )
+                    break
+
+                ordered.append(("existing", image_id))
+            elif token.startswith("n:"):
+                key = token[2:]
+
+                if not key or key not in new_file_map:
+                    field_errors["images"] = (
+                        "Image upload data is inconsistent. "
+                        "Please retry."
+                    )
+                    break
+
+                ordered.append(("new", key))
+            else:
+                field_errors["images"] = (
+                    "Invalid image order data. Please retry."
+                )
+                break
+
+        if not field_errors:
+            ordered_existing = {
+                ref for kind, ref in ordered if kind == "existing"
+            }
+            ordered_new = [
+                ref for kind, ref in ordered if kind == "new"
+            ]
+
+            if ordered_existing != survivor_ids or sorted(
+                ordered_new
+            ) != sorted(new_file_map):
+                field_errors["images"] = (
+                    "Image upload data is inconsistent. "
+                    "Please retry."
+                )
+
+        if not field_errors:
+            if len(ordered) < MIN_VARIANT_IMAGES:
+                field_errors["images"] = (
+                    "A minimum of 3 product images is required."
+                )
+            elif len(ordered) > MAX_VARIANT_IMAGES:
+                field_errors["images"] = (
+                    "A maximum of 5 product images "
+                    "is allowed."
+                )
+
+        prepared_replacements = {}
+
+        if not field_errors:
+            for survivor_id, (uploaded, transform) in (
+                replacements.items()
+            ):
+                stored_file = existing[survivor_id].image
+
+                try:
+                    stored_file.open()
+                except Exception:
+                    pass
+
+                resolved, error = _resolve_edited_file(
+                    uploaded,
+                    transform,
+                    fallback_source=stored_file,
+                )
+
+                if error:
+                    field_errors["images"] = error
+                    break
+
+                prepared_replacements[survivor_id] = resolved
+
+        if not field_errors:
+            for kind, ref in ordered:
+                if kind != "new":
+                    continue
+
+                uploaded = new_file_map[ref]
+                upload_error = _validate_uploads([uploaded])
+
+                if upload_error:
+                    field_errors["images"] = upload_error
+                    break
+
+                if ref in edited_new_keys:
+                    square_error = _require_standard_square(
+                        uploaded
+                    )
+
+                    if square_error:
+                        field_errors["images"] = square_error
+                        break
+
+        if field_errors:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "errors": field_errors,
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        variant.size = size
+        variant.sku = sku
+        variant.price = price
+        variant.stock = stock
+        variant.is_listed = is_listed_input in [
+            "on",
+            "true",
+            "True",
+            True,
+        ]
+
+        try:
+            obsolete_file_names = []
+
+            with transaction.atomic():
+                variant.save()
+
+                for remove_id in removed_ids:
+                    record = existing[remove_id]
+
+                    if record.image:
+                        obsolete_file_names.append(
+                            record.image.name,
+                        )
+
+                    record.delete()
+
+                for kind, ref in ordered:
+                    if (
+                        kind == "existing"
+                        and ref in prepared_replacements
+                    ):
+                        obsolete_file_names.append(
+                            save_replacement_image(
+                                existing[ref],
+                                prepared_replacements[ref],
+                            )
+                        )
+
+                for index, (kind, ref) in enumerate(ordered):
+                    if kind == "existing":
+                        record = existing[ref]
+
+                        if record.display_order != index:
+                            record.display_order = index
+                            record.save(
+                                update_fields=[
+                                    "display_order",
+                                ]
+                            )
+                    else:
+                        VariantImage.objects.create(
+                            variant=variant,
+                            image=new_file_map[ref],
+                            display_order=index,
+                        )
+
+            if obsolete_file_names:
+                transaction.on_commit(
+                    lambda: _delete_obsolete_files(
+                        obsolete_file_names,
+                    )
+                )
 
         except Exception:
             return JsonResponse(

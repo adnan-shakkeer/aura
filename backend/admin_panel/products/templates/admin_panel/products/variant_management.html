@@ -107,7 +107,7 @@
                     </td>
                     <td class="py-5 px-8 align-middle text-right">
                         <div class="flex items-center justify-end gap-2.5">
-                            <button type="button" onclick="openEditVariant('{{ variant.id }}', '{{ variant.size|escapejs }}', '{{ variant.sku|escapejs }}', '{{ variant.price }}', '{{ variant.stock }}', '{{ variant.is_listed|yesno:'true,false' }}', '{% for im in variant.images.all %}{{ im.image.url }}{% if not forloop.last %}|{% endif %}{% endfor %}', '{% for im in variant.images.all %}{{ im.id }}{% if not forloop.last %}|{% endif %}{% endfor %}')" title="Edit" aria-label="Edit variant {{ variant.size }}" class="w-8 h-8 rounded-sm bg-white border border-[#E8E5DF] flex items-center justify-center text-[#6E6A63] hover:text-[#141414] hover:border-[#141414]/30 transition-colors">
+                            <button type="button" data-edit-variant data-variant-id="{{ variant.id }}" data-variant-size="{{ variant.size|escape }}" data-variant-sku="{{ variant.sku|escape }}" data-variant-price="{{ variant.price }}" data-variant-stock="{{ variant.stock }}" data-variant-listed="{{ variant.is_listed|yesno:'true,false' }}" data-variant-images='[{% for im in variant.images.all %}{"id": {{ im.id }}, "url": "{{ im.image.url|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}]' title="Edit" aria-label="Edit variant {{ variant.size|escape }}" class="w-8 h-8 rounded-sm bg-white border border-[#E8E5DF] flex items-center justify-center text-[#6E6A63] hover:text-[#141414] hover:border-[#141414]/30 transition-colors">
                                 <i data-lucide="pencil" class="w-4 h-4"></i>
                             </button>
                             <button type="button" onclick="openDeleteVariantModal('{{ variant.id }}', '{{ variant.size|escapejs }}')" title="Delete" aria-label="Delete variant {{ variant.size }}" class="w-8 h-8 rounded-sm bg-white border border-[#E8E5DF] flex items-center justify-center text-[#6E6A63] hover:text-[#B42318] hover:border-[#B42318]/50 hover:bg-[#B42318]/5 transition-colors">
@@ -146,6 +146,7 @@
 </div>
 
 {% include "admin_panel/products/partials/variant_modal.html" %}
+{% include "admin_panel/products/partials/image_editor.html" %}
 
 <!-- Delete Variant Confirmation Modal -->
 <div id="delete-variant-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
@@ -188,7 +189,6 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
         const ERROR_INPUT_CLASSES = ['border-[#B42318]/50', 'focus:border-[#B42318]/50', 'focus:ring-[#B42318]/30', 'focus:ring-1'];
 
         // --- Variant modal state ---
@@ -200,22 +200,16 @@
         const submitSpinner = document.getElementById('variant-submit-spinner');
         const submitBtn = document.getElementById('variant-submit-btn');
         const imagesInput = document.getElementById('variant_images');
-        const previewBox = document.getElementById('preview_variant_images');
+        const imagesList = document.getElementById('variant-images-list');
         const placeholderBox = document.getElementById('placeholder_variant_images');
-        const existingWrap = document.getElementById('existing-images-wrap');
-        const existingBox = document.getElementById('existing-images');
         const imagesLabel = document.getElementById('variant-images-label');
-        let previewUrls = [];
         let editVariantId = null;
-        // Separate collection: the file input only ever holds the latest
-        // picker selection, so newly picked files are appended here instead
-        // of replacing the previous ones. Max 5 images total.
+        // Unified staging: one ordered array owns Add / Edit / Remove /
+        // Reorder / Primary. Array index === intended display_order.
+        // See partials/image_editor.html (AURAImageCollection).
         const MAX_VARIANT_IMAGES = 5;
         const MIN_VARIANT_IMAGES = 3;
-        let selectedImages = [];
-        let existingImageCount = 0;
-        let existingImages = [];
-        let removedImageIds = new Set();
+        let collection = null;
 
         const clearVariantErrors = () => {
             form.querySelectorAll('input:not([type="file"]):not([type="checkbox"]), select, textarea').forEach(input => {
@@ -261,24 +255,22 @@
 
         const countHint = () => document.getElementById('images_count_hint');
 
-        const getRemainingExistingCount = () => existingImages.length - removedImageIds.size;
-
         const updateImageCountHint = () => {
             const hintEl = countHint();
-            if (!hintEl) return;
-            const remaining = getRemainingExistingCount();
-            const finalCount = remaining + selectedImages.length;
+            if (!hintEl || !collection) return;
+            const finalCount = collection.stagedCount();
+            const removedCount = collection.entries.filter(e => e.removed).length;
             const room = MAX_VARIANT_IMAGES - finalCount;
             const need = MIN_VARIANT_IMAGES - finalCount;
             let text = '';
             if (finalCount < MIN_VARIANT_IMAGES) {
-                text = removedImageIds.size
-                    ? `${remaining} image${remaining === 1 ? '' : 's'} remain after removal. Need ${need} more image${need === 1 ? '' : 's'} to satisfy the minimum of ${MIN_VARIANT_IMAGES}.`
+                text = removedCount
+                    ? `${finalCount} image${finalCount === 1 ? '' : 's'} staged after removal. Need ${need} more image${need === 1 ? '' : 's'} to satisfy the minimum of ${MIN_VARIANT_IMAGES}.`
                     : `Need ${need} more image${need === 1 ? '' : 's'} to satisfy the minimum of ${MIN_VARIANT_IMAGES}.`;
             } else if (room <= 0) {
                 text = 'Maximum of 5 images reached.';
-            } else if (removedImageIds.size) {
-                text = `${remaining} image${remaining === 1 ? '' : 's'} remain; up to ${room} new image${room === 1 ? '' : 's'} may be added.`;
+            } else if (removedCount) {
+                text = `${finalCount} image${finalCount === 1 ? '' : 's'} staged; up to ${room} new image${room === 1 ? '' : 's'} may be added.`;
             } else {
                 text = `Only ${room} more image${room === 1 ? '' : 's'} can be added (maximum 5).`;
             }
@@ -294,131 +286,87 @@
             }
         };
 
-        const renderExistingImages = () => {
-            existingBox.innerHTML = '';
-            if (!existingImages.length) {
-                existingWrap.classList.add('hidden');
-                return;
-            }
-            existingWrap.classList.remove('hidden');
-            let primaryAssigned = false;
-            existingImages.forEach((item, idx) => {
-                const isRemoved = removedImageIds.has(String(item.id));
-                const isPrimary = !isRemoved && !primaryAssigned;
-                if (isPrimary) primaryAssigned = true;
-                const wrap = document.createElement('div');
-                wrap.className = 'relative w-20 h-20 shrink-0';
-                wrap.innerHTML = `
-                    <img src="${item.url}" alt="Existing variant image ${idx + 1}" class="w-20 h-20 rounded-sm object-cover border ${isPrimary ? 'border-[#A8842C]/60' : 'border-[#E8E5DF]'} ${isRemoved ? 'opacity-40 grayscale' : ''}">
-                    ${isPrimary ? '<span class="absolute bottom-1 left-1 px-1.5 py-0.5 bg-[#0D0D0E] text-white text-[8px] uppercase tracking-widest rounded-sm">Primary</span>' : ''}
-                    ${isRemoved ? '<span class="absolute top-1 left-1 px-1.5 py-0.5 bg-[#B42318] text-white text-[8px] uppercase tracking-widest rounded-sm">Will remove</span>' : ''}
-                    ${isRemoved
-                        ? `<button type="button" data-restore-existing="${item.id}" aria-label="Undo remove image ${idx + 1}" class="absolute -top-2 -right-2 px-1.5 h-5 rounded-full bg-white border border-[#A8842C]/60 text-[#A8842C] text-[10px] font-semibold leading-none flex items-center justify-center hover:bg-[#FAF3E3]">Undo</button>`
-                        : `<button type="button" data-remove-existing="${item.id}" aria-label="Remove image ${idx + 1}" title="Remove image" class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white border border-[#E8E5DF] text-[#6E6A63] hover:text-[#B42318] hover:border-[#B42318]/50 text-xs leading-none flex items-center justify-center">&times;</button>`}
-                `;
-                existingBox.appendChild(wrap);
-            });
+        const onCollectionChange = () => {
+            const staged = collection ? collection.stagedCount() : 0;
+            if (staged > 0) placeholderBox.classList.add('hidden');
+            else placeholderBox.classList.remove('hidden');
+            updateImageCountHint();
         };
 
         const resetVariantForm = () => {
             form.reset();
             document.getElementById('variant_id').value = '';
             editVariantId = null;
-            selectedImages = [];
-            existingImages = [];
-            removedImageIds = new Set();
-            existingImageCount = 0;
             imagesInput.value = '';
-            previewUrls.forEach(u => URL.revokeObjectURL(u));
-            previewUrls = [];
-            previewBox.innerHTML = '';
+            if (collection) collection.reset();
             placeholderBox.classList.remove('hidden');
-            existingBox.innerHTML = '';
-            existingWrap.classList.add('hidden');
             imagesLabel.textContent = 'Product Images (3–5)';
             hideImageCountHint();
             clearVariantErrors();
         };
 
+        const ensureCollection = () => {
+            if (collection) return collection;
+            collection = window.AURAImageCollection.create({
+                listEl: imagesList,
+                maxImages: MAX_VARIANT_IMAGES,
+                showToast: window.showAdminToast,
+                onChange: onCollectionChange,
+                onEdit: (key) => { handleEditImage(key); }
+            });
+            return collection;
+        };
+
         // Open Add Variant
         window.openAddVariant = () => {
+            ensureCollection();
             resetVariantForm();
             modalTitle.textContent = 'Add Variant';
             submitText.textContent = 'Add Variant';
+            onCollectionChange();
             openModal();
         };
 
-        // Open Edit Variant (existing images removable; removals applied on update)
-        window.openEditVariant = (id, size, sku, price, stock, isListed, imagesPipe, idsPipe) => {
+        // Open Edit Variant (removals/edits/reorder staged; applied on update)
+        window.openEditVariant = (payload) => {
+            ensureCollection();
             resetVariantForm();
-            editVariantId = id;
-            document.getElementById('variant_id').value = id;
-            document.getElementById('variant_size').value = size;
-            document.getElementById('variant_sku').value = sku;
-            document.getElementById('variant_price').value = price;
-            document.getElementById('variant_stock').value = stock;
-            document.getElementById('variant_is_listed').checked = (isListed === 'true');
+            editVariantId = payload.id;
+            document.getElementById('variant_id').value = payload.id;
+            document.getElementById('variant_size').value = payload.size || '';
+            document.getElementById('variant_sku').value = payload.sku || '';
+            document.getElementById('variant_price').value = payload.price || '';
+            document.getElementById('variant_stock').value = payload.stock || '';
+            document.getElementById('variant_is_listed').checked = (payload.isListed === 'true');
             modalTitle.textContent = 'Edit Variant';
             submitText.textContent = 'Update Variant';
             imagesLabel.textContent = 'Add Images (optional)';
 
-            const urls = (imagesPipe || '').split('|').filter(u => u);
-            const ids = (idsPipe || '').split('|').filter(v => v);
-            existingImages = urls.map((url, idx) => ({
-                url,
-                id: ids[idx] !== undefined && ids[idx] !== '' ? ids[idx] : null,
-            }));
-            existingImageCount = existingImages.length;
-            renderExistingImages();
-            updateImageCountHint();
+            const items = Array.isArray(payload.images) ? payload.images : [];
+            collection.setExisting(items.filter(item => item && item.url));
+            onCollectionChange();
             openModal();
         };
 
-        existingBox.addEventListener('click', (e) => {
-            const removeBtn = e.target.closest('[data-remove-existing]');
-            const restoreBtn = e.target.closest('[data-restore-existing]');
-            if (removeBtn) {
-                removedImageIds.add(String(removeBtn.dataset.removeExisting));
-                hideImagesError();
-                renderExistingImages();
-                renderNewPreviews();
-                updateImageCountHint();
-                return;
+        document.getElementById('variant-tbody').addEventListener('click', (e) => {
+            const editBtn = e.target.closest('[data-edit-variant]');
+            if (!editBtn) return;
+            let images = [];
+            try {
+                images = JSON.parse(editBtn.dataset.variantImages || '[]');
+            } catch (err) {
+                images = [];
             }
-            if (restoreBtn) {
-                removedImageIds.delete(String(restoreBtn.dataset.restoreExisting));
-                hideImagesError();
-                renderExistingImages();
-                renderNewPreviews();
-                updateImageCountHint();
-            }
-        });
-
-        // New-image previews with Primary badge + remove (rendered from the collection)
-        const renderNewPreviews = () => {
-            previewUrls.forEach(u => URL.revokeObjectURL(u));
-            previewUrls = [];
-            previewBox.innerHTML = '';
-            if (!selectedImages.length) {
-                placeholderBox.classList.remove('hidden');
-                return;
-            }
-            placeholderBox.classList.add('hidden');
-            const remainingExisting = getRemainingExistingCount();
-            selectedImages.forEach((file, idx) => {
-                const url = URL.createObjectURL(file);
-                previewUrls.push(url);
-                const wrap = document.createElement('div');
-                wrap.className = 'relative w-20 h-20 shrink-0';
-                wrap.innerHTML = `
-                    <img src="${url}" alt="New variant image ${idx + 1}" class="w-20 h-20 rounded-sm object-cover border ${idx === 0 && remainingExisting === 0 ? 'border-[#A8842C]/60' : 'border-[#E8E5DF]'}">
-                    ${idx === 0 && remainingExisting === 0 ? '<span class="absolute bottom-1 left-1 px-1.5 py-0.5 bg-[#0D0D0E] text-white text-[8px] uppercase tracking-widest rounded-sm">Primary</span>' : ''}
-                    <button type="button" data-remove-image="${idx}" aria-label="Remove image ${idx + 1}" class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white border border-[#E8E5DF] text-[#6E6A63] hover:text-[#B42318] hover:border-[#B42318]/50 text-xs leading-none flex items-center justify-center">&times;</button>
-                `;
-                previewBox.appendChild(wrap);
+            window.openEditVariant({
+                id: editBtn.dataset.variantId,
+                size: editBtn.dataset.variantSize,
+                sku: editBtn.dataset.variantSku,
+                price: editBtn.dataset.variantPrice,
+                stock: editBtn.dataset.variantStock,
+                isListed: editBtn.dataset.variantListed,
+                images,
             });
-            lucide.createIcons();
-        };
+        });
 
         const hideImagesError = () => {
             const errorEl = document.getElementById('error_images');
@@ -429,53 +377,61 @@
             document.getElementById('dropzone_variant_images').classList.remove('border-[#B42318]/50');
         };
 
+        // Edit one staged image: existing rows are fetched read-only and the
+        // stored file stays untouched until Variant Save; new picks use the
+        // selected file. Cancel discards only the edit session.
+        const handleEditImage = (key) => {
+            ensureCollection();
+            window.AURAImageCollection.editWithEditor(
+                collection, key, window.showAdminToast
+            ).then((applied) => {
+                if (applied) hideImagesError();
+            });
+        };
+
+        // New picks auto-open in the Image Editor (one after another while
+        // the admin keeps applying). Cancelling stops the queue; the pick
+        // itself stays staged unedited and remains editable per thumbnail.
+        const autoEditNewPicks = () => {
+            window.AURAImageCollection.autoEditQueue(collection);
+        };
+
         const addFilesToCollection = (fileList) => {
-            const incoming = Array.from(fileList || []);
+            ensureCollection();
+            const outcome = collection.addFiles(fileList);
             imagesInput.value = '';
-            if (!incoming.length) return;
-
-            const bad = incoming.find(f => !ACCEPTED_TYPES.includes(f.type));
-            if (bad) {
-                showVariantError('images', 'Only JPEG, PNG, and WebP images are allowed.');
+            if (outcome.error) {
+                showVariantError('images', outcome.error);
                 return;
             }
-            const fresh = incoming.filter(f => !selectedImages.some(
-                s => s.name === f.name && s.size === f.size && s.lastModified === f.lastModified
-            ));
-            if (!fresh.length) return;
-
-            const room = MAX_VARIANT_IMAGES - getRemainingExistingCount() - selectedImages.length;
-            if (room <= 0) {
-                showAdminToast('A maximum of 5 product images is allowed.', 'error');
-                return;
+            if (outcome.added && outcome.added.length) {
+                hideImagesError();
+                autoEditNewPicks();
             }
-            if (fresh.length > room) {
-                showVariantError('images', `Only ${room} more image${room === 1 ? '' : 's'} can be added (maximum 5).`);
-                return;
-            }
-            selectedImages = selectedImages.concat(fresh);
-            hideImagesError();
-            renderNewPreviews();
-            updateImageCountHint();
         };
 
         imagesInput.addEventListener('change', () => {
             addFilesToCollection(imagesInput.files);
         });
 
-        previewBox.addEventListener('click', (e) => {
-            const btn = e.target.closest('[data-remove-image]');
-            if (!btn) return;
-            const idx = parseInt(btn.dataset.removeImage, 10);
-            selectedImages.splice(idx, 1);
-            renderNewPreviews();
-            updateImageCountHint();
-        });
+        ensureCollection();
 
         // Variant submit (add or edit)
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             clearVariantErrors();
+
+            const stagedCount = collection ? collection.stagedCount() : 0;
+            if (stagedCount < MIN_VARIANT_IMAGES) {
+                showVariantError('images', 'At least 3 product images are required.');
+                showAdminToast('Please fix the highlighted errors.', 'error');
+                return;
+            }
+            if (stagedCount > MAX_VARIANT_IMAGES) {
+                showVariantError('images', 'A maximum of 5 product images is allowed.');
+                showAdminToast('Please fix the highlighted errors.', 'error');
+                return;
+            }
 
             submitBtn.disabled = true;
             const idleText = editVariantId ? 'Update Variant' : 'Add Variant';
@@ -490,17 +446,13 @@
             let data = null;
             let response = null;
             try {
-                // Rebuild file payload from the collection: the file input only
-                // ever holds the latest picker selection. Removals of existing
-                // images are staged client-side and applied on update only.
+                // Staged payload: ordered tokens (image_order[]), new files
+                // under 'images' with aligned new_image_keys[], edited
+                // blobs for existing rows, and staged removals. Untouched
+                // existing rows send nothing and stay intact server-side.
                 const formData = new FormData(form);
                 formData.delete('images');
-                selectedImages.forEach(f => formData.append('images', f, f.name));
-                if (editVariantId && removedImageIds.size) {
-                    removedImageIds.forEach(imageId => {
-                        formData.append('remove_image_ids', imageId);
-                    });
-                }
+                collection.buildPayload(formData, 'images');
                 response = await fetch(url, {
                     method: 'POST',
                     body: formData,
