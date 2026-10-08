@@ -257,16 +257,16 @@
         <!-- 4-Column Product Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-14">
             
-            {% if featured_perfumes or featured_products %}
+            {% if featured_products %}
                 <!-- Dynamic Backend Loop -->
-                {% for product in featured_perfumes|default:featured_products %}
+                {% for product in featured_products %}
                     <div class="group flex flex-col text-center">
-                        <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative">
-                            {% if product.image %}
+                        <div class="w-full aspect-square bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center p-6 sm:p-8">
+                            {% if product.primary_image %}
                                 <img 
-                                    src="{{ product.image.url }}" 
+                                    src="{% get_media_prefix %}{{ product.primary_image }}" 
                                     alt="{{ product.name }}" 
-                                    class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                                    class="w-full h-full object-contain object-center"
                                 >
                             {% else %}
                                 <div class="w-full h-full flex items-center justify-center bg-auraCream text-[10px] uppercase tracking-[0.2em] text-auraMuted/70">
@@ -276,16 +276,16 @@
                         </div>
                         <div class="space-y-1.5 flex-grow flex flex-col items-center">
                             <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
-                                {{ product.brand_name|default:product.category|default:"AURA PARFUMS" }}
+                                {{ product.brand.name|default:"AURA PARFUMS" }}
                             </span>
                             <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
                                 {{ product.name }}
                             </h3>
                             <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
-                                {{ product.type_or_volume|default:product.concentration|default:"EAU DE PARFUM • 100 ML" }}
+                                {{ product.get_fragrance_concentration_display }}{% if product.representative_size %} • {{ product.representative_size }}{% endif %}
                             </p>
                             <p class="text-sm font-medium text-auraBlack pt-1">
-                                ${{ product.price }}
+                                From ₹{{ product.starting_price }}
                             </p>
                             <button 
                                 type="button" 
@@ -451,21 +451,15 @@
             
             {% if new_arrivals %}
                 <!-- Dynamic Backend Loop -->
-                {% for item in new_arrivals %}
+                {% for product in new_arrivals %}
                     <div class="group flex flex-col text-center">
-                        <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center">
-                            {% if item.image %}
+                        <div class="w-full aspect-square bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center p-6 sm:p-8">
+                            {% if product.primary_image %}
                                 <img 
-                                    src="{{ item.image.url }}" 
-                                    alt="{{ item.name }}" 
-                                    class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                                    src="{% get_media_prefix %}{{ product.primary_image }}" 
+                                    alt="{{ product.name }}" 
+                                    class="w-full h-full object-contain object-center"
                                 >
-                            {% elif item.is_coming_soon %}
-                                <div class="w-full h-full bg-auraCream flex items-center justify-center select-none group-hover:bg-auraChampagne/20 transition-colors duration-300">
-                                    <span class="text-[10px] uppercase tracking-[0.26em] text-auraMuted/70 font-medium">
-                                        COMING SOON
-                                    </span>
-                                </div>
                             {% else %}
                                 <div class="w-full h-full flex items-center justify-center bg-auraCream text-[10px] uppercase tracking-[0.2em] text-auraMuted/70">
                                     AURA
@@ -474,16 +468,16 @@
                         </div>
                         <div class="space-y-1.5 flex-grow flex flex-col items-center">
                             <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
-                                {{ item.brand_name|default:item.category|default:"AURA PARFUMS" }}
+                                {{ product.brand.name|default:"AURA PARFUMS" }}
                             </span>
                             <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
-                                {{ item.name }}
+                                {{ product.name }}
                             </h3>
                             <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
-                                {{ item.type_or_volume|default:item.concentration|default:"EAU DE PARFUM • 100 ML" }}
+                                {{ product.get_fragrance_concentration_display }}{% if product.representative_size %} • {{ product.representative_size }}{% endif %}
                             </p>
                             <p class="text-sm font-medium text-auraBlack pt-1">
-                                ${{ item.price }}
+                                From ₹{{ product.starting_price }}
                             </p>
                             <button 
                                 type="button" 
@@ -645,12 +639,12 @@
                 <!-- Dynamic Backend Loop -->
                 {% for item in best_sellers %}
                     <div class="group flex flex-col text-center">
-                        <div class="w-full aspect-[4/3] bg-auraCream border border-auraBorder/60 mb-6 relative overflow-hidden flex items-center justify-center">
+                        <div class="w-full aspect-square bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center p-6 sm:p-8">
                             {% if item.image %}
                                 <img 
                                     src="{{ item.image.url }}" 
                                     alt="{{ item.name }}" 
-                                    class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                                    class="w-full h-full object-contain object-center"
                                 >
                             {% elif item.rank %}
                                 <div class="w-full h-full bg-auraCream/80 border border-auraBorder/60 flex items-center justify-center select-none group-hover:bg-auraCream transition-colors duration-300">
