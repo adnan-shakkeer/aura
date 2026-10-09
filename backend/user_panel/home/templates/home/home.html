@@ -261,7 +261,7 @@
                 <!-- Dynamic Backend Loop -->
                 {% for product in featured_products %}
                     <div class="group flex flex-col text-center">
-                        <div class="w-full aspect-square bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center p-6 sm:p-8">
+                        <a href="{% url 'shop:product_details' product.slug %}" aria-label="View {{ product.name }}" class="block w-full aspect-square bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center p-6 sm:p-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-auraBlack focus-visible:ring-offset-2">
                             {% if product.primary_image %}
                                 <img 
                                     src="{% get_media_prefix %}{{ product.primary_image }}" 
@@ -269,17 +269,17 @@
                                     class="w-full h-full object-contain object-center"
                                 >
                             {% else %}
-                                <div class="w-full h-full flex items-center justify-center bg-auraCream text-[10px] uppercase tracking-[0.2em] text-auraMuted/70">
+                                <span class="w-full h-full flex items-center justify-center bg-auraCream text-[10px] uppercase tracking-[0.2em] text-auraMuted/70">
                                     AURA
-                                </div>
+                                </span>
                             {% endif %}
-                        </div>
+                        </a>
                         <div class="space-y-1.5 flex-grow flex flex-col items-center">
                             <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
                                 {{ product.brand.name|default:"AURA PARFUMS" }}
                             </span>
                             <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
-                                {{ product.name }}
+                                <a href="{% url 'shop:product_details' product.slug %}" class="hover:opacity-75 focus:outline-none focus-visible:underline transition-opacity">{{ product.name }}</a>
                             </h3>
                             <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
                                 {{ product.get_fragrance_concentration_display }}{% if product.representative_size %} • {{ product.representative_size }}{% endif %}
@@ -453,7 +453,7 @@
                 <!-- Dynamic Backend Loop -->
                 {% for product in new_arrivals %}
                     <div class="group flex flex-col text-center">
-                        <div class="w-full aspect-square bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center p-6 sm:p-8">
+                        <a href="{% url 'shop:product_details' product.slug %}" aria-label="View {{ product.name }}" class="block w-full aspect-square bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center p-6 sm:p-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-auraBlack focus-visible:ring-offset-2">
                             {% if product.primary_image %}
                                 <img 
                                     src="{% get_media_prefix %}{{ product.primary_image }}" 
@@ -461,17 +461,17 @@
                                     class="w-full h-full object-contain object-center"
                                 >
                             {% else %}
-                                <div class="w-full h-full flex items-center justify-center bg-auraCream text-[10px] uppercase tracking-[0.2em] text-auraMuted/70">
+                                <span class="w-full h-full flex items-center justify-center bg-auraCream text-[10px] uppercase tracking-[0.2em] text-auraMuted/70">
                                     AURA
-                                </div>
+                                </span>
                             {% endif %}
-                        </div>
+                        </a>
                         <div class="space-y-1.5 flex-grow flex flex-col items-center">
                             <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
                                 {{ product.brand.name|default:"AURA PARFUMS" }}
                             </span>
                             <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
-                                {{ product.name }}
+                                <a href="{% url 'shop:product_details' product.slug %}" class="hover:opacity-75 focus:outline-none focus-visible:underline transition-opacity">{{ product.name }}</a>
                             </h3>
                             <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
                                 {{ product.get_fragrance_concentration_display }}{% if product.representative_size %} • {{ product.representative_size }}{% endif %}
