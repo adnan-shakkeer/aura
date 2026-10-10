@@ -1,0 +1,99 @@
+{% extends "user_panel/base.html" %}
+
+{% block title %}Our Brands | AURA{% endblock %}
+
+{% block content %}
+
+<!-- ========================================================= -->
+<!-- BRAND LISTING — page introduction                         -->
+<!-- ========================================================= -->
+<section class="bg-auraIvory border-b border-auraBorder">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 sm:pt-20 pb-10 sm:pb-14 text-center">
+        <span class="text-[11px] uppercase tracking-[0.3em] font-medium text-auraMuted block mb-4">
+            HERITAGE HOUSES
+        </span>
+        <h1 class="font-serif text-4xl sm:text-5xl lg:text-6xl font-medium text-auraBlack tracking-tight leading-[1.05]">
+            BRANDS
+        </h1>
+        <p class="mt-5 sm:mt-6 text-sm sm:text-base text-auraMuted font-light leading-relaxed max-w-2xl mx-auto">
+            Explore a curated collection of the world&rsquo;s most iconic fragrance houses, carefully selected for timeless craftsmanship and exceptional scent compositions.
+        </p>
+    </div>
+</section>
+
+<!-- ========================================================= -->
+<!-- BRAND LISTING — editorial grid                            -->
+<!-- All cards share equal editorial status; uniform portrait -->
+<!-- cards preserve the Admin-managed portrait compositions.   -->
+<!-- ========================================================= -->
+<section class="bg-auraIvory" aria-label="Brand listing">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16">
+
+        {% if brands %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8">
+                {% for brand in brands %}
+                    <article class="group relative overflow-hidden bg-[#ECE4D3] border border-auraBorder/40 shadow-aura-subtle hover:shadow-aura-card transition-shadow duration-300">
+                        <div class="relative w-full aspect-[3/4] overflow-hidden">
+                            {% if brand.listing_image %}
+                                <img
+                                    src="{{ brand.listing_image.url }}"
+                                    alt="{{ brand.name }}"
+                                    loading="lazy"
+                                    class="absolute inset-0 h-full w-full object-cover object-center group-hover:scale-[1.03] transition-transform duration-700 ease-out"
+                                >
+                            {% else %}
+                                <div class="absolute inset-0 flex items-center justify-center select-none">
+                                    <span class="font-serif text-2xl tracking-[0.28em] text-auraMuted/60 uppercase pl-[0.28em]">Aura</span>
+                                </div>
+                            {% endif %}
+
+                            <!-- Readability gradient confined to the lower -->
+                            <!-- third so the bottle stays fully visible.    -->
+                            <div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/75 via-black/35 to-transparent pointer-events-none" aria-hidden="true"></div>
+
+                            <!-- Overlay copy: name, listing description, CTA -->
+                            <div class="absolute inset-x-0 bottom-0 p-6 sm:p-7 flex flex-col gap-2.5 sm:gap-3">
+                                <h2 class="font-serif text-2xl sm:text-[1.7rem] font-medium text-white tracking-wide leading-tight">
+                                    {{ brand.name }}
+                                </h2>
+                                {% if brand.listing_description %}
+                                    <p class="text-[13px] sm:text-sm text-white/85 font-light leading-relaxed line-clamp-3">
+                                        {{ brand.listing_description }}
+                                    </p>
+                                {% endif %}
+                                <a
+                                    href="{% url 'shop:shop_list' %}?brand={{ brand.slug }}"
+                                    aria-label="Explore {{ brand.name }} fragrances"
+                                    class="mt-1 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] font-semibold text-white underline underline-offset-8 decoration-white/50 hover:decoration-white transition-colors py-2"
+                                >
+                                    Explore Brand <span aria-hidden="true">&rarr;</span>
+                                </a>
+                            </div>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="border border-auraBorder bg-white/70 px-6 py-16 sm:py-24 text-center">
+                <span class="text-[11px] uppercase tracking-[0.3em] text-auraMuted font-medium block mb-4">
+                    No Brands Available
+                </span>
+                <h2 class="font-serif text-2xl sm:text-3xl font-medium text-auraBlack tracking-tight mb-3">
+                    Our fragrance houses are being curated
+                </h2>
+                <p class="text-sm text-auraMuted font-light leading-relaxed max-w-md mx-auto mb-8">
+                    Please check back soon, or browse the full collection in the meantime.
+                </p>
+                <a
+                    href="{% url 'shop:shop_list' %}"
+                    class="inline-flex items-center justify-center px-8 py-4 bg-auraBlack text-auraIvory text-xs uppercase tracking-[0.22em] font-semibold hover:bg-black active:scale-[0.99] transition-all duration-300"
+                >
+                    Browse the Shop
+                </a>
+            </div>
+        {% endif %}
+
+    </div>
+</section>
+
+{% endblock %}

@@ -83,21 +83,21 @@
 
             <!-- LEFT: Desktop Navigation Links -->
             <nav class="hidden md:flex items-center gap-8 lg:gap-10 z-10">
-                <a 
-                    href="{% url 'home' %}" 
-                    class="text-xs uppercase tracking-[0.18em] font-medium text-auraBlack relative py-2 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1px] after:bg-auraBlack transition-all"
+                <a
+                    href="{% url 'home' %}"
+                    class="text-xs uppercase tracking-[0.18em] py-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1px] after:bg-auraBlack transition-all {% if request.resolver_match.url_name == 'home' %}font-medium text-auraBlack{% else %}font-light text-auraMuted hover:text-auraBlack{% endif %}"
                 >
                     Home
                 </a>
-                <a 
-                    href="{% url 'shop:shop_list' %}" 
-                    class="text-xs uppercase tracking-[0.18em] font-light text-auraMuted hover:text-auraBlack transition-colors duration-200 py-2"
+                <a
+                    href="{% url 'shop:shop_list' %}"
+                    class="text-xs uppercase tracking-[0.18em] py-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1px] after:bg-auraBlack transition-all {% if request.resolver_match.namespace == 'shop' %}font-medium text-auraBlack{% else %}font-light text-auraMuted hover:text-auraBlack{% endif %}"
                 >
                     Shop
                 </a>
-                <a 
-                    href="#brands" 
-                    class="text-xs uppercase tracking-[0.18em] font-light text-auraMuted hover:text-auraBlack transition-colors duration-200 py-2"
+                <a
+                    href="{% url 'user_brands:brand_list' %}"
+                    class="text-xs uppercase tracking-[0.18em] py-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1px] after:bg-auraBlack transition-all {% if request.resolver_match.namespace == 'user_brands' %}font-medium text-auraBlack{% else %}font-light text-auraMuted hover:text-auraBlack{% endif %}"
                 >
                     Brands
                 </a>
@@ -180,7 +180,7 @@
         <div id="mobileMenu" class="hidden md:hidden border-t border-auraBorder bg-[#F8F5F0] px-6 py-6 space-y-4">
             <a href="{% url 'home' %}" class="block text-xs uppercase tracking-[0.2em] font-medium text-auraBlack py-1">Home</a>
             <a href="{% url 'shop:shop_list' %}" class="block text-xs uppercase tracking-[0.2em] font-light text-auraMuted hover:text-auraBlack py-1">Shop</a>
-            <a href="#brands" class="block text-xs uppercase tracking-[0.2em] font-light text-auraMuted hover:text-auraBlack py-1">Brands</a>
+            <a href="{% url 'user_brands:brand_list' %}" class="block text-xs uppercase tracking-[0.2em] font-light text-auraMuted hover:text-auraBlack py-1">Brands</a>
             <div class="pt-4 border-t border-auraBorder flex items-center justify-between text-xs text-auraMuted">
                 {% if user.is_authenticated %}
                 <a href="{% url 'profile' %}" class="hover:text-auraBlack font-medium">My Account</a>
@@ -228,7 +228,7 @@
                             </a>
                         </li>
                         <li>
-                            <a href="#brands" class="text-xs text-auraMuted font-light hover:text-auraBlack transition-colors duration-200">
+                            <a href="{% url 'user_brands:brand_list' %}" class="text-xs text-auraMuted font-light hover:text-auraBlack transition-colors duration-200">
                                 Brands
                             </a>
                         </li>

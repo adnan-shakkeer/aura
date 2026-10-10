@@ -50,6 +50,8 @@ urlpatterns = [
     path("address/",include("user_panel.address.urls")),
 
     path("shop/",include("user_panel.shop.urls")),
+
+    path("brands/",include("user_panel.brands.urls")),
 ]
 
 
