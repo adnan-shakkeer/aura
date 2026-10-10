@@ -9,7 +9,7 @@
     <div class="text-[11px] tracking-[0.22em] uppercase text-auraMuted mb-8 font-inter">
         <a href="{% url 'home' %}" class="hover:text-auraBlack transition-colors">Home</a> 
         <span class="mx-2">/</span> 
-        <a href="#" class="hover:text-auraBlack transition-colors">Shop</a> 
+        <a href="{% url 'shop:shop_list' %}" class="hover:text-auraBlack transition-colors">Shop</a>
         <span class="mx-2">/</span> 
         <span class="text-auraBlack">{{ product.name }}</span>
     </div>

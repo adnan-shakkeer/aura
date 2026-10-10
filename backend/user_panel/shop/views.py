@@ -1,12 +1,91 @@
 """Customer-facing shop views for AURA.
 
+Shop Listing — database-driven search, category/brand filters, sorting
+and pagination over the eligible product queryset.
+
 Product Details — slug-based lookup against the eligible product queryset.
 An ineligible (unlisted/deleted) product returns HTTP 404.
 """
 
+from django.core.paginator import Paginator
 from django.shortcuts import render, get_object_or_404
 
-from .services import get_available_products
+from .services import (
+    CONCENTRATION_OPTIONS,
+    SHOP_PAGE_SIZE,
+    SORT_FEATURED,
+    SORT_OPTIONS,
+    VALID_SORTS,
+    clean_concentration_values,
+    get_available_products,
+    get_shop_brands,
+    get_shop_categories,
+    get_shop_products,
+)
+
+
+def shop_list(request):
+    """Display the Shop listing page.
+
+    GET parameters (all optional)::
+
+        q               free-text search (product, brand, category names)
+        category        Category slug filter (repeatable for multiple)
+        brand           Brand slug filter (repeatable for multiple)
+        concentration   Stored fragrance-concentration value (repeatable)
+        sort            one of featured | name_asc | price_low | price_high | newest
+        page            pagination page number
+
+    Unknown ``sort``/``concentration`` values are ignored safely.
+    Invalid/out-of-range ``page`` values resolve to a valid page via
+    ``Paginator.get_page()`` — never a 500.
+    """
+    search_query = (request.GET.get("q") or "").strip()
+    category_slugs = [s for s in request.GET.getlist("category") if s]
+    brand_slugs = [s for s in request.GET.getlist("brand") if s]
+    concentrations = clean_concentration_values(request.GET.getlist("concentration"))
+    sort = request.GET.get("sort") or SORT_FEATURED
+    if sort not in VALID_SORTS:
+        sort = SORT_FEATURED
+
+    products = get_shop_products(
+        q=search_query,
+        category_slugs=category_slugs,
+        brand_slugs=brand_slugs,
+        concentrations=concentrations,
+        sort=sort,
+    )
+
+    paginator = Paginator(products, SHOP_PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    # Querystring without ``page`` so pagination/sort links preserve the
+    # active search, filter and sort parameters.
+    params = request.GET.copy()
+    params.pop("page", None)
+    base_query = params.urlencode()
+
+    context = {
+        "page_obj": page_obj,
+        "products": page_obj.object_list,
+        "categories": get_shop_categories(),
+        "brands": get_shop_brands(category_slugs=category_slugs),
+        "concentration_choices": CONCENTRATION_OPTIONS,
+        "current_q": search_query,
+        "current_categories": category_slugs,
+        "current_brands": brand_slugs,
+        "current_concentrations": concentrations,
+        "current_category": category_slugs[0] if category_slugs else "",
+        "current_brand": brand_slugs[0] if brand_slugs else "",
+        "current_sort": sort,
+        "sort_options": SORT_OPTIONS,
+        "base_query": base_query,
+        "total_count": paginator.count,
+        "has_active_filters": bool(
+            search_query or category_slugs or brand_slugs or concentrations
+        ),
+    }
+    return render(request, "shop/shop_list.html", context)
 
 
 def product_details(request, slug):
