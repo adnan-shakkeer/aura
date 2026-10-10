@@ -90,7 +90,7 @@
                     Home
                 </a>
                 <a 
-                    href="#shop" 
+                    href="{% url 'shop:shop_list' %}" 
                     class="text-xs uppercase tracking-[0.18em] font-light text-auraMuted hover:text-auraBlack transition-colors duration-200 py-2"
                 >
                     Shop
@@ -179,7 +179,7 @@
         <!-- Mobile Drawer Navigation -->
         <div id="mobileMenu" class="hidden md:hidden border-t border-auraBorder bg-[#F8F5F0] px-6 py-6 space-y-4">
             <a href="{% url 'home' %}" class="block text-xs uppercase tracking-[0.2em] font-medium text-auraBlack py-1">Home</a>
-            <a href="#shop" class="block text-xs uppercase tracking-[0.2em] font-light text-auraMuted hover:text-auraBlack py-1">Shop</a>
+            <a href="{% url 'shop:shop_list' %}" class="block text-xs uppercase tracking-[0.2em] font-light text-auraMuted hover:text-auraBlack py-1">Shop</a>
             <a href="#brands" class="block text-xs uppercase tracking-[0.2em] font-light text-auraMuted hover:text-auraBlack py-1">Brands</a>
             <div class="pt-4 border-t border-auraBorder flex items-center justify-between text-xs text-auraMuted">
                 {% if user.is_authenticated %}
@@ -223,7 +223,7 @@
                     </h3>
                     <ul class="space-y-3">
                         <li>
-                            <a href="#shop" class="text-xs text-auraMuted font-light hover:text-auraBlack transition-colors duration-200">
+                            <a href="{% url 'shop:shop_list' %}" class="text-xs text-auraMuted font-light hover:text-auraBlack transition-colors duration-200">
                                 Shop
                             </a>
                         </li>

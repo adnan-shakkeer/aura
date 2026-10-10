@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "user_panel.home",
     "user_panel.user_profile",
     "user_panel.address",
+    "user_panel.shop",
 ]
 
 MIDDLEWARE = [

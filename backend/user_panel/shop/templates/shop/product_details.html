@@ -1,0 +1,225 @@
+{% extends "user_panel/base.html" %}
+{% load static %}
+
+{% block title %}{{ product.name }} | AURA{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 md:px-8 py-8 lg:py-12 mt-16 max-w-7xl">
+    <!-- Breadcrumbs -->
+    <div class="text-[11px] tracking-[0.22em] uppercase text-auraMuted mb-8 font-inter">
+        <a href="{% url 'home' %}" class="hover:text-auraBlack transition-colors">Home</a> 
+        <span class="mx-2">/</span> 
+        <a href="{% url 'shop:shop_list' %}" class="hover:text-auraBlack transition-colors">Shop</a> 
+        <span class="mx-2">/</span> 
+        <span class="text-auraBlack">{{ product.name }}</span>
+    </div>
+
+    <!-- Main Product Area -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16 items-start">
+        
+        <!-- LEFT COLUMN: Gallery & Accordions -->
+        <div class="flex flex-col gap-8 w-full">
+            <!-- Gallery -->
+            <div class="flex flex-col gap-4">
+                {% if images %}
+                <div class="w-full aspect-square bg-auraCream border border-auraBorder/50 overflow-hidden flex items-center justify-center p-8 lg:p-12">
+                    <img id="main-product-image" src="{{ images.0.image.url }}" alt="{{ images.0.alt_text|default:product.name }}" class="w-full h-full object-contain object-center transition-transform duration-700 hover:scale-110">
+                </div>
+                <div class="grid grid-cols-4 gap-4">
+                    {% for img in images %}
+                    <button type="button" onclick="document.getElementById('main-product-image').src='{{ img.image.url }}'" class="w-full aspect-square bg-auraCream border border-auraBorder/50 hover:border-auraBlack transition-colors overflow-hidden flex items-center justify-center p-3">
+                        <img src="{{ img.image.url }}" alt="{{ img.alt_text|default:'Thumbnail' }}" class="w-full h-full object-contain object-center">
+                    </button>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="w-full aspect-square bg-auraCream border border-auraBorder/50 flex items-center justify-center text-[10px] uppercase tracking-[0.2em] text-auraMuted/70">
+                    No image available
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Accordions -->
+            <div class="border-t border-auraBorder mt-4">
+                
+                <!-- Description -->
+                <div class="border-b border-auraBorder group">
+                    <button class="w-full py-5 flex justify-between items-center text-[11px] font-semibold tracking-[0.2em] uppercase font-inter hover:text-auraMuted transition-colors text-auraBlack" onclick="toggleAccordion('desc')">
+                        <span>Description</span>
+                        <span id="icon-desc" class="text-lg leading-none font-light">+</span>
+                    </button>
+                    <div id="content-desc" class="hidden pb-6 text-sm text-auraMuted font-light leading-relaxed font-inter">
+                        {{ product.description|linebreaks }}
+                    </div>
+                </div>
+
+                <!-- Fragrance Notes -->
+                {% if product.top_notes or product.heart_notes or product.base_notes %}
+                <div class="border-b border-auraBorder group">
+                    <button class="w-full py-5 flex justify-between items-center text-[11px] font-semibold tracking-[0.2em] uppercase font-inter hover:text-auraMuted transition-colors text-auraBlack" onclick="toggleAccordion('notes')">
+                        <span>Fragrance Notes</span>
+                        <span id="icon-notes" class="text-lg leading-none font-light">+</span>
+                    </button>
+                    <div id="content-notes" class="hidden pb-6 text-sm text-auraMuted font-light leading-relaxed font-inter space-y-5">
+                        {% if product.top_notes %}
+                        <div>
+                            <strong class="block text-[11px] uppercase tracking-[0.2em] text-auraBlack font-medium mb-1">Top Notes</strong>
+                            {{ product.top_notes }}
+                        </div>
+                        {% endif %}
+                        {% if product.heart_notes %}
+                        <div>
+                            <strong class="block text-[11px] uppercase tracking-[0.2em] text-auraBlack font-medium mb-1">Heart Notes</strong>
+                            {{ product.heart_notes }}
+                        </div>
+                        {% endif %}
+                        {% if product.base_notes %}
+                        <div>
+                            <strong class="block text-[11px] uppercase tracking-[0.2em] text-auraBlack font-medium mb-1">Base Notes</strong>
+                            {{ product.base_notes }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Shipping & Returns -->
+                <div class="border-b border-auraBorder group">
+                    <button class="w-full py-5 flex justify-between items-center text-[11px] font-semibold tracking-[0.2em] uppercase font-inter hover:text-auraMuted transition-colors text-auraBlack" onclick="toggleAccordion('shipping')">
+                        <span>Shipping & Returns</span>
+                        <span id="icon-shipping" class="text-lg leading-none font-light">+</span>
+                    </button>
+                    <div id="content-shipping" class="hidden pb-6 text-sm text-auraMuted font-light leading-relaxed font-inter">
+                        Complimentary standard shipping on all orders. Returns must be requested within 30 days of delivery.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Product Info -->
+        <div class="flex flex-col font-inter">
+            <span class="text-[11px] tracking-[0.22em] text-auraMuted font-medium uppercase mb-3 block">
+                {{ product.brand.name }}
+            </span>
+            <h1 class="text-4xl md:text-5xl font-playfair font-medium text-auraBlack tracking-tight mb-3">
+                {{ product.name }}
+            </h1>
+            <span class="text-[13px] text-auraMuted italic font-light tracking-wide mb-8 block">
+                {{ product.get_fragrance_concentration_display }}
+            </span>
+            
+            {% if product.short_description %}
+            <p class="text-sm text-auraMuted font-light leading-relaxed mb-8">
+                {{ product.short_description }}
+            </p>
+            {% endif %}
+
+            {% if selected_variant %}
+                <div class="text-2xl font-light text-auraBlack mb-10 tracking-wide">
+                    Γé╣{{ selected_variant.price }}
+                </div>
+                
+                {% if not selected_variant.stock %}
+                <div class="text-[11px] text-red-600 font-medium uppercase tracking-[0.2em] mb-4">
+                    Out of Stock
+                </div>
+                {% endif %}
+
+                <!-- Size Selector -->
+                <div class="mb-8">
+                    <span class="text-[11px] font-semibold uppercase tracking-[0.2em] text-auraBlack mb-4 block">Size</span>
+                    <div class="flex flex-wrap gap-4">
+                        {% for v in variants %}
+                        <a href="?variant={{ v.sku }}" 
+                           class="border px-8 py-3 text-[11px] font-medium tracking-[0.2em] uppercase transition-all duration-300 {% if v.sku == selected_variant.sku %}bg-auraBlack text-auraIvory border-auraBlack{% else %}bg-transparent text-auraBlack border-auraBorder hover:border-auraBlack{% endif %}">
+                            {{ v.size }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Quantity -->
+                <div class="mb-10">
+                    <span class="text-[11px] font-semibold uppercase tracking-[0.2em] text-auraBlack mb-4 block">Quantity</span>
+                    <div class="flex items-center border border-auraBorder w-[140px] h-12 bg-white">
+                        <button type="button" class="w-12 h-full flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors text-lg font-light">ΓêÆ</button>
+                        <input type="text" value="1" readonly class="w-full h-full text-center text-sm font-medium bg-transparent focus:outline-none text-auraBlack">
+                        <button type="button" class="w-12 h-full flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors text-lg font-light">+</button>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex flex-col gap-4">
+                    <button class="w-full bg-auraBlack text-auraIvory uppercase tracking-[0.22em] text-[11px] font-semibold py-4.5 transition-all duration-300 {% if not selected_variant.stock %}opacity-50 cursor-not-allowed{% else %}hover:bg-black hover:shadow-aura-button active:scale-[0.99]{% endif %}" style="padding-top: 1.125rem; padding-bottom: 1.125rem;" {% if not selected_variant.stock %}disabled{% endif %}>
+                        {% if selected_variant.stock %}Add to Bag{% else %}Unavailable{% endif %}
+                    </button>
+                    <button class="w-full bg-transparent text-auraBlack border border-auraBlack uppercase tracking-[0.22em] text-[11px] font-semibold py-4.5 hover:bg-auraBlack hover:text-auraIvory transition-all duration-300 active:scale-[0.99]" style="padding-top: 1.125rem; padding-bottom: 1.125rem;">
+                        Add to Wishlist
+                    </button>
+                </div>
+            {% else %}
+                <div class="text-[11px] text-red-600 font-medium uppercase tracking-[0.2em] mb-4">
+                    Product Unavailable
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Related Products -->
+    {% if related_products %}
+    <div class="mt-32 pt-20 border-t border-auraBorder">
+        <h2 class="font-serif text-3xl sm:text-4xl font-medium text-auraBlack tracking-tight mb-14 text-center">
+            You May Also Like
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-14">
+            {% for rp in related_products %}
+            <a href="{% url 'shop:product_details' slug=rp.slug %}" class="group flex flex-col text-center">
+                <div class="w-full aspect-square bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center p-6 sm:p-8">
+                    {% if rp.primary_image %}
+                    <img src="{% get_media_prefix %}{{ rp.primary_image }}" alt="{{ rp.name }}" class="w-full h-full object-contain object-center transform hover:scale-105 transition-transform duration-1000 ease-out">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center text-[10px] uppercase tracking-[0.2em] text-auraMuted/70">
+                        AURA
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="space-y-1.5 flex-grow flex flex-col items-center">
+                    <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                        {{ rp.brand.name }}
+                    </span>
+                    <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
+                        {{ rp.name }}
+                    </h3>
+                    <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
+                        {{ rp.get_fragrance_concentration_display }}{% if rp.representative_size %} ΓÇó {{ rp.representative_size }}{% endif %}
+                    </p>
+                    <p class="text-sm font-medium text-auraBlack pt-1">
+                        From Γé╣{{ rp.starting_price }}
+                    </p>
+                    <div class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-auraBlack pb-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        View Details
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleAccordion(id) {
+        const content = document.getElementById('content-' + id);
+        const icon = document.getElementById('icon-' + id);
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            icon.textContent = 'ΓêÆ';
+        } else {
+            content.classList.add('hidden');
+            icon.textContent = '+';
+        }
+    }
+</script>
+{% endblock %}
