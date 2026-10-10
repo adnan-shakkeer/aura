@@ -38,6 +38,22 @@ SORT_OPTIONS = (
 #: Number of products per listing page.
 SHOP_PAGE_SIZE = 12
 
+#: Stored ``fragrance_concentration`` values usable as listing filters.
+#: Derived from the Product model choices — no new field is introduced.
+VALID_CONCENTRATIONS = tuple(
+    value for value, _label in Product.FragranceConcentration.choices
+)
+
+#: (stored value, display label) pairs for the filter drawer, in the
+#: model's canonical choice order.
+CONCENTRATION_OPTIONS = tuple(Product.FragranceConcentration.choices)
+
+
+def clean_concentration_values(values):
+    """Return the valid stored concentration values, in choice order."""
+    wanted = {v for v in (values or ()) if v in VALID_CONCENTRATIONS}
+    return [value for value in VALID_CONCENTRATIONS if value in wanted]
+
 
 def get_available_products():
     """Return eligible products for the User-side catalog.
@@ -128,10 +144,19 @@ def get_available_products():
     )
 
 
-def get_shop_products(*, q="", category_slug="", brand_slug="", sort=SORT_FEATURED):
+def get_shop_products(
+    *,
+    q="",
+    category_slugs=(),
+    brand_slugs=(),
+    concentrations=(),
+    sort=SORT_FEATURED,
+):
     """Return the eligible listing queryset with search, filters and sorting.
 
-    All parameters are plain strings (typically from ``request.GET``).
+    ``category_slugs``, ``brand_slugs`` and ``concentrations`` are
+    iterables of strings (typically from ``request.GET.getlist()``), so
+    multiple drawer checkboxes combine instead of overwriting each other.
     Unknown ``sort`` values fall back to the deterministic default order.
     Filtering and sorting stay database-driven; no Python-side filtering.
     """
@@ -146,11 +171,17 @@ def get_shop_products(*, q="", category_slug="", brand_slug="", sort=SORT_FEATUR
             | Q(brand__category__name__icontains=search)
         )
 
-    if category_slug:
-        queryset = queryset.filter(brand__category__slug=category_slug)
+    category_slugs = [s for s in (category_slugs or ()) if s]
+    if category_slugs:
+        queryset = queryset.filter(brand__category__slug__in=category_slugs)
 
-    if brand_slug:
-        queryset = queryset.filter(brand__slug=brand_slug)
+    brand_slugs = [s for s in (brand_slugs or ()) if s]
+    if brand_slugs:
+        queryset = queryset.filter(brand__slug__in=brand_slugs)
+
+    concentrations = clean_concentration_values(concentrations)
+    if concentrations:
+        queryset = queryset.filter(fragrance_concentration__in=concentrations)
 
     if sort == SORT_NAME_ASC:
         queryset = queryset.order_by(Lower("name"), "id")
@@ -201,8 +232,8 @@ def get_shop_categories():
     )
 
 
-def get_shop_brands(*, category_slug=""):
-    """Brands usable as listing filters, optionally scoped to a category.
+def get_shop_brands(*, category_slugs=()):
+    """Brands usable as listing filters, optionally scoped to categories.
 
     Only listed, non-deleted brands (in listed, non-deleted categories)
     that own at least one fully eligible product.
@@ -231,6 +262,7 @@ def get_shop_brands(*, category_slug=""):
         .select_related("category")
         .order_by("name")
     )
-    if category_slug:
-        queryset = queryset.filter(category__slug=category_slug)
+    category_slugs = [s for s in (category_slugs or ()) if s]
+    if category_slugs:
+        queryset = queryset.filter(category__slug__in=category_slugs)
     return queryset

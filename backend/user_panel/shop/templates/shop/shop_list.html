@@ -6,54 +6,96 @@
 {% block content %}
 
 <!-- ========================================================= -->
-<!-- SHOP HERO — editorial banner for the fragrance catalogue  -->
-<!-- Hero asset: static/images/shop_hero.jpg (pending supply). -->
-<!-- If the file is absent, the framed fallback monogram shows -->
-<!-- and the page remains fully functional.                    -->
+<!-- SHOP HERO — full-bleed editorial banner.                   -->
+<!-- The supplied asset already contains its own "Shop"        -->
+<!-- heading and description baked into the artwork, so no     -->
+<!-- HTML overlay text is rendered (avoids duplication).       -->
+<!-- Primary: static/images/shop_hero.png, falling back to the -->
+<!-- supplied static/images/shop_hero.jpg; a typographic       -->
+<!-- fallback sits underneath in case neither file exists.     -->
 <!-- ========================================================= -->
-<section class="relative bg-auraCream border-b border-auraBorder overflow-hidden">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center py-14 sm:py-20 lg:py-24">
+<section aria-label="Shop" class="w-full bg-[#ECE4D3]">
+    <h1 class="sr-only">Shop premium fragrances</h1>
+    <div class="relative h-60 sm:h-72 lg:h-[380px] overflow-hidden">
+        <!-- Graceful fallback: visible only if the hero files are missing. -->
+        <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-6 gap-3">
+            <span class="font-serif text-5xl sm:text-6xl font-medium text-auraBlack tracking-tight">Shop</span>
+            <span class="text-sm text-auraMuted font-light max-w-md">Explore our curated collection of premium fragrances.</span>
+        </div>
+        <img
+            src="{% static 'images/shop_hero.png' %}"
+            data-fallback="{% static 'images/shop_hero.jpg' %}"
+            onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.removeAttribute('data-fallback');}else{this.remove();}"
+            alt="AURA fragrance collection — perfume bottle on natural stone"
+            class="absolute inset-0 h-full w-full object-cover object-[62%_center] sm:object-center"
+        >
+    </div>
+</section>
 
-            <!-- Editorial copy -->
-            <div class="lg:col-span-6 space-y-5 sm:space-y-6">
-                <span class="text-[11px] uppercase tracking-[0.3em] font-medium text-auraMuted block">
-                    The AURA Collection
-                </span>
-                <h1 class="font-serif text-4xl sm:text-5xl lg:text-6xl font-medium text-auraBlack tracking-tight leading-[1.06]">
-                    THE FRAGRANCE<br>EDIT
-                </h1>
-                <p class="text-sm sm:text-base text-auraMuted font-light leading-relaxed max-w-md">
-                    Every composition in one place — rare attars, evening parfums and
-                    daytime eaux, curated by our perfumers and ready to discover.
-                </p>
-                <div class="pt-2">
-                    <a
-                        href="#collection"
-                        class="inline-flex items-center justify-center px-8 py-4 bg-auraBlack text-auraIvory text-xs uppercase tracking-[0.22em] font-semibold hover:bg-black active:scale-[0.99] transition-all duration-300 shadow-sm hover:shadow-aura-button"
-                    >
-                        Shop Collection
-                    </a>
-                </div>
-            </div>
+<!-- ========================================================= -->
+<!-- TOOLBAR — search, sort, filters trigger                    -->
+<!-- ========================================================= -->
+<section id="collection" class="bg-white border-b border-auraBorder scroll-mt-24">
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10">
+        <div class="flex flex-wrap items-center gap-x-8 gap-y-3 py-4">
 
-            <!-- Hero image with graceful fallback -->
-            <div class="lg:col-span-6">
-                <div data-hero-img class="relative w-full h-[280px] sm:h-[380px] lg:h-[440px] bg-auraIvory border border-auraBorder/60 overflow-hidden flex items-center justify-center">
-                    <!-- Fallback monogram: visible while the image loads, and
-                         remains if static/images/shop_hero.jpg is missing. -->
-                    <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 select-none">
-                        <span class="font-serif text-3xl sm:text-4xl tracking-[0.32em] pl-[0.32em] text-auraChampagneDark/70 uppercase">AURA</span>
-                        <span class="text-[10px] uppercase tracking-[0.26em] text-auraMuted/70 font-light">The Fragrance Edit</span>
-                    </div>
-                    <img
-                        src="{% static 'images/shop_hero.jpg' %}"
-                        alt="AURA fragrance collection"
-                        class="absolute inset-0 w-full h-full object-cover object-center"
-                        onerror="this.remove();"
-                    >
-                    <div class="absolute inset-0 bg-auraBlack/10 pointer-events-none" aria-hidden="true"></div>
-                </div>
+            <!-- Search (keeps active filters + sort via hidden fields) -->
+            <form method="get" action="{% url 'shop:shop_list' %}#collection" role="search" class="flex items-center gap-3 flex-1 min-w-[220px] order-1">
+                {% for slug in current_categories %}<input type="hidden" name="category" value="{{ slug }}">{% endfor %}
+                {% for slug in current_brands %}<input type="hidden" name="brand" value="{{ slug }}">{% endfor %}
+                {% for value in current_concentrations %}<input type="hidden" name="concentration" value="{{ value }}">{% endfor %}
+                <input type="hidden" name="sort" value="{{ current_sort }}">
+                <button type="submit" aria-label="Search perfumes" class="p-1 text-auraBlack hover:text-auraMuted transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                    </svg>
+                </button>
+                <input
+                    type="search"
+                    name="q"
+                    value="{{ current_q }}"
+                    placeholder="SEARCH PERFUMES..."
+                    autocomplete="off"
+                    aria-label="Search perfumes"
+                    class="w-full bg-transparent text-xs tracking-[0.18em] font-medium text-auraBlack placeholder:text-auraMuted/80 placeholder:font-medium focus:outline-none py-2"
+                >
+            </form>
+
+            <!-- Sort (keeps active search + filters via hidden fields) -->
+            <form method="get" action="{% url 'shop:shop_list' %}#collection" class="flex items-center gap-2 order-2 sm:order-2">
+                {% if current_q %}<input type="hidden" name="q" value="{{ current_q }}">{% endif %}
+                {% for slug in current_categories %}<input type="hidden" name="category" value="{{ slug }}">{% endfor %}
+                {% for slug in current_brands %}<input type="hidden" name="brand" value="{{ slug }}">{% endfor %}
+                {% for value in current_concentrations %}<input type="hidden" name="concentration" value="{{ value }}">{% endfor %}
+                <label for="shop-sort" class="text-xs tracking-[0.18em] font-semibold text-auraBlack whitespace-nowrap">SORT BY:</label>
+                <select
+                    id="shop-sort"
+                    name="sort"
+                    onchange="this.form.submit()"
+                    aria-label="Sort products"
+                    class="bg-transparent text-xs tracking-[0.18em] font-semibold text-auraBlack focus:outline-none cursor-pointer py-2 pr-1"
+                >
+                    {% for value, label in sort_options %}
+                        <option value="{{ value }}" {% if value == current_sort %}selected{% endif %}>{{ label|upper }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            <!-- Filters trigger -->
+            <div class="order-3 ml-auto">
+                <button
+                    type="button"
+                    id="filters-open-btn"
+                    aria-haspopup="dialog"
+                    aria-controls="filters-drawer"
+                    aria-expanded="false"
+                    class="flex items-center gap-2 text-xs tracking-[0.18em] font-semibold text-auraBlack hover:text-auraMuted transition-colors py-2"
+                >
+                    FILTERS
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+                    </svg>
+                </button>
             </div>
 
         </div>
@@ -61,134 +103,20 @@
 </section>
 
 <!-- ========================================================= -->
-<!-- LISTING — search, filters, sorting, grid, pagination       -->
+<!-- COUNT + GRID                                               -->
 <!-- ========================================================= -->
-<section id="collection" class="bg-white scroll-mt-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+<section class="bg-white" aria-label="Product listing">
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 pt-6 pb-16 sm:pb-24">
 
-        <!-- Section heading + count -->
-        <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-3 mb-8 sm:mb-10">
-            <h2 class="font-serif text-3xl sm:text-4xl font-medium text-auraBlack tracking-tight">
-                All Fragrances
-            </h2>
-            <p class="text-[11px] uppercase tracking-[0.2em] text-auraMuted font-light">
-                {{ total_count }} fragrance{{ total_count|pluralize }}
-                {% if has_active_filters %}matching your selection{% endif %}
-            </p>
-        </div>
-
-        <!-- Controls: one GET form so search, filters and sort combine -->
-        <form method="get" action="{% url 'shop:shop_list' %}#collection" class="border border-auraBorder bg-auraIvory/60 p-4 sm:p-6 mb-10 sm:mb-14">
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-
-                <!-- Search -->
-                <div class="md:col-span-5">
-                    <label for="shop-search" class="block text-[10px] uppercase tracking-[0.22em] font-semibold text-auraBlack mb-2">
-                        Search
-                    </label>
-                    <div class="flex gap-2">
-                        <input
-                            type="search"
-                            id="shop-search"
-                            name="q"
-                            value="{{ current_q }}"
-                            placeholder="Search by perfume, brand or category…"
-                            autocomplete="off"
-                            class="flex-1 min-w-0 bg-white border border-auraBorder px-4 py-3 text-sm font-light text-auraBlack placeholder:text-auraMuted/70 focus:outline-none focus:border-auraBlack transition-colors"
-                        >
-                        <button
-                            type="submit"
-                            class="shrink-0 px-5 py-3 bg-auraBlack text-auraIvory text-[11px] uppercase tracking-[0.2em] font-semibold hover:bg-black transition-colors"
-                        >
-                            Search
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Category filter -->
-                <div class="md:col-span-2">
-                    <label for="shop-category" class="block text-[10px] uppercase tracking-[0.22em] font-semibold text-auraBlack mb-2">
-                        Category
-                    </label>
-                    <select
-                        id="shop-category"
-                        name="category"
-                        onchange="this.form.submit()"
-                        class="w-full bg-white border border-auraBorder px-3 py-3 text-sm font-light text-auraBlack focus:outline-none focus:border-auraBlack transition-colors"
-                    >
-                        <option value="">All Categories</option>
-                        {% for category in categories %}
-                            <option value="{{ category.slug }}" {% if category.slug == current_category %}selected{% endif %}>
-                                {{ category.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Brand filter -->
-                <div class="md:col-span-2">
-                    <label for="shop-brand" class="block text-[10px] uppercase tracking-[0.22em] font-semibold text-auraBlack mb-2">
-                        Brand
-                    </label>
-                    <select
-                        id="shop-brand"
-                        name="brand"
-                        onchange="this.form.submit()"
-                        class="w-full bg-white border border-auraBorder px-3 py-3 text-sm font-light text-auraBlack focus:outline-none focus:border-auraBlack transition-colors"
-                    >
-                        <option value="">All Brands</option>
-                        {% for brand in brands %}
-                            <option value="{{ brand.slug }}" {% if brand.slug == current_brand %}selected{% endif %}>
-                                {{ brand.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Sorting -->
-                <div class="md:col-span-3">
-                    <label for="shop-sort" class="block text-[10px] uppercase tracking-[0.22em] font-semibold text-auraBlack mb-2">
-                        Sort By
-                    </label>
-                    <select
-                        id="shop-sort"
-                        name="sort"
-                        onchange="this.form.submit()"
-                        class="w-full bg-white border border-auraBorder px-3 py-3 text-sm font-light text-auraBlack focus:outline-none focus:border-auraBlack transition-colors"
-                    >
-                        {% for value, label in sort_options %}
-                            <option value="{{ value }}" {% if value == current_sort %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-
-            {% if has_active_filters %}
-                <div class="mt-4 pt-4 border-t border-auraBorder flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <span class="text-[11px] uppercase tracking-[0.18em] text-auraMuted font-light">
-                        Active:
-                        {% if current_q %}<span class="text-auraBlack font-medium">&ldquo;{{ current_q }}&rdquo;</span>{% endif %}
-                        {% if current_category %}<span class="text-auraBlack font-medium">{{ current_category }}</span>{% endif %}
-                        {% if current_brand %}<span class="text-auraBlack font-medium">{{ current_brand }}</span>{% endif %}
-                    </span>
-                    <a
-                        href="{% url 'shop:shop_list' %}#collection"
-                        class="text-[11px] uppercase tracking-[0.2em] font-semibold text-auraBlack underline underline-offset-4 decoration-auraChampagneDark hover:decoration-auraBlack transition-colors"
-                    >
-                        Clear All
-                    </a>
-                </div>
-            {% endif %}
-        </form>
+        <p class="text-[11px] tracking-[0.22em] font-medium text-auraMuted mb-6" aria-live="polite">
+            SHOWING {{ total_count }} PRODUCT{{ total_count|pluralize|upper }}
+        </p>
 
         {% if products %}
-            <!-- Product grid -->
-            <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 sm:gap-x-8 gap-y-10 sm:gap-y-14">
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-10 sm:gap-y-14">
                 {% for product in products %}
                     <a href="{% url 'shop:product_details' slug=product.slug %}" class="group flex flex-col text-center">
-                        <div class="w-full aspect-square bg-auraCream overflow-hidden border border-auraBorder/50 mb-4 sm:mb-6 relative flex items-center justify-center p-4 sm:p-8">
+                        <div class="w-full aspect-square bg-[#FAF7F1] overflow-hidden border border-auraBorder/40 mb-4 sm:mb-5 relative flex items-center justify-center p-5 sm:p-8">
                             {% if product.primary_image %}
                                 <img
                                     src="{% get_media_prefix %}{{ product.primary_image }}"
@@ -208,33 +136,28 @@
                             {% endif %}
                         </div>
                         <div class="space-y-1 sm:space-y-1.5 flex-grow flex flex-col items-center px-1">
-                            <span class="text-[9px] sm:text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
+                            <span class="text-[9px] sm:text-[10px] uppercase tracking-[0.24em] text-auraMuted font-medium">
                                 {{ product.brand.name }}
                             </span>
-                            <h3 class="font-serif text-base sm:text-lg lg:text-xl font-medium text-auraBlack tracking-wide leading-snug">
+                            <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide leading-snug">
                                 {{ product.name }}
                             </h3>
                             <p class="text-[9px] sm:text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
                                 {{ product.get_fragrance_concentration_display }}{% if product.representative_size %} • {{ product.representative_size }}{% endif %}
                             </p>
-                            <p class="text-sm font-medium text-auraBlack pt-1">
+                            <p class="text-sm font-semibold text-auraBlack pt-1">
                                 From ₹{{ product.starting_price }}
                             </p>
                             {% if product.representative_stock == 0 %}
                                 <p class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] font-medium text-auraMuted pt-1">
                                     Currently Unavailable
                                 </p>
-                            {% else %}
-                                <span class="mt-3 sm:mt-4 text-[10px] sm:text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-transparent group-hover:border-auraBlack pb-0.5 transition-all">
-                                    View Details
-                                </span>
                             {% endif %}
                         </div>
                     </a>
                 {% endfor %}
             </div>
 
-            <!-- Pagination -->
             {% if page_obj.paginator.num_pages > 1 %}
                 <nav aria-label="Shop pages" class="mt-14 sm:mt-20 flex items-center justify-center gap-2 sm:gap-3">
                     {% if page_obj.has_previous %}
@@ -276,14 +199,13 @@
             {% endif %}
 
         {% else %}
-            <!-- Empty results state -->
             <div class="border border-auraBorder bg-auraIvory/60 px-6 py-16 sm:py-24 text-center">
                 <span class="text-[11px] uppercase tracking-[0.3em] text-auraMuted font-medium block mb-4">
                     No Fragrances Found
                 </span>
-                <h3 class="font-serif text-2xl sm:text-3xl font-medium text-auraBlack tracking-tight mb-3">
+                <h2 class="font-serif text-2xl sm:text-3xl font-medium text-auraBlack tracking-tight mb-3">
                     Nothing matches your selection
-                </h3>
+                </h2>
                 <p class="text-sm text-auraMuted font-light leading-relaxed max-w-md mx-auto mb-8">
                     {% if has_active_filters %}
                         Try a different search term, or clear your filters to browse the full collection.
@@ -312,4 +234,179 @@
     </div>
 </section>
 
+<!-- ========================================================= -->
+<!-- FILTER DRAWER — right slide-in, GET-based                  -->
+<!-- Only attributes the models support: Brand, Category and    -->
+<!-- Fragrance Concentration (stored choice values).            -->
+<!-- ========================================================= -->
+<div
+    id="filters-overlay"
+    class="fixed inset-0 z-[60] bg-black/40 opacity-0 pointer-events-none transition-opacity duration-300"
+    aria-hidden="true"
+></div>
+
+<aside
+    id="filters-drawer"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="filters-heading"
+    aria-hidden="true"
+    class="fixed top-0 right-0 z-[70] h-full w-[86vw] max-w-sm bg-white shadow-2xl translate-x-full invisible transition-transform duration-300 ease-out flex flex-col"
+>
+    <div class="flex items-center justify-between px-6 py-5 border-b border-auraBorder shrink-0">
+        <h2 id="filters-heading" class="font-serif text-xl tracking-[0.14em] text-auraBlack">FILTERS</h2>
+        <div class="flex items-center gap-5">
+            <a
+                href="{% url 'shop:shop_list' %}#collection"
+                class="text-[11px] tracking-[0.2em] font-medium text-auraMuted hover:text-auraBlack transition-colors"
+            >
+                CLEAR ALL
+            </a>
+            <button
+                type="button"
+                id="filters-close-btn"
+                aria-label="Close filters"
+                class="p-1.5 text-auraBlack hover:text-auraMuted transition-colors"
+            >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <form method="get" action="{% url 'shop:shop_list' %}#collection" class="flex flex-col flex-1 min-h-0">
+        {% if current_q %}<input type="hidden" name="q" value="{{ current_q }}">{% endif %}
+        <input type="hidden" name="sort" value="{{ current_sort }}">
+
+        <div class="flex-1 overflow-y-auto px-6 divide-y divide-auraBorder">
+
+            <!-- Brands (dynamic, never hardcoded) -->
+            <details class="group py-5" open>
+                <summary class="flex items-center justify-between cursor-pointer list-none text-[11px] tracking-[0.22em] font-semibold text-auraBlack py-1 select-none">
+                    BRANDS
+                    <svg class="w-4 h-4 transition-transform duration-200 group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                </summary>
+                <div class="pt-4 space-y-3">
+                    {% for brand in brands %}
+                        <label class="flex items-center gap-3 cursor-pointer text-sm font-light text-auraBlack py-1">
+                            <input
+                                type="checkbox"
+                                name="brand"
+                                value="{{ brand.slug }}"
+                                {% if brand.slug in current_brands %}checked{% endif %}
+                                class="h-4 w-4 shrink-0 accent-black cursor-pointer"
+                            >
+                            {{ brand.name }}
+                        </label>
+                    {% empty %}
+                        <p class="text-sm font-light text-auraMuted">No brands available.</p>
+                    {% endfor %}
+                </div>
+            </details>
+
+            <!-- Categories (dynamic, never hardcoded) -->
+            <details class="group py-5" open>
+                <summary class="flex items-center justify-between cursor-pointer list-none text-[11px] tracking-[0.22em] font-semibold text-auraBlack py-1 select-none">
+                    CATEGORIES
+                    <svg class="w-4 h-4 transition-transform duration-200 group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                </summary>
+                <div class="pt-4 space-y-3">
+                    {% for category in categories %}
+                        <label class="flex items-center gap-3 cursor-pointer text-sm font-light text-auraBlack py-1">
+                            <input
+                                type="checkbox"
+                                name="category"
+                                value="{{ category.slug }}"
+                                {% if category.slug in current_categories %}checked{% endif %}
+                                class="h-4 w-4 shrink-0 accent-black cursor-pointer"
+                            >
+                            {{ category.name }}
+                        </label>
+                    {% empty %}
+                        <p class="text-sm font-light text-auraMuted">No categories available.</p>
+                    {% endfor %}
+                </div>
+            </details>
+
+            <!-- Fragrance concentration (real model choices, stored values) -->
+            <details class="group py-5" open>
+                <summary class="flex items-center justify-between cursor-pointer list-none text-[11px] tracking-[0.22em] font-semibold text-auraBlack py-1 select-none">
+                    FRAGRANCE CONCENTRATION
+                    <svg class="w-4 h-4 transition-transform duration-200 group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                </summary>
+                <div class="pt-4 space-y-3">
+                    {% for value, label in concentration_choices %}
+                        <label class="flex items-center gap-3 cursor-pointer text-sm font-light text-auraBlack py-1">
+                            <input
+                                type="checkbox"
+                                name="concentration"
+                                value="{{ value }}"
+                                {% if value in current_concentrations %}checked{% endif %}
+                                class="h-4 w-4 shrink-0 accent-black cursor-pointer"
+                            >
+                            {{ label }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </details>
+
+        </div>
+
+        <div class="shrink-0 p-4 sm:p-5 border-t border-auraBorder bg-white">
+            <button
+                type="submit"
+                class="w-full bg-auraBlack text-auraIvory text-xs uppercase tracking-[0.24em] font-semibold py-4 hover:bg-black active:scale-[0.99] transition-all"
+            >
+                Apply
+            </button>
+        </div>
+    </form>
+</aside>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        var openBtn = document.getElementById('filters-open-btn');
+        var closeBtn = document.getElementById('filters-close-btn');
+        var drawer = document.getElementById('filters-drawer');
+        var overlay = document.getElementById('filters-overlay');
+        if (!openBtn || !closeBtn || !drawer || !overlay) return;
+
+        function openDrawer() {
+            drawer.classList.remove('translate-x-full', 'invisible');
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            document.body.style.overflow = 'hidden';
+            openBtn.setAttribute('aria-expanded', 'true');
+            drawer.setAttribute('aria-hidden', 'false');
+            closeBtn.focus();
+        }
+
+        function closeDrawer(returnFocus) {
+            drawer.classList.add('translate-x-full', 'invisible');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            document.body.style.overflow = '';
+            openBtn.setAttribute('aria-expanded', 'false');
+            drawer.setAttribute('aria-hidden', 'true');
+            if (returnFocus !== false) openBtn.focus();
+        }
+
+        openBtn.addEventListener('click', openDrawer);
+        closeBtn.addEventListener('click', function () { closeDrawer(); });
+        overlay.addEventListener('click', function () { closeDrawer(); });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && openBtn.getAttribute('aria-expanded') === 'true') {
+                closeDrawer();
+            }
+        });
+    })();
+</script>
 {% endblock %}

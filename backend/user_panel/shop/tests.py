@@ -125,11 +125,24 @@ class ListingBasicsTest(ShopListingTestCase):
         response = self.client.get(self.listing_url())
         self.assertIn("Hawas Ice", self.product_names_in_listing(response))
 
-    def test_hero_references_pending_static_asset(self):
+    def test_hero_uses_static_png_with_jpg_fallback(self):
         response = self.client.get(self.listing_url())
+        self.assertContains(response, "images/shop_hero.png")
         self.assertContains(response, "images/shop_hero.jpg")
         self.assertContains(response, "#collection")
-        self.assertContains(response, "THE FRAGRANCE")
+
+    def test_hero_has_no_duplicate_overlay_heading(self):
+        # The artwork carries its own baked-in heading; the template must
+        # not render a second visible heading over it.
+        response = self.client.get(self.listing_url())
+        self.assertNotContains(response, "THE FRAGRANCE EDIT")
+
+    def test_toolbar_and_drawer_present(self):
+        response = self.client.get(self.listing_url())
+        self.assertContains(response, "SEARCH PERFUMES...")
+        self.assertContains(response, "SORT BY:")
+        self.assertContains(response, "filters-drawer")
+        self.assertContains(response, "FILTERS")
 
 
 # ---------------------------------------------------------------------------
@@ -507,7 +520,100 @@ class ListingPresentationTest(ShopListingTestCase):
     def test_hero_missing_file_keeps_page_functional(self):
         response = self.client.get(self.listing_url())
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "images/shop_hero.jpg")
+        self.assertContains(response, "images/shop_hero.png")
+
+
+# ---------------------------------------------------------------------------
+# 23. Concentration filtering + filter drawer
+# ---------------------------------------------------------------------------
+
+class ListingConcentrationDrawerTest(ShopListingTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.edt_product = Product.objects.create(
+            brand=self.brand, name="Citrus Splash", slug="citrus-splash",
+            description="fresh daytime scent.",
+            fragrance_concentration=Product.FragranceConcentration.EAU_DE_TOILETTE,
+        )
+        ProductVariant.objects.create(
+            product=self.edt_product, size="100ml", sku="CITRUS-100",
+            price="150.00", stock=6,
+        )
+
+    def test_concentration_filter_single_value(self):
+        response = self.client.get(self.listing_url("concentration=EDT"))
+        names = self.product_names_in_listing(response)
+        self.assertIn("Citrus Splash", names)
+        self.assertNotIn("Hawas Ice", names)
+
+    def test_concentration_filter_multiple_values_combine(self):
+        response = self.client.get(
+            self.listing_url("concentration=EDP&concentration=EDT")
+        )
+        names = self.product_names_in_listing(response)
+        self.assertIn("Hawas Ice", names)
+        self.assertIn("Citrus Splash", names)
+
+    def test_invalid_concentration_ignored(self):
+        response = self.client.get(self.listing_url("concentration=NOPE"))
+        names = self.product_names_in_listing(response)
+        self.assertIn("Hawas Ice", names)
+        self.assertIn("Citrus Splash", names)
+        self.assertEqual(response.context["current_concentrations"], [])
+
+    def test_concentration_combines_with_brand_and_search(self):
+        query = f"q=Citrus&brand={self.brand.slug}&concentration=EDT"
+        response = self.client.get(self.listing_url(query))
+        self.assertEqual(self.product_names_in_listing(response), ["Citrus Splash"])
+
+    def test_multiple_brands_combine(self):
+        brand2 = Brand.objects.create(
+            category=self.category, name="Second House",
+            description="d", listing_image=_fake_image("s2l.jpg"),
+            listing_description="ld", hero_image=_fake_image("s2h.jpg"),
+            hero_description="hd",
+        )
+        other = Product.objects.create(
+            brand=brand2, name="Other Oud", slug="other-oud",
+            description="o.", fragrance_concentration="EDP",
+        )
+        ProductVariant.objects.create(
+            product=other, size="50ml", sku="OTHER-50",
+            price="200.00", stock=2,
+        )
+        response = self.client.get(
+            self.listing_url(f"brand={self.brand.slug}&brand={brand2.slug}")
+        )
+        names = self.product_names_in_listing(response)
+        self.assertIn("Hawas Ice", names)
+        self.assertIn("Other Oud", names)
+
+    def test_drawer_renders_dynamic_options_with_checked_state(self):
+        query = f"brand={self.brand.slug}&concentration=EDP"
+        response = self.client.get(self.listing_url(query))
+        # Dynamic brand/category names, never hardcoded.
+        self.assertContains(response, self.brand.name)
+        self.assertContains(response, self.category.name)
+        # Real model concentration labels.
+        self.assertContains(response, "Eau de Parfum (EDP)")
+        self.assertContains(response, "Eau de Toilette (EDT)")
+        # Active filters reflected as checked.
+        self.assertContains(response, "checked")
+        # Unsupported attributes must not appear as functional filters.
+        self.assertNotContains(response, 'name="gender"')
+        self.assertNotContains(response, 'name="scent_family"')
+
+    def test_toolbar_preserves_params_across_forms(self):
+        query = f"q=Hawas&sort=price_low&brand={self.brand.slug}"
+        response = self.client.get(self.listing_url(query))
+        self.assertContains(response, f'name="sort" value="price_low"')
+        self.assertContains(response, f'name="q" value="Hawas"')
+        self.assertContains(response, f'name="brand" value="{self.brand.slug}"')
+
+    def test_pagination_preserves_concentration(self):
+        response = self.client.get(self.listing_url("concentration=EDP"))
+        self.assertIn("concentration=EDP", response.context["base_query"])
 
 
 # ---------------------------------------------------------------------------
