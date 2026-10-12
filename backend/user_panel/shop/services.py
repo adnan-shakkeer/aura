@@ -12,14 +12,12 @@ from admin_panel.categories.models import Category
 from admin_panel.products.models import Product, ProductVariant, VariantImage
 
 # Supported ``?sort=`` values for the Shop listing page.
-SORT_FEATURED = "featured"
 SORT_NAME_ASC = "name_asc"
 SORT_PRICE_LOW = "price_low"
 SORT_PRICE_HIGH = "price_high"
 SORT_NEWEST = "newest"
 
 VALID_SORTS = (
-    SORT_FEATURED,
     SORT_NAME_ASC,
     SORT_PRICE_LOW,
     SORT_PRICE_HIGH,
@@ -28,7 +26,6 @@ VALID_SORTS = (
 
 #: (value, label) pairs consumed directly by the listing template.
 SORT_OPTIONS = (
-    (SORT_FEATURED, "Featured"),
     (SORT_NAME_ASC, "Name: A to Z"),
     (SORT_PRICE_LOW, "Price: Low to High"),
     (SORT_PRICE_HIGH, "Price: High to Low"),
@@ -150,7 +147,7 @@ def get_shop_products(
     category_slugs=(),
     brand_slugs=(),
     concentrations=(),
-    sort=SORT_FEATURED,
+    sort=SORT_NEWEST,
 ):
     """Return the eligible listing queryset with search, filters and sorting.
 
@@ -190,12 +187,9 @@ def get_shop_products(
     elif sort == SORT_PRICE_HIGH:
         queryset = queryset.order_by("-starting_price", "-id")
     elif sort == SORT_NEWEST:
-        # Same deterministic rule as the default: no sales/merchandising
-        # field exists, so newest-first by creation timestamp is the
-        # honest definition of both "featured" and "newest".
         queryset = queryset.order_by("-created_at", "-id")
     else:
-        # SORT_FEATURED and any unknown value: deterministic default.
+        # Any unknown value: deterministic default (newest first).
         queryset = queryset.order_by("-created_at", "-id")
 
     return queryset
