@@ -13,7 +13,7 @@ from django.shortcuts import render, get_object_or_404
 from .services import (
     CONCENTRATION_OPTIONS,
     SHOP_PAGE_SIZE,
-    SORT_FEATURED,
+    SORT_NEWEST,
     SORT_OPTIONS,
     VALID_SORTS,
     clean_concentration_values,
@@ -33,7 +33,7 @@ def shop_list(request):
         category        Category slug filter (repeatable for multiple)
         brand           Brand slug filter (repeatable for multiple)
         concentration   Stored fragrance-concentration value (repeatable)
-        sort            one of featured | name_asc | price_low | price_high | newest
+        sort            one of name_asc | price_low | price_high | newest
         page            pagination page number
 
     Unknown ``sort``/``concentration`` values are ignored safely.
@@ -44,9 +44,9 @@ def shop_list(request):
     category_slugs = [s for s in request.GET.getlist("category") if s]
     brand_slugs = [s for s in request.GET.getlist("brand") if s]
     concentrations = clean_concentration_values(request.GET.getlist("concentration"))
-    sort = request.GET.get("sort") or SORT_FEATURED
+    sort = request.GET.get("sort") or SORT_NEWEST
     if sort not in VALID_SORTS:
-        sort = SORT_FEATURED
+        sort = SORT_NEWEST
 
     products = get_shop_products(
         q=search_query,
