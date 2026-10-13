@@ -62,7 +62,7 @@
                                     </p>
                                 {% endif %}
                                 <a
-                                    href="{% url 'shop:shop_list' %}?brand={{ brand.slug }}"
+                                    href="{% url 'user_brands:brand_detail' slug=brand.slug %}"
                                     aria-label="Explore {{ brand.name }} fragrances"
                                     class="mt-1 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] font-semibold text-white underline underline-offset-8 decoration-white/50 hover:decoration-white transition-colors py-2"
                                 >
