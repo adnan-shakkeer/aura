@@ -1,0 +1,502 @@
+{% extends "user_panel/base.html" %}
+{% load static %}
+
+{% block title %}Shopping Bag | AURA{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Cart toast — mirrors home.html aura-toast pattern */
+    #cart-toast-container {
+        position: fixed;
+        top: 5.5rem;
+        right: 1rem;
+        z-index: 80;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        max-width: 22rem;
+        width: calc(100% - 2rem);
+    }
+    @media (min-width: 640px) {
+        #cart-toast-container { right: 1.5rem; }
+    }
+    @keyframes cart-toast-in {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes cart-toast-out {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(-8px); }
+    }
+    .cart-toast {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        padding: 0.8rem 1rem;
+        border-radius: 0.4rem;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        line-height: 1.6;
+        animation: cart-toast-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+        box-shadow: 0 10px 30px -4px rgba(26, 26, 26, 0.18);
+    }
+    .cart-toast--dismissing { animation: cart-toast-out 0.3s ease both; }
+    .cart-toast--success { background-color: #0F172A; border: 1px solid #1E293B; border-left: 2px solid #FBBF24; color: #F1F5F9; }
+    .cart-toast--success .cart-toast__icon { color: #FBBF24; flex-shrink: 0; margin-top: 1px; }
+    .cart-toast--error { background-color: #1a0f12; border: 1px solid #4c1d24; border-left: 2px solid #9f1239; color: #fecdd3; }
+    .cart-toast--error .cart-toast__icon { color: #fb7185; flex-shrink: 0; margin-top: 1px; }
+    .cart-toast__text { flex: 1; font-weight: 300; }
+    .qty-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .cart-row--removing { opacity: 0; transform: translateY(-4px); transition: opacity 0.3s ease, transform 0.3s ease; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-auraIvory min-h-[calc(100vh-80px)]">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+
+        <!-- Page heading -->
+        <div class="mb-8 sm:mb-10">
+            <h1 class="font-serif text-4xl sm:text-5xl font-normal text-auraBlack tracking-tight leading-tight">Shopping Bag</h1>
+            <p class="text-sm sm:text-[15px] text-auraMuted font-light mt-2">Review your selected fragrances before proceeding to checkout.</p>
+        </div>
+
+        <!-- Toast container (JS-filled; server messages also rendered here) -->
+        <div id="cart-toast-container" role="alert" aria-live="polite">
+            {% if messages %}
+                {% for message in messages %}
+                    {% if 'admin' not in message.tags %}
+                    <div class="cart-toast {% if message.tags == 'error' %}cart-toast--error{% else %}cart-toast--success{% endif %}">
+                        <span class="cart-toast__text">{{ message }}</span>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        {% if items %}
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_370px] gap-10 xl:gap-14 items-start">
+
+            <!-- LEFT: item list -->
+            <section aria-label="Cart items">
+                <!-- Column headers (desktop) -->
+                <div class="hidden sm:grid grid-cols-[1fr_150px_130px] gap-4 pb-4 border-b border-auraBorder text-[10px] uppercase tracking-[0.24em] font-medium text-auraBlack">
+                    <span>Product</span>
+                    <span class="text-center">Quantity</span>
+                    <span class="text-right">Subtotal</span>
+                </div>
+
+                <div id="cart-items">
+                    {% for item in items %}
+                    {% with variant=item.variant product=item.variant.product %}
+                    <article
+                        data-cart-row
+                        data-item-id="{{ item.id }}"
+                        data-available="{{ item.is_available|yesno:'true,false' }}"
+                        data-stock="{{ variant.stock }}"
+                        data-update-url="{% url 'cart:update_cart_item' item.id %}"
+                        data-remove-url="{% url 'cart:remove_cart_item' item.id %}"
+                        class="grid grid-cols-[92px_1fr] sm:grid-cols-[110px_1fr_150px_130px] gap-4 sm:gap-4 py-6 sm:py-7 border-b border-auraBorder"
+                    >
+                        <!-- Image -->
+                        <div class="w-[92px] h-[108px] sm:w-[110px] sm:h-[128px] bg-[#FAF7F1] border border-auraBorder/50 overflow-hidden flex items-center justify-center flex-shrink-0">
+                            {% with img=item.variant.images.all|first %}
+                                {% if img and img.image %}
+                                <img src="{{ img.image.url }}" alt="{{ img.alt_text|default:product.name }}" loading="lazy" class="w-full h-full object-cover object-center">
+                                {% else %}
+                                <span class="text-[9px] uppercase tracking-[0.26em] text-auraMuted/70 font-medium select-none px-2 text-center">AURA</span>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+
+                        <!-- Details -->
+                        <div class="min-w-0">
+                            <p class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium truncate">{{ product.brand.name }}</p>
+                            <h2 class="font-serif text-xl sm:text-2xl font-medium text-auraBlack tracking-wide leading-snug mt-0.5">{{ product.name }}</h2>
+                            <p class="text-xs text-auraMuted font-light italic mt-0.5">{{ product.get_fragrance_concentration_display }}</p>
+                            <p class="text-xs text-auraMuted font-light mt-0.5">{{ variant.size }}</p>
+                            <p class="text-sm font-medium text-auraBlack mt-2">₹{{ variant.price }}</p>
+
+                            {# Stock badge — display only. Unavailable (any hierarchy unlisted/deleted) takes priority; then stock levels. Threshold: low stock ≤ 3. #}
+                            {% if not variant.is_listed or variant.is_deleted or not product.is_listed or product.is_deleted or not product.brand.is_listed or product.brand.is_deleted or not product.brand.category.is_listed or product.brand.category.is_deleted %}
+                            <span class="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-gray-100 border border-gray-200 text-[10px] uppercase tracking-[0.18em] font-semibold text-gray-500">
+                                <span class="w-1.5 h-1.5 rounded-full bg-gray-500" aria-hidden="true"></span>Unavailable
+                            </span>
+                            {% elif variant.stock <= 0 %}
+                            <span class="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-[10px] uppercase tracking-[0.18em] font-semibold text-red-600">
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-600" aria-hidden="true"></span>Out of Stock
+                            </span>
+                            {% elif variant.stock <= 3 %}
+                            <span class="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-[10px] uppercase tracking-[0.18em] font-semibold text-orange-700">
+                                <span class="w-1.5 h-1.5 rounded-full bg-orange-600" aria-hidden="true"></span>Only {{ variant.stock }} left
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-green-50 border border-green-200 text-[10px] uppercase tracking-[0.18em] font-semibold text-green-700">
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-600" aria-hidden="true"></span>In Stock
+                            </span>
+                            {% endif %}
+
+                            <!-- Mobile qty + subtotal -->
+                            <div class="sm:hidden mt-4 flex items-center justify-between gap-3">
+                                <div class="flex items-center border border-auraBorder bg-white h-10" role="group" aria-label="Quantity for {{ product.name }}">
+                                    <button type="button" data-qty-dec aria-label="Decrease quantity" {% if not item.is_available %}disabled{% endif %} class="qty-btn w-10 h-full flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors text-base font-light">−</button>
+                                    <span data-qty-value aria-live="polite" class="w-9 text-center text-sm font-medium text-auraBlack">{{ item.quantity }}</span>
+                                    <button type="button" data-qty-inc aria-label="Increase quantity" {% if not item.is_available %}disabled{% endif %} class="qty-btn w-10 h-full flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors text-base font-light">+</button>
+                                </div>
+                                <p data-line-total class="text-base font-semibold text-auraBlack">₹{{ item.line_total }}</p>
+                            </div>
+                            <!-- Mobile remove -->
+                            <div class="sm:hidden mt-3">
+                                <button type="button" data-remove aria-label="Remove {{ product.name }} from bag" class="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-medium text-auraMuted hover:text-red-600 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Desktop quantity -->
+                        <div class="hidden sm:flex items-start justify-center pt-1">
+                            <div class="flex items-center border border-auraBorder bg-white h-11" role="group" aria-label="Quantity for {{ product.name }}">
+                                <button type="button" data-qty-dec aria-label="Decrease quantity" {% if not item.is_available %}disabled{% endif %} class="qty-btn w-11 h-full flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors text-lg font-light">−</button>
+                                <span data-qty-value aria-live="polite" class="w-10 text-center text-sm font-medium text-auraBlack">{{ item.quantity }}</span>
+                                <button type="button" data-qty-inc aria-label="Increase quantity" {% if not item.is_available %}disabled{% endif %} class="qty-btn w-11 h-full flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors text-lg font-light">+</button>
+                            </div>
+                        </div>
+
+                        <!-- Desktop subtotal + remove -->
+                        <div class="hidden sm:flex flex-col items-end justify-start gap-3 pt-1">
+                            <p data-line-total class="text-lg font-medium text-auraBlack">₹{{ item.line_total }}</p>
+                            <button type="button" data-remove aria-label="Remove {{ product.name }} from bag" class="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-medium text-auraMuted hover:text-red-600 transition-colors mt-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                                Remove
+                            </button>
+                        </div>
+                    </article>
+                    {% endwith %}
+                    {% endfor %}
+                </div>
+
+                <!-- Bottom strip -->
+                <div class="flex items-center justify-between pt-6">
+                    <a href="{% url 'shop:shop_list' %}" class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] font-medium text-auraMuted hover:text-auraBlack transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
+                        Continue Shopping
+                    </a>
+                    <p class="text-[11px] uppercase tracking-[0.2em] text-auraMuted font-medium">
+                        <span data-distinct-count>{{ items|length }}</span> item{{ items|length|pluralize }} <span class="mx-2 text-auraBorder">|</span> <span data-units-count>{{ total_quantity }}</span> unit{{ total_quantity|pluralize }}
+                    </p>
+                </div>
+            </section>
+
+            <!-- RIGHT: order summary -->
+            <aside aria-label="Order summary" class="bg-white border border-auraBorder rounded-xl sm:rounded-2xl p-6 sm:p-8 shadow-aura-subtle lg:sticky lg:top-28">
+                <h2 class="text-[11px] uppercase tracking-[0.24em] font-semibold text-auraBlack mb-6">Order Summary</h2>
+
+                <div class="bg-auraIvory/70 rounded-lg p-5 space-y-4">
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-sm text-auraMuted font-light">Subtotal (<span data-units-count>{{ total_quantity }}</span> item<span data-units-plural>{{ total_quantity|pluralize }}</span>)</span>
+                        <span data-summary-subtotal class="text-base font-semibold text-auraBlack">₹{{ subtotal }}</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-sm text-auraMuted font-light">Shipping &amp; Handling</span>
+                        <span class="text-sm font-semibold text-green-600">Free</span>
+                    </div>
+                    <div class="border-t border-auraBorder pt-4 flex items-center justify-between gap-4">
+                        <span class="text-sm font-semibold text-auraBlack">Estimated Total</span>
+                        {# Shipping is always free, so estimated total equals subtotal. Backend does not currently supply shipping_charge/estimated_total. #}
+                        <span data-summary-total class="font-serif text-2xl font-medium text-auraBlack">₹{{ subtotal }}</span>
+                    </div>
+                </div>
+
+                <p class="text-xs text-auraMuted font-light leading-relaxed mt-5">Shipping is free for every order. The total shown includes all items in your bag.</p>
+
+                <div class="mt-6 space-y-3">
+                    <button
+                        type="button"
+                        id="proceed-checkout-btn"
+                        data-validate-url="{% url 'cart:validate_checkout' %}"
+                        class="w-full inline-flex items-center justify-center gap-2 bg-auraBlack text-auraIvory uppercase tracking-[0.22em] text-[11px] font-semibold rounded-full py-4 hover:bg-black hover:shadow-aura-button active:scale-[0.99] transition-all duration-300"
+                    >
+                        <span id="checkout-btn-text">Proceed to Checkout</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>
+                    </button>
+                    <a
+                        href="{% url 'shop:shop_list' %}"
+                        class="w-full inline-flex items-center justify-center bg-transparent text-auraBlack border border-auraBorder uppercase tracking-[0.22em] text-[11px] font-semibold rounded-full py-4 hover:border-auraBlack transition-all duration-300"
+                    >
+                        Continue Shopping
+                    </a>
+                </div>
+
+                <div class="mt-6 pt-6 border-t border-auraBorder grid grid-cols-3 gap-2 text-center">
+                    <div class="flex flex-col items-center gap-1.5">
+                        <svg class="w-5 h-5 text-auraMuted" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" /></svg>
+                        <span class="text-[9px] uppercase tracking-[0.16em] text-auraMuted font-medium leading-tight">Secure<br>Checkout</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1.5">
+                        <svg class="w-5 h-5 text-auraMuted" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
+                        <span class="text-[9px] uppercase tracking-[0.16em] text-auraMuted font-medium leading-tight">Free<br>Delivery</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1.5">
+                        <svg class="w-5 h-5 text-auraMuted" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
+                        <span class="text-[9px] uppercase tracking-[0.16em] text-auraMuted font-medium leading-tight">Easy<br>Returns</span>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        {% else %}
+        <!-- Empty state -->
+        <div class="max-w-xl mx-auto text-center border border-auraBorder bg-white rounded-2xl px-6 py-16 sm:py-20 shadow-aura-subtle">
+            <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-auraIvory border border-auraBorder flex items-center justify-center">
+                <svg class="w-7 h-7 text-auraMuted" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z" /></svg>
+            </div>
+            <p class="text-[11px] uppercase tracking-[0.28em] text-auraMuted font-medium mb-3">Your bag is empty</p>
+            <h2 class="font-serif text-3xl sm:text-4xl font-normal text-auraBlack tracking-tight mb-3">Discover your signature scent</h2>
+            <p class="text-sm text-auraMuted font-light leading-relaxed max-w-md mx-auto mb-8">Explore our curated collection of premium fragrances and find the one that resonates with you.</p>
+            <a href="{% url 'shop:shop_list' %}" class="inline-flex items-center justify-center px-10 py-4 bg-auraBlack text-auraIvory text-[11px] uppercase tracking-[0.22em] font-semibold rounded-full hover:bg-black hover:shadow-aura-button active:scale-[0.99] transition-all duration-300">Continue Shopping</a>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+
+    var MAX_QTY = 10;
+
+    function getCookie(name) {
+        var cookies = document.cookie ? document.cookie.split(';') : [];
+        for (var i = 0; i < cookies.length; i++) {
+            var c = cookies[i].trim();
+            if (c.indexOf(name + '=') === 0) return decodeURIComponent(c.substring(name.length + 1));
+        }
+        return null;
+    }
+    var CSRF = getCookie('csrftoken');
+
+    function formatINR(value) {
+        var n = Number(value);
+        if (!isFinite(n)) return '₹' + value;
+        return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+
+    var toastTimer = null;
+    function showToast(msg, type) {
+        type = type || 'success';
+        var container = document.getElementById('cart-toast-container');
+        if (!container) return;
+        var el = document.createElement('div');
+        el.className = 'cart-toast ' + (type === 'error' ? 'cart-toast--error' : 'cart-toast--success');
+        var icon = type === 'error'
+            ? '<svg class="cart-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M15 9l-6 6M9 9l6 6"/></svg>'
+            : '<svg class="cart-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4"/></svg>';
+        el.innerHTML = icon + '<span class="cart-toast__text"></span>';
+        el.querySelector('.cart-toast__text').textContent = msg;
+        container.appendChild(el);
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () {
+            el.classList.add('cart-toast--dismissing');
+            setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 320);
+        }, 4000);
+    }
+
+    // Auto-dismiss server-rendered messages
+    (function () {
+        var existing = document.querySelectorAll('#cart-toast-container .cart-toast');
+        if (existing.length) {
+            setTimeout(function () {
+                existing.forEach(function (t) {
+                    t.classList.add('cart-toast--dismissing');
+                    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 320);
+                });
+            }, 4500);
+        }
+    })();
+
+    function setRowBusy(row, busy) {
+        row.querySelectorAll('[data-qty-inc], [data-qty-dec], [data-remove]').forEach(function (b) {
+            if (busy) { b.dataset.wasDisabled = b.disabled ? '1' : ''; b.disabled = true; }
+            else if (!b.dataset.wasDisabled) { b.disabled = false; }
+            delete b.dataset.wasDisabled;
+        });
+        // Re-apply permanent disabled state for unavailable rows
+        if (!busy && row.dataset.available !== 'true') {
+            row.querySelectorAll('[data-qty-inc], [data-qty-dec]').forEach(function (b) { b.disabled = true; });
+        }
+    }
+
+    function updateSummary(data) {
+        if (data.total_quantity !== undefined && data.total_quantity !== null) {
+            document.querySelectorAll('[data-units-count]').forEach(function (el) { el.textContent = data.total_quantity; });
+            var plural = Number(data.total_quantity) === 1 ? '' : 's';
+            document.querySelectorAll('[data-units-plural]').forEach(function (el) { el.textContent = plural; });
+            // Keep the shared header badge in sync (hide at zero).
+            document.querySelectorAll('[data-bag-count]').forEach(function (badge) {
+                badge.textContent = data.total_quantity;
+                badge.hidden = Number(data.total_quantity) <= 0;
+            });
+        }
+        if (data.subtotal !== undefined && data.subtotal !== null) {
+            document.querySelectorAll('[data-summary-subtotal]').forEach(function (el) { el.textContent = formatINR(data.subtotal); });
+            // Shipping is always free, so estimated total equals subtotal.
+            document.querySelectorAll('[data-summary-total]').forEach(function (el) { el.textContent = formatINR(data.subtotal); });
+        }
+    }
+
+    function postQuantity(row, newQty) {
+        var url = row.dataset.updateUrl;
+        var qtyValueEls = row.querySelectorAll('[data-qty-value]');
+        var lineTotalEls = row.querySelectorAll('[data-line-total]');
+        var prevQty = qtyValueEls.length ? qtyValueEls[0].textContent : null;
+
+        if (row.dataset.busy === '1') return;
+        row.dataset.busy = '1';
+        setRowBusy(row, true);
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': CSRF || '',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({ quantity: String(newQty) })
+        })
+        .then(function (r) { return r.json().then(function (d) { return { status: r.status, ok: r.ok, data: d }; }); })
+        .then(function (res) {
+            if (res.ok && res.data && res.data.success) {
+                qtyValueEls.forEach(function (el) { el.textContent = res.data.quantity; });
+                if (res.data.line_total !== undefined) {
+                    lineTotalEls.forEach(function (el) { el.textContent = formatINR(res.data.line_total); });
+                }
+                updateSummary(res.data);
+                showToast(res.data.message || 'Cart quantity updated.', 'success');
+            } else {
+                var msg = (res.data && res.data.message) || 'Could not update quantity.';
+                showToast(msg, 'error');
+                if (prevQty !== null) qtyValueEls.forEach(function (el) { el.textContent = prevQty; });
+            }
+        })
+        .catch(function () {
+            showToast('Something went wrong. Please try again.', 'error');
+            if (prevQty !== null) qtyValueEls.forEach(function (el) { el.textContent = prevQty; });
+        })
+        .finally(function () {
+            row.dataset.busy = '0';
+            setRowBusy(row, false);
+        });
+    }
+
+    document.querySelectorAll('[data-cart-row]').forEach(function (row) {
+        var stock = parseInt(row.dataset.stock, 10);
+        var cap = isFinite(stock) && stock >= 0 ? Math.min(MAX_QTY, stock) : MAX_QTY;
+
+        function currentQty() {
+            var el = row.querySelector('[data-qty-value]');
+            return el ? parseInt(el.textContent, 10) || 1 : 1;
+        }
+
+        row.querySelectorAll('[data-qty-dec]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (row.dataset.available !== 'true') return;
+                var q = currentQty();
+                if (q <= 1) return;
+                postQuantity(row, q - 1);
+            });
+        });
+        row.querySelectorAll('[data-qty-inc]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (row.dataset.available !== 'true') return;
+                var q = currentQty();
+                if (q >= MAX_QTY) { showToast('Quantity must be between 1 and ' + MAX_QTY + '.', 'error'); return; }
+                if (q >= cap) { showToast('Only ' + cap + ' unit(s) are currently available.', 'error'); return; }
+                postQuantity(row, q + 1);
+            });
+        });
+
+        row.querySelectorAll('[data-remove]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (row.dataset.busy === '1') return;
+                row.dataset.busy = '1';
+                btn.disabled = true;
+                var original = btn.innerHTML;
+                btn.innerHTML = 'Removing…';
+
+                fetch(row.dataset.removeUrl, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF || '' }
+                })
+                .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+                .then(function (res) {
+                    if (res.ok && res.data && res.data.success) {
+                        showToast(res.data.message || 'Item removed from your bag.', 'success');
+                        row.classList.add('cart-row--removing');
+                        setTimeout(function () {
+                            row.remove();
+                            var remaining = document.querySelectorAll('[data-cart-row]').length;
+                            var distinctEl = document.querySelector('[data-distinct-count]');
+                            if (distinctEl) distinctEl.textContent = remaining;
+                            if (res.data.total_quantity !== undefined) {
+                                document.querySelectorAll('[data-units-count]').forEach(function (el) { el.textContent = res.data.total_quantity; });
+                                document.querySelectorAll('[data-bag-count]').forEach(function (badge) {
+                                    badge.textContent = res.data.total_quantity;
+                                    badge.hidden = Number(res.data.total_quantity) <= 0;
+                                });
+                            }
+                            // The remove endpoint does not return subtotal/estimated_total,
+                            // so reload to keep the summary truthful (or show empty state).
+                            setTimeout(function () { window.location.reload(); }, 650);
+                        }, 280);
+                    } else {
+                        showToast((res.data && res.data.message) || 'Could not remove item.', 'error');
+                        btn.disabled = false;
+                        btn.innerHTML = original;
+                        row.dataset.busy = '0';
+                    }
+                })
+                .catch(function () {
+                    showToast('Something went wrong. Please try again.', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                    row.dataset.busy = '0';
+                });
+            });
+        });
+    });
+
+    // Proceed to checkout — validation only; no checkout URL exists yet.
+    var checkoutBtn = document.getElementById('proceed-checkout-btn');
+    if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', function () {
+            var label = document.getElementById('checkout-btn-text');
+            checkoutBtn.disabled = true;
+            if (label) label.textContent = 'Checking…';
+            fetch(checkoutBtn.dataset.validateUrl, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF || '' }
+            })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+            .then(function (res) {
+                var d = res.data || {};
+                if (res.ok && d.success) {
+                    showToast(d.message || 'Your cart is ready for checkout.', 'success');
+                } else {
+                    var problems = d.problems && d.problems.length ? d.problems.join(' ') : (d.message || 'Please resolve the cart issues.');
+                    showToast(problems, 'error');
+                }
+            })
+            .catch(function () { showToast('Something went wrong. Please try again.', 'error'); })
+            .finally(function () {
+                checkoutBtn.disabled = false;
+                if (label) label.textContent = 'Proceed to Checkout';
+            });
+        });
+    }
+})();
+</script>
+{% endblock %}

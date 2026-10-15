@@ -3,7 +3,54 @@
 
 {% block title %}{{ product.name }} | AURA{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Product page toast — mirrors the cart page toast pattern */
+    #pdp-toast-container {
+        position: fixed;
+        top: 5.5rem;
+        right: 1rem;
+        z-index: 80;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        max-width: 22rem;
+        width: calc(100% - 2rem);
+    }
+    @media (min-width: 640px) {
+        #pdp-toast-container { right: 1.5rem; }
+    }
+    @keyframes pdp-toast-in {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pdp-toast-out {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(-8px); }
+    }
+    .pdp-toast {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        padding: 0.8rem 1rem;
+        border-radius: 0.4rem;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        line-height: 1.6;
+        animation: pdp-toast-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+        box-shadow: 0 10px 30px -4px rgba(26, 26, 26, 0.18);
+    }
+    .pdp-toast--dismissing { animation: pdp-toast-out 0.3s ease both; }
+    .pdp-toast--success { background-color: #0F172A; border: 1px solid #1E293B; border-left: 2px solid #FBBF24; color: #F1F5F9; }
+    .pdp-toast--success .pdp-toast__icon { color: #FBBF24; flex-shrink: 0; margin-top: 1px; }
+    .pdp-toast--error { background-color: #1a0f12; border: 1px solid #4c1d24; border-left: 2px solid #9f1239; color: #fecdd3; }
+    .pdp-toast--error .pdp-toast__icon { color: #fb7185; flex-shrink: 0; margin-top: 1px; }
+    .pdp-toast__text { flex: 1; font-weight: 300; }
+</style>
+{% endblock %}
+
 {% block content %}
+<div id="pdp-toast-container" role="alert" aria-live="polite"></div>
 <div class="container mx-auto px-4 md:px-8 py-8 lg:py-12 mt-16 max-w-7xl">
     <!-- Breadcrumbs -->
     <div class="text-[11px] tracking-[0.22em] uppercase text-auraMuted mb-8 font-inter">
@@ -138,20 +185,15 @@
                     </div>
                 </div>
 
-                <!-- Quantity -->
-                <div class="mb-10">
-                    <span class="text-[11px] font-semibold uppercase tracking-[0.2em] text-auraBlack mb-4 block">Quantity</span>
-                    <div class="flex items-center border border-auraBorder w-[140px] h-12 bg-white">
-                        <button type="button" class="w-12 h-full flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors text-lg font-light">−</button>
-                        <input type="text" value="1" readonly class="w-full h-full text-center text-sm font-medium bg-transparent focus:outline-none text-auraBlack">
-                        <button type="button" class="w-12 h-full flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors text-lg font-light">+</button>
-                    </div>
-                </div>
-
                 <!-- Actions -->
                 <div class="flex flex-col gap-4">
-                    <button class="w-full bg-auraBlack text-auraIvory uppercase tracking-[0.22em] text-[11px] font-semibold py-4.5 transition-all duration-300 {% if not selected_variant.stock %}opacity-50 cursor-not-allowed{% else %}hover:bg-black hover:shadow-aura-button active:scale-[0.99]{% endif %}" style="padding-top: 1.125rem; padding-bottom: 1.125rem;" {% if not selected_variant.stock %}disabled{% endif %}>
-                        {% if selected_variant.stock %}Add to Bag{% else %}Unavailable{% endif %}
+                    <button
+                        type="button"
+                        id="add-to-bag-btn"
+                        data-variant-id="{{ selected_variant.id }}"
+                        data-add-url="{% url 'cart:add_to_cart' %}"
+                        class="w-full bg-auraBlack text-auraIvory uppercase tracking-[0.22em] text-[11px] font-semibold py-4.5 transition-all duration-300 {% if not selected_variant.stock %}opacity-50 cursor-not-allowed{% else %}hover:bg-black hover:shadow-aura-button active:scale-[0.99]{% endif %}" style="padding-top: 1.125rem; padding-bottom: 1.125rem;" {% if not selected_variant.stock %}disabled{% endif %}>
+                        <span id="add-to-bag-label">{% if selected_variant.stock %}Add to Bag{% else %}Unavailable{% endif %}</span>
                     </button>
                     <button class="w-full bg-transparent text-auraBlack border border-auraBlack uppercase tracking-[0.22em] text-[11px] font-semibold py-4.5 hover:bg-auraBlack hover:text-auraIvory transition-all duration-300 active:scale-[0.99]" style="padding-top: 1.125rem; padding-bottom: 1.125rem;">
                         Add to Wishlist
@@ -221,5 +263,106 @@
             icon.textContent = '+';
         }
     }
+</script>
+<script>
+(function () {
+    'use strict';
+
+    var btn = document.getElementById('add-to-bag-btn');
+    if (!btn) return;
+
+    function getCookie(name) {
+        var cookies = document.cookie ? document.cookie.split(';') : [];
+        for (var i = 0; i < cookies.length; i++) {
+            var c = cookies[i].trim();
+            if (c.indexOf(name + '=') === 0) return decodeURIComponent(c.substring(name.length + 1));
+        }
+        return null;
+    }
+    var CSRF = getCookie('csrftoken');
+
+    function showToast(msg, type) {
+        type = type || 'success';
+        var container = document.getElementById('pdp-toast-container');
+        if (!container) return;
+        var el = document.createElement('div');
+        el.className = 'pdp-toast ' + (type === 'error' ? 'pdp-toast--error' : 'pdp-toast--success');
+        var icon = type === 'error'
+            ? '<svg class="pdp-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M15 9l-6 6M9 9l6 6"/></svg>'
+            : '<svg class="pdp-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4"/></svg>';
+        el.innerHTML = icon + '<span class="pdp-toast__text"></span>';
+        el.querySelector('.pdp-toast__text').textContent = msg;
+        container.appendChild(el);
+        setTimeout(function () {
+            el.classList.add('pdp-toast--dismissing');
+            setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 320);
+        }, 4000);
+    }
+
+    // Update every header badge from the server-returned total.
+    // Only called on success — a failed request never touches the badge.
+    function updateBagBadge(total) {
+        document.querySelectorAll('[data-bag-count]').forEach(function (badge) {
+            badge.textContent = total;
+            badge.hidden = Number(total) <= 0;
+        });
+    }
+
+    btn.addEventListener('click', function () {
+        if (btn.disabled || btn.dataset.busy === '1') return;
+        btn.dataset.busy = '1';
+        btn.disabled = true;
+        var label = document.getElementById('add-to-bag-label');
+        var original = label ? label.textContent : '';
+        if (label) label.textContent = 'Adding…';
+
+        function restore() {
+            btn.dataset.busy = '0';
+            btn.disabled = false;
+            if (label) label.textContent = original;
+        }
+
+        fetch(btn.dataset.addUrl, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': CSRF || '',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({ variant_id: btn.dataset.variantId, quantity: '1' })
+        })
+        .then(function (r) {
+            // Read as text first: an unauthenticated request follows the
+            // login redirect and returns HTML, not JSON.
+            return r.text().then(function (text) {
+                var data = null;
+                try { data = JSON.parse(text); } catch (e) { data = null; }
+                return { redirected: r.redirected, url: r.url, data: data };
+            });
+        })
+        .then(function (res) {
+            if (res.data && res.data.success) {
+                if (res.data.total_quantity !== undefined && res.data.total_quantity !== null) {
+                    updateBagBadge(res.data.total_quantity);
+                }
+                showToast(res.data.message || 'Item added to your bag.', 'success');
+            } else if (res.redirected) {
+                // Session expired or not logged in — follow through to login,
+                // preserving Django's ?next= parameter.
+                window.location.href = res.url;
+                return;
+            } else if (res.data) {
+                showToast(res.data.message || 'Could not add to bag.', 'error');
+            } else {
+                showToast('Something went wrong. Please try again.', 'error');
+            }
+            restore();
+        })
+        .catch(function () {
+            showToast('Something went wrong. Please try again.', 'error');
+            restore();
+        });
+    });
+})();
 </script>
 {% endblock %}

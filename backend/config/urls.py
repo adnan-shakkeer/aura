@@ -52,6 +52,9 @@ urlpatterns = [
     path("shop/",include("user_panel.shop.urls")),
 
     path("brands/",include("user_panel.brands.urls")),
+
+    path("cart/", include("user_panel.cart.urls")),
+    
 ]
 
 
