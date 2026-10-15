@@ -77,9 +77,10 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'user_panel.authentication.middleware.BlockedUserMiddleware',
-    "allauth.account.middleware.AccountMiddleware",
     'django.contrib.messages.middleware.MessageMiddleware',
+    'user_panel.authentication.middleware.BlockedUserMiddleware',
+    'user_panel.authentication.middleware.PanelAccessMiddleware',
+    "allauth.account.middleware.AccountMiddleware",
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # Security: prevents all pages from being cached by the browser
     # so that Back-button navigation after logout always re-validates with the server.

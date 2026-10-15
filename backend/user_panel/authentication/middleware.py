@@ -48,4 +48,107 @@ class NeverCacheMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
         add_never_cache_headers(response)
-        return response
+        return response
+
+
+class PanelAccessMiddleware:
+    """
+    Redirect authenticated users who manually visit the wrong panel.
+
+    Scenario A — an administrator (``is_staff`` or ``is_superuser``) opens a
+    User Panel page (``/``, ``/shop/``, ``/brands/``, ``/cart/``, ``/profile/``,
+    ``/address/`` or the user auth pages): redirect to the Admin Dashboard
+    (``dashboard:index``) with the message
+    "Admin users cannot access the User Panel."
+
+    Scenario B — a normal customer opens an Admin Panel page (any URL under
+    ``/admin-panel/``): redirect to the User Panel Home page (``home``) with
+    the message "You are not authorized to access the Admin Panel."
+
+    The session is never touched, so both users stay logged in. The existing
+    ``admin_required`` and ``login_required`` checks, the login/logout views,
+    CSRF protection and the inactive-user handling in ``BlockedUserMiddleware``
+    are all left intact — this middleware only adds an earlier, friendlier
+    redirect for the wrong-panel case.
+    """
+
+    #: URL prefix for every custom Admin Panel route.
+    ADMIN_PANEL_PREFIX = "/admin-panel/"
+
+    #: Always allow the user logout route so anyone can end their session.
+    USER_LOGOUT_PATH = "/logout/"
+
+    #: Always allow the admin logout route so anyone can end their session.
+    ADMIN_LOGOUT_PATH = "/admin-panel/auth/logout/"
+
+    #: User Panel page prefixes covered by Scenario A. ``"/"`` (Home) is
+    #: handled separately as an exact match so static/media-style paths are
+    #: never caught by a bare ``startswith("/")`` check.
+    USER_PANEL_PREFIXES = (
+        "/shop",
+        "/brands",
+        "/cart",
+        "/profile",
+        "/address",
+        "/login",
+        "/signup",
+        "/forgot-password",
+        "/reset-password",
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def _is_user_panel_path(self, path):
+        """Return True for User Panel pages (Scenario A scope)."""
+        if path == "/":
+            return True
+        return any(
+            path == prefix or path.startswith(prefix + "/")
+            for prefix in self.USER_PANEL_PREFIXES
+        )
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+
+        # Anonymous visitors keep the existing behaviour: public pages
+        # render, protected pages fall through to ``login_required`` /
+        # ``admin_required`` and their login redirects.
+        if user is None or not user.is_authenticated:
+            return self.get_response(request)
+
+        # Suspended accounts keep the existing behaviour: they are handled
+        # by ``BlockedUserMiddleware`` (which runs before this middleware),
+        # so they are deliberately ignored here.
+        if not user.is_active:
+            return self.get_response(request)
+
+        # Only safe page loads are redirected. POST/AJAX endpoints (cart
+        # mutations, block toggles, logouts) return JSON or perform state
+        # changes, where an HTML redirect would break the caller — they keep
+        # the existing view-level behaviour instead.
+        if request.method != "GET":
+            return self.get_response(request)
+
+        path = request.path
+
+        # Logout must always be reachable so a session can always be ended;
+        # redirecting away from it could trap a user in the wrong panel.
+        if path == self.USER_LOGOUT_PATH or path.startswith(self.USER_LOGOUT_PATH):
+            return self.get_response(request)
+        if path == self.ADMIN_LOGOUT_PATH or path.startswith(self.ADMIN_LOGOUT_PATH):
+            return self.get_response(request)
+
+        is_admin = user.is_staff or user.is_superuser
+
+        # Scenario A: administrator on a User Panel page.
+        if is_admin and self._is_user_panel_path(path):
+            messages.warning(request, "Admin users cannot access the User Panel.")
+            return redirect("dashboard:index")
+
+        # Scenario B: normal customer on an Admin Panel page.
+        if not is_admin and path.startswith(self.ADMIN_PANEL_PREFIX):
+            messages.warning(request, "You are not authorized to access the Admin Panel.")
+            return redirect("home")
+
+        return self.get_response(request)
