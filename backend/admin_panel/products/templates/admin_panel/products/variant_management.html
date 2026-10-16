@@ -386,6 +386,8 @@
                 collection, key, window.showAdminToast
             ).then((applied) => {
                 if (applied) hideImagesError();
+            }).catch(() => {
+                showAdminToast('Could not open the Image Editor. Please try again.', 'error');
             });
         };
 
@@ -393,7 +395,12 @@
         // the admin keeps applying). Cancelling stops the queue; the pick
         // itself stays staged unedited and remains editable per thumbnail.
         const autoEditNewPicks = () => {
-            window.AURAImageCollection.autoEditQueue(collection);
+            const queued = window.AURAImageCollection.autoEditQueue(collection);
+            if (queued && typeof queued.catch === 'function') {
+                queued.catch(() => {
+                    showAdminToast('Could not open the Image Editor. Please try again.', 'error');
+                });
+            }
         };
 
         const addFilesToCollection = (fileList) => {
@@ -420,6 +427,45 @@
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             clearVariantErrors();
+
+            const sizeVal = document.getElementById('variant_size').value.trim();
+            const skuVal = document.getElementById('variant_sku').value.trim();
+            const priceVal = document.getElementById('variant_price').value.trim();
+            const stockVal = document.getElementById('variant_stock').value.trim();
+            let fieldsValid = true;
+
+            if (!sizeVal) {
+                showVariantError('size', 'Variant size is required.');
+                fieldsValid = false;
+            } else if (sizeVal.length > 50) {
+                showVariantError('size', 'Variant size cannot exceed 50 characters.');
+                fieldsValid = false;
+            }
+            if (!skuVal) {
+                showVariantError('sku', 'SKU is required.');
+                fieldsValid = false;
+            }
+            if (!priceVal) {
+                showVariantError('price', 'Price is required.');
+                fieldsValid = false;
+            } else {
+                const priceNum = Number(priceVal);
+                if (!isFinite(priceNum) || priceNum <= 0) {
+                    showVariantError('price', 'Price must be greater than zero.');
+                    fieldsValid = false;
+                }
+            }
+            if (!stockVal) {
+                showVariantError('stock', 'Stock is required.');
+                fieldsValid = false;
+            } else if (!/^\d+$/.test(stockVal)) {
+                showVariantError('stock', 'Please enter a valid stock quantity.');
+                fieldsValid = false;
+            }
+            if (!fieldsValid) {
+                showAdminToast('Please fix the highlighted errors.', 'error');
+                return;
+            }
 
             const stagedCount = collection ? collection.stagedCount() : 0;
             if (stagedCount < MIN_VARIANT_IMAGES) {

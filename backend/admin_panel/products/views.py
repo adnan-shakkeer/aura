@@ -518,6 +518,10 @@ class ProductCreateView(View):
             field_errors["name"] = (
                 "Product name is required."
             )
+        elif len(name) > 200:
+            field_errors["name"] = (
+                "Product name cannot exceed 200 characters."
+            )
         elif Product.objects.filter(
             name__iexact=name,
             is_deleted=False,
@@ -756,9 +760,9 @@ class ProductCreateView(View):
             try:
                 price_value = Decimal(price)
 
-                if price_value < 0:
+                if price_value <= 0:
                     field_errors[f"{prefix}price"] = (
-                        "Price cannot be negative."
+                        "Price must be greater than zero."
                     )
 
             except (InvalidOperation, ValueError):
@@ -907,6 +911,10 @@ class ProductUpdateView(View):
         if not name:
             field_errors["name"] = (
                 "Product name is required."
+            )
+        elif len(name) > 200:
+            field_errors["name"] = (
+                "Product name cannot exceed 200 characters."
             )
         elif Product.objects.filter(
             name__iexact=name,
@@ -1324,9 +1332,9 @@ class VariantUpdateView(View):
             try:
                 price_value = Decimal(price)
 
-                if price_value < 0:
+                if price_value <= 0:
                     field_errors["price"] = (
-                        "Price cannot be negative."
+                        "Price must be greater than zero."
                     )
 
             except (InvalidOperation, ValueError):
