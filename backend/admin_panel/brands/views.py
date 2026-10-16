@@ -12,6 +12,7 @@ from django.views import View
 from PIL import Image
 
 from admin_panel.categories.models import Category
+from admin_panel.products.models import Product
 
 from .models import Brand
 
@@ -417,6 +418,22 @@ class BrandDeleteView(View):
         )
 
         brand_name = brand.name
+
+        if Product.objects.filter(
+            brand=brand,
+            is_deleted=False,
+        ).exists():
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": (
+                        "This brand cannot be deleted because it has "
+                        "active products. Please delete or soft-delete "
+                        "its products first."
+                    ),
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
 
         brand.is_deleted = True
         brand.save()
