@@ -4,6 +4,8 @@ This module encapsulates the reusable "eligible product" queryset.
 It performs User-side visibility filtering only.
 """
 
+from decimal import Decimal, InvalidOperation
+
 from django.db.models import Exists, Min, OuterRef, Q, Subquery
 from django.db.models.functions import Lower
 
@@ -50,6 +52,49 @@ def clean_concentration_values(values):
     """Return the valid stored concentration values, in choice order."""
     wanted = {v for v in (values or ()) if v in VALID_CONCENTRATIONS}
     return [value for value in VALID_CONCENTRATIONS if value in wanted]
+
+
+def clean_price_bound(value):
+    """Return a validated non-negative price bound, or None when absent.
+
+    Empty, non-numeric, malformed, negative, or non-finite input is treated
+    as absent (consistent with the listing convention that unknown filter
+    values are ignored safely). An explicitly supplied zero is preserved
+    as ``Decimal("0")`` — absence and zero stay distinct.
+    """
+    if value is None:
+        return None
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    try:
+        amount = Decimal(text)
+    except InvalidOperation:
+        return None
+
+    if not amount.is_finite() or amount < 0:
+        return None
+
+    return amount
+
+
+def clean_price_range(min_value, max_value):
+    """Return a validated ``(min_price, max_price)`` pair for filtering.
+
+    Each boundary is cleaned via ``clean_price_bound()``. When both
+    boundaries are valid but the minimum exceeds the maximum, both are
+    treated as absent (the invalid range is ignored rather than swapped
+    or reported, per listing conventions).
+    """
+    low = clean_price_bound(min_value)
+    high = clean_price_bound(max_value)
+
+    if low is not None and high is not None and low > high:
+        return None, None
+
+    return low, high
 
 
 def get_available_products():
@@ -170,6 +215,8 @@ def get_shop_products(
     brand_slugs=(),
     concentrations=(),
     sort=SORT_NEWEST,
+    min_price=None,
+    max_price=None,
 ):
     """Return the eligible listing queryset with search, filters and sorting.
 
@@ -178,6 +225,12 @@ def get_shop_products(
     multiple drawer checkboxes combine instead of overwriting each other.
     Unknown ``sort`` values fall back to the deterministic default order.
     Filtering and sorting stay database-driven; no Python-side filtering.
+
+    ``min_price``/``max_price`` are validated ``Decimal`` bounds (or None).
+    A product matches when at least one eligible (listed, non-deleted)
+    variant is priced within the inclusive range. Either boundary may be
+    supplied independently; the ``starting_price`` annotation is never used
+    for filtering and keeps representing the minimum eligible variant price.
     """
     queryset = get_available_products()
 
@@ -201,6 +254,22 @@ def get_shop_products(
     concentrations = clean_concentration_values(concentrations)
     if concentrations:
         queryset = queryset.filter(fragrance_concentration__in=concentrations)
+
+    if min_price is not None or max_price is not None:
+        # Correlated Exists(): no joins, so no duplicate Product rows and
+        # no distinct() is needed. Concentration stays a Product-level
+        # filter, so a match inherently means the same product satisfies
+        # both constraints via an eligible in-range variant.
+        price_match = ProductVariant.objects.filter(
+            product=OuterRef("pk"),
+            is_deleted=False,
+            is_listed=True,
+        )
+        if min_price is not None:
+            price_match = price_match.filter(price__gte=min_price)
+        if max_price is not None:
+            price_match = price_match.filter(price__lte=max_price)
+        queryset = queryset.filter(Exists(price_match))
 
     if sort == SORT_NAME_ASC:
         queryset = queryset.order_by(Lower("name"), "id")

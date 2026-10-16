@@ -20,6 +20,7 @@ from .services import (
     SORT_OPTIONS,
     VALID_SORTS,
     clean_concentration_values,
+    clean_price_range,
     get_available_products,
     get_product_details_lookup,
     get_shop_brands,
@@ -37,10 +38,14 @@ def shop_list(request):
         category        Category slug filter (repeatable for multiple)
         brand           Brand slug filter (repeatable for multiple)
         concentration   Stored fragrance-concentration value (repeatable)
+        min_price       Minimum eligible-variant price (Decimal, optional)
+        max_price       Maximum eligible-variant price (Decimal, optional)
         sort            one of name_asc | price_low | price_high | newest
         page            pagination page number
 
     Unknown ``sort``/``concentration`` values are ignored safely.
+    Absent, malformed, negative, or non-finite price bounds are treated
+    as absent; a minimum above the maximum ignores both boundaries.
     Invalid/out-of-range ``page`` values resolve to a valid page via
     ``Paginator.get_page()`` — never a 500.
     """
@@ -48,6 +53,10 @@ def shop_list(request):
     category_slugs = [s for s in request.GET.getlist("category") if s]
     brand_slugs = [s for s in request.GET.getlist("brand") if s]
     concentrations = clean_concentration_values(request.GET.getlist("concentration"))
+    min_price, max_price = clean_price_range(
+        request.GET.get("min_price"),
+        request.GET.get("max_price"),
+    )
     sort = request.GET.get("sort") or SORT_NEWEST
     if sort not in VALID_SORTS:
         sort = SORT_NEWEST
@@ -58,6 +67,8 @@ def shop_list(request):
         brand_slugs=brand_slugs,
         concentrations=concentrations,
         sort=sort,
+        min_price=min_price,
+        max_price=max_price,
     )
 
     paginator = Paginator(products, SHOP_PAGE_SIZE)
@@ -81,12 +92,19 @@ def shop_list(request):
         "current_concentrations": concentrations,
         "current_category": category_slugs[0] if category_slugs else "",
         "current_brand": brand_slugs[0] if brand_slugs else "",
+        "current_min_price": "" if min_price is None else str(min_price),
+        "current_max_price": "" if max_price is None else str(max_price),
         "current_sort": sort,
         "sort_options": SORT_OPTIONS,
         "base_query": base_query,
         "total_count": paginator.count,
         "has_active_filters": bool(
-            search_query or category_slugs or brand_slugs or concentrations
+            search_query
+            or category_slugs
+            or brand_slugs
+            or concentrations
+            or min_price is not None
+            or max_price is not None
         ),
     }
     return render(request, "shop/shop_list.html", context)

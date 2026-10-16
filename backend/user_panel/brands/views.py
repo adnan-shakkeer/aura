@@ -21,6 +21,7 @@ from user_panel.shop.services import (
     SORT_OPTIONS,
     VALID_SORTS,
     clean_concentration_values,
+    clean_price_range,
     get_shop_products,
 )
 
@@ -52,6 +53,11 @@ def brand_detail(request, slug):
         request.GET.getlist("concentration")
     )
 
+    min_price, max_price = clean_price_range(
+        request.GET.get("min_price"),
+        request.GET.get("max_price"),
+    )
+
     requested_sort = request.GET.get("sort") or SORT_NEWEST
 
     # 3. Validate the selected sorting option.
@@ -63,12 +69,16 @@ def brand_detail(request, slug):
     )
 
     # 4. Reuse the Shop service for product eligibility,
-    # searching, concentration filtering, and sorting.
+    # searching, concentration and price filtering, and sorting.
+    # Brand isolation stays in the URL path via ``brand_slugs``: a price
+    # filter can never surface another brand's products.
     products = get_shop_products(
         q=search_query,
         brand_slugs=(brand.slug,),
         concentrations=concentrations,
         sort=sort_by,
+        min_price=min_price,
+        max_price=max_price,
     )
 
     # 5. Paginate the filtered product queryset.
@@ -96,9 +106,16 @@ def brand_detail(request, slug):
         "concentration_choices": CONCENTRATION_OPTIONS,
         "current_sort": sort_by,
         "sort_options": SORT_OPTIONS,
+        "current_min_price": "" if min_price is None else str(min_price),
+        "current_max_price": "" if max_price is None else str(max_price),
         "base_query": base_query,
         "total_count": paginator.count,
-        "has_active_filters": bool(search_query or concentrations),
+        "has_active_filters": bool(
+            search_query
+            or concentrations
+            or min_price is not None
+            or max_price is not None
+        ),
     }
 
     return render(
