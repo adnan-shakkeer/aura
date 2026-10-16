@@ -3,11 +3,14 @@
 Shop Listing — database-driven search, category/brand filters, sorting
 and pagination over the eligible product queryset.
 
-Product Details — slug-based lookup against the eligible product queryset.
-An ineligible (unlisted/deleted) product returns HTTP 404.
+Product Details — slug-based lookup that renders listed products normally
+and renders unlisted (but not deleted) products in an UNAVAILABLE state.
+A missing, soft-deleted, or brand/category-ineligible product returns
+HTTP 404.
 """
 
 from django.core.paginator import Paginator
+from django.http import Http404
 from django.shortcuts import render, get_object_or_404
 
 from .services import (
@@ -18,6 +21,7 @@ from .services import (
     VALID_SORTS,
     clean_concentration_values,
     get_available_products,
+    get_product_details_lookup,
     get_shop_brands,
     get_shop_categories,
     get_shop_products,
@@ -89,11 +93,16 @@ def shop_list(request):
 
 
 def product_details(request, slug):
-    """Display the Product Details page for a single eligible product.
+    """Display the Product Details page for a single product.
 
-    Eligibility is enforced by scoping the lookup to
-    ``get_available_products()``.  An ineligible slug (product, brand, or
-    category unlisted/deleted, or no eligible variants) raises 404.
+    Catalogue visibility and direct-details accessibility are separate:
+    an unlisted (``is_listed=False``) product renders its details page in
+    an UNAVAILABLE state instead of returning 404, while a missing or
+    soft-deleted product — or one whose brand/category is unlisted or
+    soft-deleted — still raises 404.
+
+    A listed product without any eligible variants keeps the existing
+    behaviour and raises 404.
 
     The selected variant is determined by the ``variant`` query-string
     parameter (SKU).  If absent or invalid, the earliest eligible variant
@@ -106,11 +115,12 @@ def product_details(request, slug):
     Related products come from the same Brand category, exclude the current
     product, enforce full eligibility, and are capped at 4.
     """
-    # Enforce eligibility: 404 if product is unlisted, deleted,
-    # brand/category unlisted/deleted, or has no eligible variants.
-    product = get_object_or_404(get_available_products(), slug=slug)
+    # Direct-details lookup: 404 for a missing/soft-deleted product or an
+    # unlisted/soft-deleted brand or category. An unlisted product itself
+    # renders instead of raising 404 here.
+    product = get_object_or_404(get_product_details_lookup(), slug=slug)
 
-    # All eligible variants for this product, earliest-first.
+    # Listed, non-deleted variants only — unchanged selection behaviour.
     variants = product.variants.filter(
         is_deleted=False,
         is_listed=True,
@@ -124,6 +134,18 @@ def product_details(request, slug):
 
     if not selected_variant:
         selected_variant = variants.first()
+
+    # Preserve existing behaviour: a listed product without eligible
+    # variants is inaccessible (previously enforced by the shared
+    # eligibility queryset).
+    if product.is_listed and selected_variant is None:
+        raise Http404("Product unavailable.")
+
+    # Server-side purchase-availability flag (display only). An unlisted
+    # product is always unavailable, regardless of variant stock or listing
+    # status. CartService revalidates every cart mutation, so this flag
+    # never grants purchasability.
+    is_unavailable = not product.is_listed
 
     # Images belong exclusively to the selected variant.
     if selected_variant:
@@ -144,5 +166,6 @@ def product_details(request, slug):
         "selected_variant": selected_variant,
         "images": images,
         "related_products": related_products,
+        "is_unavailable": is_unavailable,
     }
     return render(request, "shop/product_details.html", context)

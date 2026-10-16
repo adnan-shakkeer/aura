@@ -141,6 +141,28 @@ def get_available_products():
     )
 
 
+def get_product_details_lookup():
+    """Base queryset for direct product-details URL access.
+
+    Catalogue visibility (``get_available_products()``) and direct-details
+    accessibility are separate concerns: this lookup permits a product with
+    ``is_listed=False`` to render its details page, while still excluding
+    nonexistent products, soft-deleted products, and products whose brand
+    or category is soft-deleted or unlisted (those keep returning 404).
+
+    Purchase eligibility is NOT granted here — an unlisted product rendered
+    through this lookup must still be labelled unavailable, and CartService
+    remains authoritative for every cart mutation.
+    """
+    return Product.objects.filter(
+        is_deleted=False,
+        brand__is_deleted=False,
+        brand__is_listed=True,
+        brand__category__is_deleted=False,
+        brand__category__is_listed=True,
+    ).select_related("brand", "brand__category")
+
+
 def get_shop_products(
     *,
     q="",
