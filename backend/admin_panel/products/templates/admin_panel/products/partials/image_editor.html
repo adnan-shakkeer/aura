@@ -433,6 +433,11 @@
 
         root.querySelector('[data-editor-apply]').addEventListener('click', function () {
             if (!session) return;
+            var applyBtn = root.querySelector('[data-editor-apply]');
+            // Guard against rapid repeated clicks: toBlob() is async and a
+            // second Apply would run a duplicate composition for one session.
+            if (applyBtn.disabled) return;
+            applyBtn.disabled = true;
             // Crop the admin-selected square from the source, then
             // normalize proportionally to 1200x1200. The same rect drives
             // the preview, so output matches what the frame showed.
@@ -450,7 +455,11 @@
             var mime = session.mimeType || 'image/jpeg';
             var quality = mime === 'image/jpeg' || mime === 'image/webp' ? 0.92 : undefined;
             out.toBlob(function (blob) {
-                if (!blob) { finish(null); return; }
+                applyBtn.disabled = false;
+                if (!blob) {
+                    if (window.showAdminToast) window.showAdminToast('Could not process the image. Please try again.', 'error');
+                    return;
+                }
                 finish({ blob: blob, params: params, mimeType: blob.type || mime });
             }, mime, quality);
         });

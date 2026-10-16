@@ -184,6 +184,18 @@
             e.preventDefault();
             clearErrors();
 
+            const trimmedName = document.getElementById('name').value.trim();
+            if (!trimmedName) {
+                showError('name', 'Product name is required.');
+                showAdminToast('Please fix the highlighted errors.', 'error');
+                return;
+            }
+            if (trimmedName.length > 200) {
+                showError('name', 'Product name cannot exceed 200 characters.');
+                showAdminToast('Please fix the highlighted errors.', 'error');
+                return;
+            }
+
             submitBtn.disabled = true;
             submitText.textContent = 'Saving...';
             submitSpinner.classList.remove('hidden');

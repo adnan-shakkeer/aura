@@ -337,6 +337,8 @@
                         collection, key, window.showAdminToast
                     ).then((applied) => {
                         if (applied) hideVariantImagesError();
+                    }).catch(() => {
+                        window.showAdminToast('Could not open the Image Editor. Please try again.', 'error');
                     });
                 }
             });
@@ -380,7 +382,9 @@
             }
             if (outcome.added && outcome.added.length) {
                 hideVariantImagesError();
-                window.AURAImageCollection.autoEditQueue(collection);
+                window.AURAImageCollection.autoEditQueue(collection).catch(() => {
+                    window.showAdminToast('Could not open the Image Editor. Please try again.', 'error');
+                });
             }
         };
 
@@ -401,15 +405,42 @@
             const count = collection.stagedCount();
             let valid = true;
 
-            if (!size || !sku || !price || !stock) {
-                showAdminToast('Please complete size, SKU, price and stock first.', 'error');
+            if (!size) {
+                showError('variant_size', 'Variant size is required.');
+                valid = false;
+            } else if (size.length > 50) {
+                showError('variant_size', 'Variant size cannot exceed 50 characters.');
+                valid = false;
+            }
+            if (!sku) {
+                showError('variant_sku', 'SKU is required.');
+                valid = false;
+            }
+            if (!price) {
+                showError('variant_price', 'Price is required.');
+                valid = false;
+            } else {
+                const priceNum = Number(price);
+                if (!isFinite(priceNum) || priceNum <= 0) {
+                    showError('variant_price', 'Price must be greater than zero.');
+                    valid = false;
+                }
+            }
+            if (!stock) {
+                showError('variant_stock', 'Stock is required.');
+                valid = false;
+            } else if (!/^\d+$/.test(stock)) {
+                showError('variant_stock', 'Please enter a valid stock quantity.');
                 valid = false;
             }
             if (count < 3 || count > 5) {
                 showError('variant_images', count === 0 ? 'At least 3 product images are required.' : (count < 3 ? 'At least 3 product images are required.' : 'A maximum of 5 product images is allowed.'));
                 valid = false;
             }
-            if (!valid) return;
+            if (!valid) {
+                showAdminToast('Please fix the highlighted errors.', 'error');
+                return;
+            }
 
             document.getElementById('summary-size').textContent = size;
             document.getElementById('summary-sku').textContent = sku;
@@ -443,6 +474,18 @@
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             clearErrors();
+
+            const trimmedName = document.getElementById('name').value.trim();
+            if (!trimmedName) {
+                showError('name', 'Product name is required.');
+                showAdminToast('Please fix the highlighted errors.', 'error');
+                return;
+            }
+            if (trimmedName.length > 200) {
+                showError('name', 'Product name cannot exceed 200 characters.');
+                showAdminToast('Please fix the highlighted errors.', 'error');
+                return;
+            }
 
             submitBtn.disabled = true;
             submitText.textContent = 'Creating Product...';
