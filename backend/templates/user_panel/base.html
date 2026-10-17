@@ -130,16 +130,59 @@
 
             <!-- RIGHT: Utility Actions / Icons -->
             <div class="flex items-center gap-5 sm:gap-6 z-10">
-                <!-- Search Action -->
-                <button 
-                    type="button" 
-                    aria-label="Search Fragrances"
-                    class="p-1.5 text-auraBlack hover:text-auraMuted transition-colors duration-200"
-                >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                    </svg>
-                </button>
+                <!-- Search -->
+                <div class="relative" id="globalSearchWrap">
+                    <button
+                        type="button"
+                        id="globalSearchToggle"
+                        aria-label="Search Fragrances"
+                        aria-expanded="false"
+                        aria-controls="globalSearchPanel"
+                        class="p-1.5 text-auraBlack hover:text-auraMuted transition-colors duration-200"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                        </svg>
+                    </button>
+
+                    <!-- Expanding search panel: full-page search submits to Shop; typing shows live suggestions -->
+                    <div
+                        id="globalSearchPanel"
+                        class="hidden absolute right-0 top-full mt-4 w-[min(92vw,24rem)] bg-white border border-auraBorder shadow-aura-card z-50"
+                        role="dialog"
+                        aria-label="Site search"
+                    >
+                        <form
+                            id="globalSearchForm"
+                            method="get"
+                            action="{% url 'shop:shop_list' %}"
+                            role="search"
+                            class="flex items-center gap-2 px-4 border-b border-auraBorder"
+                        >
+                            <svg class="w-4 h-4 shrink-0 text-auraMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                            </svg>
+                            <input
+                                type="search"
+                                id="globalSearchInput"
+                                name="q"
+                                value="{{ request.GET.q|default:'' }}"
+                                placeholder="SEARCH PERFUMES, BRANDS..."
+                                autocomplete="off"
+                                maxlength="100"
+                                aria-label="Search fragrances"
+                                aria-controls="globalSearchResults"
+                                aria-expanded="false"
+                                data-suggest-url="{% url 'shop:search_suggest' %}"
+                                class="w-full bg-transparent text-xs tracking-[0.18em] font-medium text-auraBlack placeholder:text-auraMuted/80 focus:outline-none py-3.5"
+                            >
+                            <button type="submit" aria-label="Submit search" class="shrink-0 p-1 text-auraBlack hover:text-auraMuted transition-colors text-[11px] uppercase tracking-[0.18em] font-semibold">
+                                Go
+                            </button>
+                        </form>
+                        <div id="globalSearchResults" aria-live="polite" class="max-h-[60vh] overflow-y-auto"></div>
+                    </div>
+                </div>
 
                 <!-- Wishlist Action -->
                 <a 
@@ -179,6 +222,23 @@
 
         <!-- Mobile Drawer Navigation -->
         <div id="mobileMenu" class="hidden md:hidden border-t border-auraBorder bg-[#F8F5F0] px-6 py-6 space-y-4">
+            <form method="get" action="{% url 'shop:shop_list' %}" role="search" class="flex items-center gap-3 border border-auraBorder bg-white px-4 py-3">
+                <button type="submit" aria-label="Search perfumes" class="text-auraBlack">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                    </svg>
+                </button>
+                <input
+                    type="search"
+                    name="q"
+                    value="{{ request.GET.q|default:'' }}"
+                    placeholder="SEARCH PERFUMES..."
+                    autocomplete="off"
+                    maxlength="100"
+                    aria-label="Search perfumes"
+                    class="w-full bg-transparent text-xs tracking-[0.18em] font-medium text-auraBlack placeholder:text-auraMuted/80 focus:outline-none"
+                >
+            </form>
             <a href="{% url 'home' %}" class="block text-xs uppercase tracking-[0.2em] font-medium text-auraBlack py-1">Home</a>
             <a href="{% url 'shop:shop_list' %}" class="block text-xs uppercase tracking-[0.2em] font-light text-auraMuted hover:text-auraBlack py-1">Shop</a>
             <a href="{% url 'user_brands:brand_list' %}" class="block text-xs uppercase tracking-[0.2em] font-light text-auraMuted hover:text-auraBlack py-1">Brands</a>
@@ -342,6 +402,188 @@
                 // Page was restored from BFCache — force a fresh reload from server
                 window.location.reload();
             }
+        });
+    </script>
+    <!-- Global Search: toggle + live suggestions (XSS-safe DOM rendering) -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const wrap = document.getElementById("globalSearchWrap");
+            const toggle = document.getElementById("globalSearchToggle");
+            const panel = document.getElementById("globalSearchPanel");
+            const input = document.getElementById("globalSearchInput");
+            const resultsBox = document.getElementById("globalSearchResults");
+            if (!wrap || !toggle || !panel || !input || !resultsBox) return;
+
+            const suggestUrl = input.dataset.suggestUrl;
+            const MIN_LENGTH = 2;
+            let debounceTimer = null;
+            let aborter = null;
+            let activeIndex = -1;
+
+            function openPanel() {
+                panel.classList.remove("hidden");
+                toggle.setAttribute("aria-expanded", "true");
+                input.setAttribute("aria-expanded", "true");
+                input.focus();
+            }
+            function closePanel() {
+                panel.classList.add("hidden");
+                toggle.setAttribute("aria-expanded", "false");
+                input.setAttribute("aria-expanded", "false");
+                activeIndex = -1;
+            }
+            function isOpen() { return !panel.classList.contains("hidden"); }
+
+            toggle.addEventListener("click", function (e) {
+                e.stopPropagation();
+                if (isOpen()) { closePanel(); } else { openPanel(); }
+            });
+            document.addEventListener("click", function (e) {
+                if (isOpen() && !wrap.contains(e.target)) closePanel();
+            });
+            document.addEventListener("keydown", function (e) {
+                if (e.key === "Escape" && isOpen()) { closePanel(); toggle.focus(); }
+            });
+
+            function clearResults() { resultsBox.innerHTML = ""; activeIndex = -1; }
+
+            function rowLink() {
+                return document.createElement("a");
+            }
+
+            function renderSkeleton() {
+                clearResults();
+                const hint = document.createElement("p");
+                hint.className = "px-4 py-5 text-[11px] uppercase tracking-[0.2em] text-auraMuted font-light";
+                hint.textContent = "Searching…";
+                resultsBox.appendChild(hint);
+            }
+
+            function renderResults(data) {
+                clearResults();
+                const q = (data.q || "").trim();
+                const products = data.products || [];
+                const brands = data.brands || [];
+
+                if (!q || (products.length === 0 && brands.length === 0)) {
+                    const empty = document.createElement("p");
+                    empty.className = "px-4 py-5 text-[11px] uppercase tracking-[0.2em] text-auraMuted font-light";
+                    empty.textContent = q ? 'No matches for "' + q + '" — press Go for full search.' : "Type at least 2 characters to search.";
+                    resultsBox.appendChild(empty);
+                    return;
+                }
+
+                if (brands.length) {
+                    const label = document.createElement("p");
+                    label.className = "px-4 pt-4 pb-2 text-[10px] uppercase tracking-[0.24em] text-auraMuted font-semibold";
+                    label.textContent = "Brands";
+                    resultsBox.appendChild(label);
+                    brands.forEach(function (b) {
+                        const a = rowLink();
+                        a.href = b.url;
+                        a.className = "global-search-option flex items-center justify-between px-4 py-2.5 hover:bg-auraIvory transition-colors";
+                        const name = document.createElement("span");
+                        name.className = "font-serif text-[15px] text-auraBlack";
+                        name.textContent = b.name;
+                        const go = document.createElement("span");
+                        go.className = "text-[10px] uppercase tracking-[0.2em] text-auraMuted font-medium";
+                        go.textContent = "View brand";
+                        a.appendChild(name);
+                        a.appendChild(go);
+                        resultsBox.appendChild(a);
+                    });
+                }
+
+                if (products.length) {
+                    const label = document.createElement("p");
+                    label.className = "px-4 pt-4 pb-2 text-[10px] uppercase tracking-[0.24em] text-auraMuted font-semibold";
+                    label.textContent = "Fragrances";
+                    resultsBox.appendChild(label);
+                    products.forEach(function (p) {
+                        const a = rowLink();
+                        a.href = p.url;
+                        a.className = "global-search-option flex items-center gap-3 px-4 py-2.5 hover:bg-auraIvory transition-colors";
+                        if (p.image) {
+                            const img = document.createElement("img");
+                            img.src = p.image;
+                            img.alt = "";
+                            img.loading = "lazy";
+                            img.className = "w-10 h-10 object-cover border border-auraBorder/60 bg-auraIvory shrink-0";
+                            a.appendChild(img);
+                        } else {
+                            const ph = document.createElement("span");
+                            ph.className = "w-10 h-10 flex items-center justify-center border border-auraBorder/60 bg-auraIvory text-[9px] tracking-[0.2em] text-auraMuted font-semibold shrink-0";
+                            ph.textContent = "AURA";
+                            a.appendChild(ph);
+                        }
+                        const meta = document.createElement("span");
+                        meta.className = "flex-1 min-w-0";
+                        const b = document.createElement("span");
+                        b.className = "block text-[9px] uppercase tracking-[0.22em] text-auraMuted font-medium truncate";
+                        b.textContent = (p.brand || "").toUpperCase();
+                        const n = document.createElement("span");
+                        n.className = "block font-serif text-[15px] text-auraBlack truncate";
+                        n.textContent = p.name;
+                        meta.appendChild(b);
+                        meta.appendChild(n);
+                        a.appendChild(meta);
+                        if (p.price) {
+                            const price = document.createElement("span");
+                            price.className = "text-xs font-semibold text-auraBlack whitespace-nowrap";
+                            price.textContent = "₹" + p.price;
+                            a.appendChild(price);
+                        }
+                        resultsBox.appendChild(a);
+                    });
+                }
+
+                if (data.all_results_url) {
+                    const footer = document.createElement("div");
+                    footer.className = "border-t border-auraBorder mt-2";
+                    const all = document.createElement("a");
+                    all.href = data.all_results_url;
+                    all.className = "global-search-option block px-4 py-3.5 text-center text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack hover:bg-auraBlack hover:text-auraIvory transition-colors";
+                    all.textContent = 'View all results for "' + q + '"';
+                    footer.appendChild(all);
+                    resultsBox.appendChild(footer);
+                }
+            }
+
+            function fetchSuggest(q) {
+                if (aborter) aborter.abort();
+                aborter = new AbortController();
+                fetch(suggestUrl + "?q=" + encodeURIComponent(q), {
+                    signal: aborter.signal,
+                    headers: { "Accept": "application/json" }
+                })
+                    .then(function (resp) { if (!resp.ok) throw new Error("bad"); return resp.json(); })
+                    .then(renderResults)
+                    .catch(function (err) { if (err && err.name === "AbortError") return; clearResults(); });
+            }
+
+            input.addEventListener("input", function () {
+                const q = input.value.trim();
+                if (debounceTimer) clearTimeout(debounceTimer);
+                if (q.length < MIN_LENGTH) { clearResults(); return; }
+                renderSkeleton();
+                debounceTimer = setTimeout(function () { fetchSuggest(q); }, 250);
+            });
+
+            // Keyboard navigation across suggestion links.
+            input.addEventListener("keydown", function (e) {
+                const options = resultsBox.querySelectorAll(".global-search-option");
+                if (!options.length) return;
+                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    activeIndex = e.key === "ArrowDown"
+                        ? Math.min(activeIndex + 1, options.length - 1)
+                        : Math.max(activeIndex - 1, 0);
+                    options.forEach(function (el, i) {
+                        if (i === activeIndex) { el.focus(); el.classList.add("bg-auraIvory"); }
+                        else { el.classList.remove("bg-auraIvory"); }
+                    });
+                }
+            });
         });
     </script>
     {% block extra_js %}{% endblock %}

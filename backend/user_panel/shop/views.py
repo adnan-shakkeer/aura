@@ -10,8 +10,9 @@ HTTP 404.
 """
 
 from django.core.paginator import Paginator
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import render, get_object_or_404
+from django.urls import reverse
 
 from .services import (
     CONCENTRATION_OPTIONS,
@@ -187,3 +188,101 @@ def product_details(request, slug):
         "is_unavailable": is_unavailable,
     }
     return render(request, "shop/product_details.html", context)
+
+
+#: Minimum characters before the suggest endpoint queries the database.
+SEARCH_SUGGEST_MIN_LENGTH = 2
+
+#: Maximum query length accepted by the suggest endpoint (DoS guard).
+SEARCH_SUGGEST_MAX_LENGTH = 100
+
+#: Result caps for the header dropdown.
+SEARCH_SUGGEST_PRODUCT_LIMIT = 6
+SEARCH_SUGGEST_BRAND_LIMIT = 3
+
+
+def search_suggest(request):
+    """JSON autocomplete backing the global header search.
+
+    GET ``q`` is matched with the same eligibility + matching rules as
+    the Shop listing (see ``get_shop_products``): only listed,
+    non-deleted products with an eligible variant are ever suggested.
+
+    Response shape::
+
+        {
+            "q": "<cleaned query>",
+            "products": [
+                {"name", "slug", "url", "brand",
+                 "price": "245.00" | None, "image": "/media/..." | None}
+            ],
+            "brands": [{"name", "slug", "url"}],
+            "all_results_url": "/shop/?q=..."
+        }
+
+    Short (< 2 chars), empty, or over-long queries return empty lists —
+    never a 500. Read-only GET; no CSRF required.
+    """
+    raw_query = (request.GET.get("q") or "").strip()
+    query = raw_query[:SEARCH_SUGGEST_MAX_LENGTH]
+
+    if len(query) < SEARCH_SUGGEST_MIN_LENGTH:
+        return JsonResponse(
+            {"q": query, "products": [], "brands": [], "all_results_url": ""}
+        )
+
+    # Products: reuse Shop eligibility + name/brand/category matching.
+    # Slicing keeps the query cheap; annotations (starting_price,
+    # primary_image) already come from get_available_products().
+    products = get_shop_products(q=query)[
+        :SEARCH_SUGGEST_PRODUCT_LIMIT
+    ]
+
+    # Brands: visible catalogue only, matched by name.
+    # Imported here to avoid a hard cross-app import at module load.
+    from user_panel.brands.services import get_visible_brands
+
+    brands = get_visible_brands().filter(name__icontains=query)[
+        :SEARCH_SUGGEST_BRAND_LIMIT
+    ]
+
+    product_results = []
+    for product in products:
+        image_url = None
+        if getattr(product, "primary_image", None):
+            image_url = f"/media/{product.primary_image}"
+        price = getattr(product, "starting_price", None)
+        product_results.append(
+            {
+                "name": product.name,
+                "slug": product.slug,
+                "url": reverse(
+                    "shop:product_details", kwargs={"slug": product.slug}
+                ),
+                "brand": product.brand.name if product.brand_id else "",
+                "price": str(price) if price is not None else None,
+                "image": image_url,
+            }
+        )
+
+    brand_results = [
+        {
+            "name": brand.name,
+            "slug": brand.slug,
+            "url": reverse(
+                "user_brands:brand_detail", kwargs={"slug": brand.slug}
+            ),
+        }
+        for brand in brands
+    ]
+
+    from django.utils.http import urlencode
+
+    return JsonResponse(
+        {
+            "q": query,
+            "products": product_results,
+            "brands": brand_results,
+            "all_results_url": f"{reverse('shop:shop_list')}?{urlencode({'q': query})}",
+        }
+    )
