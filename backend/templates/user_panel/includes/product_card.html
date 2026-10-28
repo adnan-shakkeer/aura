@@ -1,0 +1,48 @@
+{% load static %}
+<article class="group relative flex flex-col">
+    <a
+        href="{% url 'shop:product_details' slug=product.slug %}"
+        class="relative flex flex-col text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-auraBlack focus-visible:ring-offset-2 focus-visible:ring-offset-auraIvory"
+    >
+        <div class="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-[#F3EEE6]">
+            {% if product.primary_image %}
+                <img
+                    src="{% get_media_prefix %}{{ product.primary_image }}"
+                    alt="{{ product.name }}"
+                    loading="lazy"
+                    class="h-full w-full object-contain object-center p-4 sm:p-6 transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+                >
+            {% else %}
+                <span class="flex h-full w-full select-none items-center justify-center text-[10px] font-medium uppercase tracking-[0.26em] text-auraMuted/70">
+                    AURA
+                </span>
+            {% endif %}
+
+            {% if show_stock and product.representative_stock == 0 %}
+                <span class="pointer-events-none absolute left-3 top-3 border border-auraBorder/60 bg-white/90 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-auraMuted sm:text-[10px]">
+                    Out of Stock
+                </span>
+            {% endif %}
+        </div>
+
+        <div class="flex flex-grow flex-col items-center px-1 pt-4 sm:pt-5">
+            <span class="text-[9px] font-medium uppercase tracking-[0.24em] text-auraMuted sm:text-[10px]">
+                {{ product.brand.name }}
+            </span>
+            <h3 class="mt-1 font-serif text-lg font-medium leading-snug tracking-wide text-auraBlack sm:text-xl">
+                {{ product.name }}
+            </h3>
+            <p class="text-[9px] font-light uppercase tracking-[0.18em] text-auraMuted sm:text-[10px]">
+                {{ product.get_fragrance_concentration_display }}{% if product.representative_size %} &bull; {{ product.representative_size }}{% endif %}
+            </p>
+            <p class="pt-2 text-sm font-semibold text-auraBlack">
+                From &#8377;{{ product.starting_price }}
+            </p>
+            {% if show_stock and product.representative_stock == 0 %}
+                <p class="pt-1 text-[10px] font-medium uppercase tracking-[0.2em] text-auraMuted sm:text-[11px]">
+                    Currently Unavailable
+                </p>
+            {% endif %}
+        </div>
+    </a>
+</article>

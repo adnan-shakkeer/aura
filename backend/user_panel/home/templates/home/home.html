@@ -260,41 +260,13 @@
             {% if featured_products %}
                 <!-- Dynamic Backend Loop -->
                 {% for product in featured_products %}
-                    <div class="group flex flex-col text-center">
-                        <a href="{% url 'shop:product_details' product.slug %}" aria-label="View {{ product.name }}" class="block w-full aspect-square bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center p-6 sm:p-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-auraBlack focus-visible:ring-offset-2">
-                            {% if product.primary_image %}
-                                <img 
-                                    src="{% get_media_prefix %}{{ product.primary_image }}" 
-                                    alt="{{ product.name }}" 
-                                    class="w-full h-full object-contain object-center"
-                                >
-                            {% else %}
-                                <span class="w-full h-full flex items-center justify-center bg-auraCream text-[10px] uppercase tracking-[0.2em] text-auraMuted/70">
-                                    AURA
-                                </span>
-                            {% endif %}
-                        </a>
-                        <div class="space-y-1.5 flex-grow flex flex-col items-center">
-                            <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
-                                {{ product.brand.name|default:"AURA PARFUMS" }}
-                            </span>
-                            <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
-                                <a href="{% url 'shop:product_details' product.slug %}" class="hover:opacity-75 focus:outline-none focus-visible:underline transition-opacity">{{ product.name }}</a>
-                            </h3>
-                            <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
-                                {{ product.get_fragrance_concentration_display }}{% if product.representative_size %} • {{ product.representative_size }}{% endif %}
-                            </p>
-                            <p class="text-sm font-medium text-auraBlack pt-1">
-                                From ₹{{ product.starting_price }}
-                            </p>
-                        </div>
-                    </div>
+                    {% include "user_panel/includes/product_card.html" with product=product %}
                 {% endfor %}
             {% else %}
                 <!-- Reference Editorial Composition -->
                 <!-- Product 1: ÉCLAT VERT -->
                 <div class="group flex flex-col text-center">
-                    <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative">
+                    <div class="relative mb-5 w-full aspect-[4/3] overflow-hidden bg-[#F3EEE6]">
                         <img 
                             src="{% static 'images/eclat_vert.jpg' %}" 
                             alt="Éclat Vert Eau de Parfum" 
@@ -319,7 +291,7 @@
 
                 <!-- Product 2: AMBRE NOIR -->
                 <div class="group flex flex-col text-center">
-                    <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative">
+                    <div class="relative mb-5 w-full aspect-[4/3] overflow-hidden bg-[#F3EEE6]">
                         <img 
                             src="{% static 'images/ambre_noir.jpg' %}" 
                             alt="Ambre Noir Extrait de Parfum" 
@@ -344,7 +316,7 @@
 
                 <!-- Product 3: SANTAL BLANC -->
                 <div class="group flex flex-col text-center">
-                    <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative">
+                    <div class="relative mb-5 w-full aspect-[4/3] overflow-hidden bg-[#F3EEE6]">
                         <img 
                             src="{% static 'images/santal_blanc.jpg' %}" 
                             alt="Santal Blanc Eau de Parfum" 
@@ -369,7 +341,7 @@
 
                 <!-- Product 4: NOIR RITUEL -->
                 <div class="group flex flex-col text-center">
-                    <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative">
+                    <div class="relative mb-5 w-full aspect-[4/3] overflow-hidden bg-[#F3EEE6]">
                         <img 
                             src="{% static 'images/noir_rituel.jpg' %}" 
                             alt="Noir Rituel Parfum de Nuit" 
@@ -422,41 +394,13 @@
             {% if new_arrivals %}
                 <!-- Dynamic Backend Loop -->
                 {% for product in new_arrivals %}
-                    <div class="group flex flex-col text-center">
-                        <a href="{% url 'shop:product_details' product.slug %}" aria-label="View {{ product.name }}" class="block w-full aspect-square bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center p-6 sm:p-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-auraBlack focus-visible:ring-offset-2">
-                            {% if product.primary_image %}
-                                <img 
-                                    src="{% get_media_prefix %}{{ product.primary_image }}" 
-                                    alt="{{ product.name }}" 
-                                    class="w-full h-full object-contain object-center"
-                                >
-                            {% else %}
-                                <span class="w-full h-full flex items-center justify-center bg-auraCream text-[10px] uppercase tracking-[0.2em] text-auraMuted/70">
-                                    AURA
-                                </span>
-                            {% endif %}
-                        </a>
-                        <div class="space-y-1.5 flex-grow flex flex-col items-center">
-                            <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
-                                {{ product.brand.name|default:"AURA PARFUMS" }}
-                            </span>
-                            <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
-                                <a href="{% url 'shop:product_details' product.slug %}" class="hover:opacity-75 focus:outline-none focus-visible:underline transition-opacity">{{ product.name }}</a>
-                            </h3>
-                            <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
-                                {{ product.get_fragrance_concentration_display }}{% if product.representative_size %} • {{ product.representative_size }}{% endif %}
-                            </p>
-                            <p class="text-sm font-medium text-auraBlack pt-1">
-                                From ₹{{ product.starting_price }}
-                            </p>
-                        </div>
-                    </div>
+                    {% include "user_panel/includes/product_card.html" with product=product %}
                 {% endfor %}
             {% else %}
                 <!-- Reference Editorial Composition -->
                 <!-- Item 1: DISCOVERY SET (Imaged) -->
                 <div class="group flex flex-col text-center">
-                    <div class="w-full aspect-[4/3] bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative">
+                    <div class="relative mb-5 w-full aspect-[4/3] overflow-hidden bg-[#F3EEE6]">
                         <img 
                             src="{% static 'images/discovery_set.jpg' %}" 
                             alt="AURA Discovery Set" 
@@ -481,7 +425,7 @@
 
                 <!-- Item 2: ROSE VELOURS (Coming Soon Placeholder) -->
                 <div class="group flex flex-col text-center">
-                    <div class="w-full aspect-[4/3] bg-auraCream border border-auraBorder/50 mb-6 relative flex items-center justify-center select-none group-hover:bg-auraChampagne/20 transition-colors duration-300">
+                    <div class="relative mb-5 flex w-full aspect-[4/3] items-center justify-center overflow-hidden bg-[#F3EEE6] select-none transition-colors duration-300">
                         <span class="text-[10px] uppercase tracking-[0.26em] text-auraMuted/70 font-medium">
                             COMING SOON
                         </span>
@@ -504,7 +448,7 @@
 
                 <!-- Item 3: CITRON ÉCLAT (Coming Soon Placeholder) -->
                 <div class="group flex flex-col text-center">
-                    <div class="w-full aspect-[4/3] bg-auraCream border border-auraBorder/50 mb-6 relative flex items-center justify-center select-none group-hover:bg-auraChampagne/20 transition-colors duration-300">
+                    <div class="relative mb-5 flex w-full aspect-[4/3] items-center justify-center overflow-hidden bg-[#F3EEE6] select-none transition-colors duration-300">
                         <span class="text-[10px] uppercase tracking-[0.26em] text-auraMuted/70 font-medium">
                             COMING SOON
                         </span>
@@ -527,7 +471,7 @@
 
                 <!-- Item 4: BOIS FUMÉ (Coming Soon Placeholder) -->
                 <div class="group flex flex-col text-center">
-                    <div class="w-full aspect-[4/3] bg-auraCream border border-auraBorder/50 mb-6 relative flex items-center justify-center select-none group-hover:bg-auraChampagne/20 transition-colors duration-300">
+                    <div class="relative mb-5 flex w-full aspect-[4/3] items-center justify-center overflow-hidden bg-[#F3EEE6] select-none transition-colors duration-300">
                         <span class="text-[10px] uppercase tracking-[0.26em] text-auraMuted/70 font-medium">
                             COMING SOON
                         </span>
@@ -579,7 +523,7 @@
                 <!-- Dynamic Backend Loop -->
                 {% for item in best_sellers %}
                     <div class="group flex flex-col text-center">
-                        <div class="w-full aspect-square bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center p-6 sm:p-8">
+                        <div class="relative mb-5 flex w-full aspect-square items-center justify-center overflow-hidden bg-[#F3EEE6] p-4 sm:p-6">
                             {% if item.image %}
                                 <img 
                                     src="{{ item.image.url }}" 
@@ -587,7 +531,7 @@
                                     class="w-full h-full object-contain object-center"
                                 >
                             {% elif item.rank %}
-                                <div class="w-full h-full bg-auraCream/80 border border-auraBorder/60 flex items-center justify-center select-none group-hover:bg-auraCream transition-colors duration-300">
+                                <div class="flex h-full w-full items-center justify-center bg-[#F3EEE6] select-none transition-colors duration-300">
                                     <span class="text-[10px] uppercase tracking-[0.28em] text-auraMuted/60 font-medium">
                                         {{ item.rank }}
                                     </span>
@@ -618,7 +562,7 @@
                 <!-- Reference Editorial Composition -->
                 <!-- Rank 01: ORCHIDÉE VANILLE -->
                 <div class="group flex flex-col text-center">
-                    <div class="w-full aspect-[4/3] bg-auraCream border border-auraBorder/60 mb-6 relative overflow-hidden flex items-center justify-center">
+                    <div class="relative mb-5 flex w-full aspect-[4/3] items-center justify-center overflow-hidden bg-[#F3EEE6]">
                         <div class="w-full h-full bg-gradient-to-tr from-auraChampagne/30 to-auraCream flex flex-col items-center justify-center p-6 text-center">
                             <span class="font-serif text-lg italic text-auraBlack/80">Orchidée &amp; Vanille</span>
                             <span class="text-[9px] uppercase tracking-[0.22em] text-auraMuted mt-1">Signature Accord</span>
@@ -642,7 +586,7 @@
 
                 <!-- Rank 02: L'EAU D'OR -->
                 <div class="group flex flex-col text-center">
-                    <div class="w-full aspect-[4/3] bg-auraCream/80 border border-auraBorder/60 mb-6 relative flex items-center justify-center select-none group-hover:bg-auraCream transition-colors duration-300">
+                    <div class="relative mb-5 flex w-full aspect-[4/3] items-center justify-center overflow-hidden bg-[#F3EEE6] select-none transition-colors duration-300">
                         <span class="text-[10px] uppercase tracking-[0.28em] text-auraMuted/60 font-medium">
                             RANK 02
                         </span>
@@ -665,7 +609,7 @@
 
                 <!-- Rank 03: CUIR NOBLE -->
                 <div class="group flex flex-col text-center">
-                    <div class="w-full aspect-[4/3] bg-auraCream/80 border border-auraBorder/60 mb-6 relative flex items-center justify-center select-none group-hover:bg-auraCream transition-colors duration-300">
+                    <div class="relative mb-5 flex w-full aspect-[4/3] items-center justify-center overflow-hidden bg-[#F3EEE6] select-none transition-colors duration-300">
                         <span class="text-[10px] uppercase tracking-[0.28em] text-auraMuted/60 font-medium">
                             RANK 03
                         </span>
@@ -688,7 +632,7 @@
 
                 <!-- Rank 04: JARDIN D'ÉTÉ -->
                 <div class="group flex flex-col text-center">
-                    <div class="w-full aspect-[4/3] bg-auraCream/80 border border-auraBorder/60 mb-6 relative flex items-center justify-center select-none group-hover:bg-auraCream transition-colors duration-300">
+                    <div class="relative mb-5 flex w-full aspect-[4/3] items-center justify-center overflow-hidden bg-[#F3EEE6] select-none transition-colors duration-300">
                         <span class="text-[10px] uppercase tracking-[0.28em] text-auraMuted/60 font-medium">
                             RANK 04
                         </span>

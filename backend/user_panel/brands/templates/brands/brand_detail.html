@@ -164,46 +164,7 @@
         {% if products %}
             <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-10 sm:gap-y-14">
                 {% for product in products %}
-                    <a href="{% url 'shop:product_details' slug=product.slug %}" class="group flex flex-col text-center">
-                        <div class="w-full aspect-square bg-[#FAF7F1] overflow-hidden border border-auraBorder/40 mb-4 sm:mb-5 relative flex items-center justify-center p-5 sm:p-8">
-                            {% if product.primary_image %}
-                                <img
-                                    src="{% get_media_prefix %}{{ product.primary_image }}"
-                                    alt="{{ product.name }}"
-                                    loading="lazy"
-                                    class="w-full h-full object-contain object-center"
-                                >
-                            {% else %}
-                                <div class="w-full h-full flex items-center justify-center select-none">
-                                    <span class="text-[10px] uppercase tracking-[0.26em] text-auraMuted/70 font-medium">AURA</span>
-                                </div>
-                            {% endif %}
-                            {% if product.representative_stock == 0 %}
-                                <span class="absolute top-3 left-3 bg-white/90 border border-auraBorder px-2.5 py-1 text-[9px] sm:text-[10px] uppercase tracking-[0.18em] font-semibold text-auraMuted">
-                                    Out of Stock
-                                </span>
-                            {% endif %}
-                        </div>
-                        <div class="space-y-1 sm:space-y-1.5 flex-grow flex flex-col items-center px-1">
-                            <span class="text-[9px] sm:text-[10px] uppercase tracking-[0.24em] text-auraMuted font-medium">
-                                {{ product.brand.name }}
-                            </span>
-                            <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide leading-snug">
-                                {{ product.name }}
-                            </h3>
-                            <p class="text-[9px] sm:text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
-                                {{ product.get_fragrance_concentration_display }}{% if product.representative_size %} • {{ product.representative_size }}{% endif %}
-                            </p>
-                            <p class="text-sm font-semibold text-auraBlack pt-1">
-                                From ₹{{ product.starting_price }}
-                            </p>
-                            {% if product.representative_stock == 0 %}
-                                <p class="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] font-medium text-auraMuted pt-1">
-                                    Currently Unavailable
-                                </p>
-                            {% endif %}
-                        </div>
-                    </a>
+                    {% include "user_panel/includes/product_card.html" with product=product show_stock=True %}
                 {% endfor %}
             </div>
 

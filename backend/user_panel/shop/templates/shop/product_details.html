@@ -229,34 +229,7 @@
         </h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-14">
             {% for rp in related_products %}
-            <a href="{% url 'shop:product_details' slug=rp.slug %}" class="group flex flex-col text-center">
-                <div class="w-full aspect-square bg-auraCream overflow-hidden border border-auraBorder/50 mb-6 relative flex items-center justify-center p-6 sm:p-8">
-                    {% if rp.primary_image %}
-                    <img src="{% get_media_prefix %}{{ rp.primary_image }}" alt="{{ rp.name }}" class="w-full h-full object-contain object-center transform hover:scale-105 transition-transform duration-1000 ease-out">
-                    {% else %}
-                    <div class="w-full h-full flex items-center justify-center text-[10px] uppercase tracking-[0.2em] text-auraMuted/70">
-                        AURA
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="space-y-1.5 flex-grow flex flex-col items-center">
-                    <span class="text-[10px] uppercase tracking-[0.22em] text-auraMuted font-medium">
-                        {{ rp.brand.name }}
-                    </span>
-                    <h3 class="font-serif text-lg sm:text-xl font-medium text-auraBlack tracking-wide">
-                        {{ rp.name }}
-                    </h3>
-                    <p class="text-[10px] uppercase tracking-[0.18em] text-auraMuted font-light">
-                        {{ rp.get_fragrance_concentration_display }}{% if rp.representative_size %} • {{ rp.representative_size }}{% endif %}
-                    </p>
-                    <p class="text-sm font-medium text-auraBlack pt-1">
-                        From ₹{{ rp.starting_price }}
-                    </p>
-                    <div class="mt-4 text-[11px] uppercase tracking-[0.22em] font-semibold text-auraBlack border-b border-auraBlack pb-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        View Details
-                    </div>
-                </div>
-            </a>
+            {% include "user_panel/includes/product_card.html" with product=rp %}
             {% endfor %}
         </div>
     </div>

@@ -103,16 +103,16 @@
                         data-wishlist-card
                         data-item-id="{{ item.id }}"
                         data-remove-url="{% url 'wishlist:remove_wishlist_item' %}"
-                        class="flex h-full flex-col"
+                        class="relative flex h-full flex-col"
                     >
-                        <div class="relative w-full aspect-square bg-[#FAF7F1] overflow-hidden border border-auraBorder/40 mb-4 sm:mb-5 flex items-center justify-center p-5 sm:p-8">
+                        <div class="relative mb-4 flex aspect-square w-full items-center justify-center overflow-hidden bg-[#F3EEE6] sm:mb-5">
                             {% if item.variant and item.variant.images.all %}
                                 {% with image=item.variant.images.all|first %}
                                     <img
                                         src="{{ image.image.url }}"
                                         alt="{{ image.alt_text|default:item.variant.product.name }}"
                                         loading="lazy"
-                                        class="w-full h-full object-contain object-center"
+                                        class="h-full w-full object-contain object-center p-4 sm:p-6"
                                     >
                                 {% endwith %}
                             {% else %}
