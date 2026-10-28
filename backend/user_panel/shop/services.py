@@ -97,6 +97,34 @@ def clean_price_range(min_value, max_value):
     return low, high
 
 
+def get_eligible_variants():
+    """Return variants visible in the public catalogue.
+
+    Variant-level counterpart to ``get_available_products()``: a variant is
+    eligible only when the variant itself and its entire
+    Product -> Brand -> Category hierarchy are listed and not soft-deleted.
+
+    Stock is intentionally excluded: visibility and purchasability are
+    separate concerns. Callers that need purchasability must check
+    ``stock`` in addition to membership in this queryset.
+    """
+    return (
+        ProductVariant.objects.select_related(
+            "product__brand__category"
+        )
+        .filter(
+            is_deleted=False,
+            is_listed=True,
+            product__is_deleted=False,
+            product__is_listed=True,
+            product__brand__is_deleted=False,
+            product__brand__is_listed=True,
+            product__brand__category__is_deleted=False,
+            product__brand__category__is_listed=True,
+        )
+    )
+
+
 def get_available_products():
     """Return eligible products for the User-side catalog.
 

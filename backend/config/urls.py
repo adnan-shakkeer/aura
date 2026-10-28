@@ -54,6 +54,8 @@ urlpatterns = [
     path("brands/",include("user_panel.brands.urls")),
 
     path("cart/", include("user_panel.cart.urls")),
+
+    path("wishlist/", include("user_panel.wishlist.urls")),
     
 ]
 

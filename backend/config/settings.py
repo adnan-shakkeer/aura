@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     "user_panel.shop",
     "user_panel.brands",
     "user_panel.cart",
+    "user_panel.wishlist",
 ]
 
 MIDDLEWARE = [
@@ -100,6 +101,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'user_panel.cart.context_processors.cart_bag_count',
+                'user_panel.wishlist.context_processors.wishlist_count',
             ],
         },
     },

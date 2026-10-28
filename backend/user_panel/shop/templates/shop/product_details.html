@@ -51,6 +51,9 @@
 
 {% block content %}
 <div id="pdp-toast-container" role="alert" aria-live="polite"></div>
+<form id="pdp-wishlist-csrf-form" class="hidden" aria-hidden="true">
+    {% csrf_token %}
+</form>
 <div class="container mx-auto px-4 md:px-8 py-8 lg:py-12 mt-16 max-w-7xl">
     <!-- Breadcrumbs -->
     <div class="text-[11px] tracking-[0.22em] uppercase text-auraMuted mb-8 font-inter">
@@ -200,8 +203,14 @@
                         class="w-full bg-auraBlack text-auraIvory uppercase tracking-[0.22em] text-[11px] font-semibold py-4.5 transition-all duration-300 {% if is_unavailable or not selected_variant.stock %}opacity-50 cursor-not-allowed{% else %}hover:bg-black hover:shadow-aura-button active:scale-[0.99]{% endif %}" style="padding-top: 1.125rem; padding-bottom: 1.125rem;" {% if is_unavailable or not selected_variant.stock %}disabled{% endif %}>
                         <span id="add-to-bag-label">{% if not is_unavailable and not selected_variant.stock %}Unavailable{% else %}Add to Bag{% endif %}</span>
                     </button>
-                    <button class="w-full bg-transparent text-auraBlack border border-auraBlack uppercase tracking-[0.22em] text-[11px] font-semibold py-4.5 transition-all duration-300 active:scale-[0.99] {% if is_unavailable %}opacity-50 cursor-not-allowed{% else %}hover:bg-auraBlack hover:text-auraIvory{% endif %}" style="padding-top: 1.125rem; padding-bottom: 1.125rem;" {% if is_unavailable %}disabled{% endif %}>
-                        Add to Wishlist
+                    <button
+                        type="button"
+                        id="add-to-wishlist-btn"
+                        data-variant-id="{{ selected_variant.id }}"
+                        data-add-url="{% url 'wishlist:add_to_wishlist' %}"
+                        aria-label="Add {{ product.name }} to wishlist"
+                        class="w-full bg-transparent text-auraBlack border border-auraBlack uppercase tracking-[0.22em] text-[11px] font-semibold py-4.5 transition-all duration-300 active:scale-[0.99] {% if is_unavailable %}opacity-50 cursor-not-allowed{% else %}hover:bg-auraBlack hover:text-auraIvory{% endif %}" style="padding-top: 1.125rem; padding-bottom: 1.125rem;" {% if is_unavailable %}disabled{% endif %}>
+                        <span id="add-to-wishlist-label">Add to Wishlist</span>
                     </button>
                 </div>
             {% else %}
@@ -366,6 +375,118 @@
         .catch(function () {
             showToast('Something went wrong. Please try again.', 'error');
             restore();
+        });
+    });
+})();
+</script>
+<script>
+(function () {
+    'use strict';
+
+    var btn = document.getElementById('add-to-wishlist-btn');
+    if (!btn) return;
+
+    var label = document.getElementById('add-to-wishlist-label');
+    var csrfField = document.querySelector('#pdp-wishlist-csrf-form input[name="csrfmiddlewaretoken"]');
+
+    function getCookie(name) {
+        var cookies = document.cookie ? document.cookie.split(';') : [];
+        for (var i = 0; i < cookies.length; i++) {
+            var c = cookies[i].trim();
+            if (c.indexOf(name + '=') === 0) return decodeURIComponent(c.substring(name.length + 1));
+        }
+        return null;
+    }
+
+    var CSRF = csrfField ? csrfField.value : getCookie('csrftoken');
+
+    function showToast(msg, type) {
+        type = type || 'success';
+        var container = document.getElementById('pdp-toast-container');
+        if (!container) return;
+        var el = document.createElement('div');
+        el.className = 'pdp-toast ' + (type === 'error' ? 'pdp-toast--error' : 'pdp-toast--success');
+        var icon = type === 'error'
+            ? '<svg class="pdp-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M15 9l-6 6M9 9l6 6"/></svg>'
+            : '<svg class="pdp-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4"/></svg>';
+        el.innerHTML = icon + '<span class="pdp-toast__text"></span>';
+        el.querySelector('.pdp-toast__text').textContent = msg;
+        container.appendChild(el);
+        setTimeout(function () {
+            el.classList.add('pdp-toast--dismissing');
+            setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 320);
+        }, 4000);
+    }
+
+    function updateWishlistBadge(count) {
+        var value = Number(count);
+        if (!isFinite(value)) return;
+
+        document.querySelectorAll('[data-wishlist-count]').forEach(function (badge) {
+            badge.textContent = value;
+            badge.hidden = value <= 0;
+        });
+    }
+
+    function restore(originalLabel) {
+        btn.dataset.busy = '0';
+        btn.disabled = false;
+        if (label) label.textContent = originalLabel;
+    }
+
+    btn.addEventListener('click', function () {
+        if (btn.disabled || btn.dataset.busy === '1') return;
+
+        var variantId = btn.dataset.variantId;
+        var addUrl = btn.dataset.addUrl;
+        if (!variantId || !addUrl) return;
+
+        var originalLabel = label ? label.textContent : '';
+        btn.dataset.busy = '1';
+        btn.disabled = true;
+        if (label) label.textContent = 'Adding…';
+
+        fetch(addUrl, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': CSRF || '',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({ variant_id: String(variantId) })
+        })
+        .then(function (response) {
+            return response.text().then(function (text) {
+                var data = null;
+                try { data = JSON.parse(text); } catch (error) { data = null; }
+                return { redirected: response.redirected, url: response.url, data: data };
+            });
+        })
+        .then(function (result) {
+            if (result.data && result.data.success === true) {
+                if (label) label.textContent = 'In Wishlist';
+                btn.setAttribute('aria-label', 'This variant is in your wishlist');
+                btn.setAttribute('aria-disabled', 'true');
+                updateWishlistBadge(result.data.wishlist_count);
+                showToast(result.data.message || 'Added to your wishlist.', 'success');
+                return;
+            }
+
+            if (result.redirected) {
+                window.location.href = result.url;
+                return;
+            }
+
+            if (result.data) {
+                showToast(result.data.message || 'Could not add to wishlist.', 'error');
+            } else {
+                showToast('Something went wrong. Please try again.', 'error');
+            }
+            restore(originalLabel);
+        })
+        .catch(function () {
+            showToast('Something went wrong. Please try again.', 'error');
+            restore(originalLabel);
         });
     });
 })();
