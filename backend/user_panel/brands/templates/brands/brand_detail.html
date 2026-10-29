@@ -4,6 +4,7 @@
 {% block title %}{{ brand.name }} | AURA{% endblock %}
 
 {% block content %}
+{% include "user_panel/includes/wishlist_card_assets.html" %}
 
 <!-- ========================================================= -->
 <!-- BREADCRUMB — Home / Brands / Brand Name (dynamic)          -->
@@ -164,7 +165,7 @@
         {% if products %}
             <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-10 sm:gap-y-14">
                 {% for product in products %}
-                    {% include "user_panel/includes/product_card.html" with product=product show_stock=True %}
+                    {% include "user_panel/includes/product_card.html" with product=product show_stock=True show_wishlist=True wishlisted_variant_ids=wishlisted_variant_ids %}
                 {% endfor %}
             </div>
 

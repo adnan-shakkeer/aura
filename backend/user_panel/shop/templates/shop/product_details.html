@@ -46,6 +46,10 @@
     .pdp-toast--error { background-color: #1a0f12; border: 1px solid #4c1d24; border-left: 2px solid #9f1239; color: #fecdd3; }
     .pdp-toast--error .pdp-toast__icon { color: #fb7185; flex-shrink: 0; margin-top: 1px; }
     .pdp-toast__text { flex: 1; font-weight: 300; }
+    #add-to-wishlist-btn[data-wishlisted="true"]:not(:disabled) {
+        background-color: #1A1A1A;
+        color: #F8F5F0;
+    }
 </style>
 {% endblock %}
 
@@ -207,10 +211,14 @@
                         type="button"
                         id="add-to-wishlist-btn"
                         data-variant-id="{{ selected_variant.id }}"
+                        data-product-name="{{ product.name }}"
                         data-add-url="{% url 'wishlist:add_to_wishlist' %}"
-                        aria-label="Add {{ product.name }} to wishlist"
+                        data-remove-url="{% url 'wishlist:remove_from_wishlist' %}"
+                        data-wishlisted="{% if is_wishlisted %}true{% else %}false{% endif %}"
+                        aria-label="{% if is_wishlisted %}Remove {{ product.name }} from wishlist{% else %}Add {{ product.name }} to wishlist{% endif %}"
+                        aria-pressed="{% if is_wishlisted %}true{% else %}false{% endif %}"
                         class="w-full bg-transparent text-auraBlack border border-auraBlack uppercase tracking-[0.22em] text-[11px] font-semibold py-4.5 transition-all duration-300 active:scale-[0.99] {% if is_unavailable %}opacity-50 cursor-not-allowed{% else %}hover:bg-auraBlack hover:text-auraIvory{% endif %}" style="padding-top: 1.125rem; padding-bottom: 1.125rem;" {% if is_unavailable %}disabled{% endif %}>
-                        <span id="add-to-wishlist-label">Add to Wishlist</span>
+                        <span id="add-to-wishlist-label">{% if is_wishlisted %}In Wishlist{% else %}Add to Wishlist{% endif %}</span>
                     </button>
                 </div>
             {% else %}
@@ -401,25 +409,44 @@
         });
     }
 
-    function restore(originalLabel) {
-        btn.dataset.busy = '0';
-        btn.disabled = false;
-        if (label) label.textContent = originalLabel;
+    function setWishlistState(wishlisted) {
+        var active = wishlisted === true;
+        var productName = btn.dataset.productName || 'this product';
+        btn.dataset.wishlisted = active ? 'true' : 'false';
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        btn.setAttribute('aria-label', active
+            ? 'Remove ' + productName + ' from wishlist'
+            : 'Add ' + productName + ' to wishlist');
+        if (label) label.textContent = active ? 'In Wishlist' : 'Add to Wishlist';
+    }
+
+    function setBusy(busy) {
+        btn.dataset.busy = busy ? '1' : '0';
+        btn.disabled = busy;
+        if (busy) {
+            btn.setAttribute('aria-busy', 'true');
+        } else {
+            btn.removeAttribute('aria-busy');
+        }
+    }
+
+    function restore(wishlisted) {
+        setWishlistState(wishlisted);
+        setBusy(false);
     }
 
     btn.addEventListener('click', function () {
         if (btn.disabled || btn.dataset.busy === '1') return;
 
         var variantId = btn.dataset.variantId;
-        var addUrl = btn.dataset.addUrl;
-        if (!variantId || !addUrl) return;
+        var currentlyWishlisted = btn.dataset.wishlisted === 'true';
+        var endpoint = currentlyWishlisted ? btn.dataset.removeUrl : btn.dataset.addUrl;
+        if (!variantId || !endpoint) return;
 
-        var originalLabel = label ? label.textContent : '';
-        btn.dataset.busy = '1';
-        btn.disabled = true;
-        if (label) label.textContent = 'Adding…';
+        setBusy(true);
+        if (label) label.textContent = currentlyWishlisted ? 'Removing...' : 'Adding...';
 
-        fetch(addUrl, {
+        fetch(endpoint, {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -436,30 +463,32 @@
             });
         })
         .then(function (result) {
-            if (result.data && result.data.success === true) {
-                if (label) label.textContent = 'In Wishlist';
-                btn.setAttribute('aria-label', 'This variant is in your wishlist');
-                btn.setAttribute('aria-disabled', 'true');
-                updateWishlistBadge(result.data.wishlist_count);
-                showToast(result.data.message || 'Added to your wishlist.', 'success');
-                return;
-            }
-
             if (result.redirected) {
                 window.location.href = result.url;
                 return;
             }
 
-            if (result.data) {
-                showToast(result.data.message || 'Could not add to wishlist.', 'error');
-            } else {
-                showToast('Something went wrong. Please try again.', 'error');
+            if (result.data && result.data.success === true) {
+                var wishlisted = result.data.wishlisted === true;
+                setWishlistState(wishlisted);
+                setBusy(false);
+                updateWishlistBadge(result.data.wishlist_count);
+                showToast(
+                    result.data.message || (wishlisted ? 'Added to your wishlist.' : 'Removed from your wishlist.'),
+                    'success'
+                );
+                return;
             }
-            restore(originalLabel);
+
+            showToast(
+                (result.data && result.data.message) || 'Something went wrong. Please try again.',
+                'error'
+            );
+            restore(currentlyWishlisted);
         })
         .catch(function () {
             showToast('Something went wrong. Please try again.', 'error');
-            restore(originalLabel);
+            restore(currentlyWishlisted);
         });
     });
 })();

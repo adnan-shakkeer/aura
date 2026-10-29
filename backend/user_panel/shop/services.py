@@ -147,6 +147,8 @@ def get_available_products():
     - ``representative_stock``: stock of the earliest eligible variant
       (same deterministic ordering as ``representative_size``), used for
       availability messaging.
+    - ``representative_variant_id``: id of the earliest eligible variant
+      (same deterministic ordering), used by storefront wishlist hearts.
     - ``primary_image``: image path of the first image
       (``display_order, created_at`` ordering) belonging to eligible
       variants, with variants ordered by ``created_at, id`` so the
@@ -207,6 +209,9 @@ def get_available_products():
             ),
             representative_stock=Subquery(
                 representative_variant_qs.values("stock")[:1]
+            ),
+            representative_variant_id=Subquery(
+                representative_variant_qs.values("id")[:1]
             ),
             primary_image=Subquery(primary_image_qs),
         )

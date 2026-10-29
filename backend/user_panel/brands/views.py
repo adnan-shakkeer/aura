@@ -14,6 +14,8 @@ from django.shortcuts import get_object_or_404, render
 
 from .services import get_visible_brands
 
+from user_panel.wishlist.services import get_wishlisted_variant_ids
+
 from user_panel.shop.services import (
     CONCENTRATION_OPTIONS,
     SHOP_PAGE_SIZE,
@@ -85,6 +87,15 @@ def brand_detail(request, slug):
     paginator = Paginator(products, SHOP_PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get("page"))
 
+    wishlisted_variant_ids = get_wishlisted_variant_ids(
+        request.user,
+        [
+            product.representative_variant_id
+            for product in page_obj.object_list
+            if product.representative_variant_id
+        ],
+    )
+
     # 6. Querystring without ``page`` so pagination/sort links preserve
     # the active search, filter and sort parameters (same convention
     # as the Shop listing). The brand restriction lives in the URL
@@ -110,6 +121,7 @@ def brand_detail(request, slug):
         "current_max_price": "" if max_price is None else str(max_price),
         "base_query": base_query,
         "total_count": paginator.count,
+        "wishlisted_variant_ids": wishlisted_variant_ids,
         "has_active_filters": bool(
             search_query
             or concentrations

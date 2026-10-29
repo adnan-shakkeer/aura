@@ -14,6 +14,8 @@ from django.http import Http404, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 
+from user_panel.wishlist.services import get_wishlisted_variant_ids
+
 from .services import (
     CONCENTRATION_OPTIONS,
     SHOP_PAGE_SIZE,
@@ -75,6 +77,15 @@ def shop_list(request):
     paginator = Paginator(products, SHOP_PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get("page"))
 
+    wishlisted_variant_ids = get_wishlisted_variant_ids(
+        request.user,
+        [
+            product.representative_variant_id
+            for product in page_obj.object_list
+            if product.representative_variant_id
+        ],
+    )
+
     # Querystring without ``page`` so pagination/sort links preserve the
     # active search, filter and sort parameters.
     params = request.GET.copy()
@@ -99,6 +110,7 @@ def shop_list(request):
         "sort_options": SORT_OPTIONS,
         "base_query": base_query,
         "total_count": paginator.count,
+        "wishlisted_variant_ids": wishlisted_variant_ids,
         "has_active_filters": bool(
             search_query
             or category_slugs
@@ -172,6 +184,12 @@ def product_details(request, slug):
     else:
         images = []
 
+    is_wishlisted = bool(
+        selected_variant
+        and selected_variant.id
+        in get_wishlisted_variant_ids(request.user, [selected_variant.id])
+    )
+
     # Related products: same category, exclude current, full eligibility, ≤4.
     related_products = (
         get_available_products()
@@ -186,6 +204,7 @@ def product_details(request, slug):
         "images": images,
         "related_products": related_products,
         "is_unavailable": is_unavailable,
+        "is_wishlisted": is_wishlisted,
     }
     return render(request, "shop/product_details.html", context)
 
