@@ -215,6 +215,7 @@
                         type="button"
                         id="proceed-checkout-btn"
                         data-validate-url="{% url 'cart:validate_checkout' %}"
+                        data-checkout-url="{% url 'checkout:checkout_review' %}"
                         class="w-full inline-flex items-center justify-center gap-2 bg-auraBlack text-auraIvory uppercase tracking-[0.22em] text-[11px] font-semibold rounded-full py-4 hover:bg-black hover:shadow-aura-button active:scale-[0.99] transition-all duration-300"
                     >
                         <span id="checkout-btn-text">Proceed to Checkout</span>
@@ -469,7 +470,7 @@
         });
     });
 
-    // Proceed to checkout — validation only; no checkout URL exists yet.
+    // Proceed to checkout — validate first, then continue to checkout.
     var checkoutBtn = document.getElementById('proceed-checkout-btn');
     if (checkoutBtn) {
         checkoutBtn.addEventListener('click', function () {
@@ -484,14 +485,22 @@
             .then(function (res) {
                 var d = res.data || {};
                 if (res.ok && d.success) {
+                    var checkoutUrl = checkoutBtn.dataset.checkoutUrl;
+                    if (checkoutUrl) {
+                        if (label) label.textContent = 'Proceeding…';
+                        window.location.assign(checkoutUrl);
+                        return;
+                    }
                     showToast(d.message || 'Your cart is ready for checkout.', 'success');
                 } else {
                     var problems = d.problems && d.problems.length ? d.problems.join(' ') : (d.message || 'Please resolve the cart issues.');
                     showToast(problems, 'error');
                 }
+                checkoutBtn.disabled = false;
+                if (label) label.textContent = 'Proceed to Checkout';
             })
-            .catch(function () { showToast('Something went wrong. Please try again.', 'error'); })
-            .finally(function () {
+            .catch(function () {
+                showToast('Something went wrong. Please try again.', 'error');
                 checkoutBtn.disabled = false;
                 if (label) label.textContent = 'Proceed to Checkout';
             });

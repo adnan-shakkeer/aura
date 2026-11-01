@@ -1,0 +1,1094 @@
+{% extends "user_panel/base.html" %}
+{% load static %}
+
+{% block title %}Checkout | AURA{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* =========================================================
+       AURA CHECKOUT — Styles
+       ========================================================= */
+
+    /* Modal transitions */
+    #add-address-modal, #edit-address-modal {
+        transition: opacity 0.25s ease;
+    }
+    #add-address-modal.modal-hidden, #edit-address-modal.modal-hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+    #add-address-modal.modal-visible, #edit-address-modal.modal-visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    #add-address-panel, #edit-address-panel {
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+    }
+    #add-address-modal.modal-hidden #add-address-panel,
+    #edit-address-modal.modal-hidden #edit-address-panel {
+        transform: scale(0.97) translateY(10px);
+        opacity: 0;
+    }
+    #add-address-modal.modal-visible #add-address-panel,
+    #edit-address-modal.modal-visible #edit-address-panel {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+
+    /* Address card interaction */
+    .checkout-address-card {
+        transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+    }
+    .checkout-address-card:hover {
+        border-color: #D4C5B0;
+    }
+
+    /* Input focus styling matching AURA address book */
+    .addr-input:focus {
+        outline: none;
+        border-color: #1A1A1A;
+        box-shadow: 0 0 0 2px rgba(26,26,26,0.06);
+    }
+
+    /* Spinner */
+    @keyframes addrSpin {
+        to { transform: rotate(360deg); }
+    }
+    .addr-spinner {
+        animation: addrSpin 0.7s linear infinite;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-[calc(100vh-80px)] bg-auraIvory py-8 sm:py-12">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
+        <!-- Breadcrumb -->
+        <nav aria-label="Breadcrumb" class="mb-6">
+            <ol class="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.2em] text-auraMuted">
+                <li><a href="{% url 'home' %}" class="transition-colors hover:text-auraBlack">Home</a></li>
+                <li aria-hidden="true" class="text-auraBorder">/</li>
+                <li><a href="{% url 'cart:cart_view' %}" class="transition-colors hover:text-auraBlack">Shopping Bag</a></li>
+                <li aria-hidden="true" class="text-auraBorder">/</li>
+                <li class="text-auraBlack" aria-current="page">Checkout</li>
+            </ol>
+        </nav>
+
+        {% if messages %}
+        <div class="mb-6 space-y-3" role="status" aria-live="polite">
+            {% for message in messages %}
+            <div class="border px-4 py-3 text-xs sm:text-sm rounded-lg {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-700{% elif message.tags == 'warning' %}border-[#E3C9A8] bg-[#FDF6EA] text-[#8A5A22]{% else %}border-auraBorder bg-auraCream text-auraBlack{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Page Heading -->
+        <header class="mb-8 sm:mb-10">
+            <p class="text-[11px] font-medium uppercase tracking-[0.28em] text-auraChampagneDark mb-2">Secure Checkout</p>
+            <h1 class="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal text-auraBlack tracking-tight">Checkout</h1>
+            <p class="mt-2 text-xs sm:text-sm text-auraMuted leading-relaxed">
+                Review your delivery address, payment method and order details before placing your order.
+            </p>
+        </header>
+
+        {% if empty_cart %}
+        <!-- Empty Shopping Bag State -->
+        <div class="mx-auto max-w-lg border border-auraBorder bg-white p-8 sm:p-12 text-center rounded-xl shadow-sm">
+            <p class="text-[10px] font-semibold uppercase tracking-[0.24em] text-auraChampagneDark mb-2">Your Bag Is Empty</p>
+            <h2 class="font-serif text-2xl text-auraBlack">Nothing to check out yet</h2>
+            <p class="mx-auto mt-3 max-w-sm text-xs sm:text-sm text-auraMuted leading-relaxed">
+                Add your chosen fragrances to your shopping bag before proceeding to checkout.
+            </p>
+            <a href="{% url 'shop:shop_list' %}"
+               class="mt-7 inline-flex items-center justify-center bg-auraBlack px-8 py-3.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white hover:bg-auraDark transition-colors">
+                Continue Shopping
+            </a>
+        </div>
+
+        {% elif no_addresses %}
+        <!-- No Saved Addresses State -->
+        <div class="mx-auto max-w-lg border border-auraBorder bg-white p-8 sm:p-12 text-center rounded-xl shadow-sm">
+            <p class="text-[10px] font-semibold uppercase tracking-[0.24em] text-auraChampagneDark mb-2">Delivery Address</p>
+            <h2 class="font-serif text-2xl text-auraBlack">Add a delivery address</h2>
+            <p class="mx-auto mt-3 max-w-sm text-xs sm:text-sm text-auraMuted leading-relaxed">
+                We need a delivery address before we can prepare your order review.
+            </p>
+            <div class="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button type="button" id="open-add-address-btn"
+                        class="w-full sm:w-auto inline-flex items-center justify-center bg-auraBlack px-8 py-3.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white hover:bg-auraDark transition-colors">
+                    + Add New Address
+                </button>
+                <a href="{% url 'address_book' %}?next={{ next_url|urlencode }}"
+                   class="w-full sm:w-auto inline-flex items-center justify-center border border-auraBorder px-6 py-3.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-auraBlack hover:border-auraBlack transition-colors">
+                    Manage Addresses
+                </a>
+            </div>
+        </div>
+
+        {% elif review %}
+        <!-- Main Checkout Two-Column Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px] gap-8 xl:gap-10 items-start">
+
+            <!-- ========================================================= -->
+            <!-- LEFT COLUMN: Checkout Sections                            -->
+            <!-- ========================================================= -->
+            <div class="min-w-0 space-y-8">
+
+                <!-- ── Section 01: Shipping Address ── -->
+                <section aria-labelledby="section-address-heading" class="bg-white border border-[#E5E5E5] rounded-xl p-6 sm:p-8 shadow-sm">
+                    <!-- Section Header -->
+                    <div class="flex items-center justify-between gap-4 pb-5 border-b border-[#F0F0F0]">
+                        <div class="flex items-center gap-3">
+                            <span class="w-6 h-6 rounded-full bg-auraBlack text-white flex items-center justify-center text-[11px] font-semibold flex-shrink-0" aria-hidden="true">
+                                01
+                            </span>
+                            <h2 id="section-address-heading" class="text-xs sm:text-[13px] font-semibold uppercase tracking-[0.22em] text-auraBlack">
+                                Shipping Address
+                            </h2>
+                        </div>
+                        <a href="{% url 'address_book' %}?next={{ next_url|urlencode }}"
+                           class="text-[11px] font-medium uppercase tracking-[0.16em] text-auraMuted hover:text-auraBlack underline underline-offset-4 transition-colors flex-shrink-0">
+                            Manage Addresses
+                        </a>
+                    </div>
+
+                    {% if address_issue %}
+                    <div role="alert" class="mt-5 border border-[#E3C9A8] bg-[#FDF6EA] px-4 py-3 text-xs sm:text-sm text-[#8A5A22] rounded-lg">
+                        {{ address_issue }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Address Cards -->
+                    <form method="post" action="{% url 'checkout:checkout_review' %}" id="checkout-address-form" class="mt-6">
+                        {% csrf_token %}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {% for address in addresses %}
+                            <label
+                                class="checkout-address-card relative flex flex-col justify-between border rounded-xl p-5 cursor-pointer {% if address.pk == selected_address.pk %}border-[#E5D7C5] bg-[#FDFBF7]{% else %}border-[#E5E5E5] bg-white{% endif %}"
+                                data-address-id="{{ address.pk }}"
+                            >
+                                <!-- Hidden input for form submission -->
+                                <input
+                                    type="radio"
+                                    name="address_id"
+                                    value="{{ address.pk }}"
+                                    class="sr-only"
+                                    {% if address.pk == selected_address.pk %}checked{% endif %}
+                                >
+
+                                <!-- Card Top Row: Radio, Badges & Edit Button -->
+                                <div>
+                                    <div class="flex items-start justify-between gap-2 mb-3">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <!-- Custom Radio Indicator -->
+                                            <span class="w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 {% if address.pk == selected_address.pk %}border-auraBlack bg-white{% else %}border-[#CCCCCC] bg-white{% endif %}" aria-hidden="true">
+                                                {% if address.pk == selected_address.pk %}
+                                                <span class="w-2 h-2 rounded-full bg-auraBlack"></span>
+                                                {% endif %}
+                                            </span>
+
+                                            <!-- Address Type Badge -->
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-[#F3F3F3] text-[#444444] text-[10px] font-semibold tracking-[0.12em] uppercase">
+                                                {{ address.get_address_type_display|upper }}
+                                            </span>
+
+                                            <!-- Default Badge -->
+                                            {% if address.is_default %}
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#FFF8E7] text-[#9E782F] text-[10px] font-semibold tracking-[0.1em] uppercase">
+                                                <span aria-hidden="true">★</span> Default
+                                            </span>
+                                            {% endif %}
+                                        </div>
+
+                                        <!-- Edit Action (Pencil Icon) -->
+                                        <button
+                                            type="button"
+                                            class="edit-address-btn text-auraMuted hover:text-auraBlack p-1 -mr-1 -mt-1 rounded hover:bg-[#F3F3F3] transition-colors"
+                                            data-address-id="{{ address.pk }}"
+                                            data-full-name="{{ address.full_name|escape }}"
+                                            data-phone-number="{{ address.phone_number|escape }}"
+                                            data-address-line1="{{ address.address_line1|escape }}"
+                                            data-address-line2="{{ address.address_line2|default:''|escape }}"
+                                            data-landmark="{{ address.landmark|default:''|escape }}"
+                                            data-city="{{ address.city|escape }}"
+                                            data-state="{{ address.state|escape }}"
+                                            data-pincode="{{ address.pincode|escape }}"
+                                            data-address-type="{{ address.address_type }}"
+                                            data-is-default="{{ address.is_default|yesno:'true,false' }}"
+                                            data-edit-url="{% url 'edit_address' address.pk %}"
+                                            aria-label="Edit address for {{ address.full_name }}"
+                                            title="Edit address"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <!-- Customer Name -->
+                                    <p class="font-medium text-auraBlack text-sm leading-snug">{{ address.full_name }}</p>
+
+                                    <!-- Phone Number -->
+                                    <p class="text-xs text-auraMuted mt-0.5 tracking-wide">{{ address.phone_number }}</p>
+
+                                    <!-- Address Lines -->
+                                    <address class="not-italic text-xs text-[#555555] leading-relaxed mt-2 space-y-0.5">
+                                        <span class="block">{{ address.address_line1 }}{% if address.address_line2 %}, {{ address.address_line2 }}{% endif %}</span>
+                                        {% if address.landmark %}
+                                        <span class="block">{{ address.landmark }}</span>
+                                        {% endif %}
+                                        <span class="block">{{ address.city }}, {{ address.state }} — {{ address.pincode }}</span>
+                                        <span class="block">India</span>
+                                    </address>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Add A New Address Action -->
+                        <button
+                            type="button"
+                            id="open-add-address-btn"
+                            class="mt-4 w-full border-2 border-dashed border-[#D1D5DB] hover:border-auraBlack hover:bg-[#FDFBF7] rounded-xl py-3.5 px-4 text-center transition-all duration-200 flex items-center justify-center gap-2 group cursor-pointer focus:outline-none focus:ring-2 focus:ring-auraBlack/20"
+                            aria-haspopup="dialog"
+                            aria-controls="add-address-modal"
+                        >
+                            <svg class="w-4 h-4 text-auraMuted group-hover:text-auraBlack transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            <span class="text-[11px] font-semibold uppercase tracking-[0.2em] text-auraBlack">Add a New Address</span>
+                        </button>
+                    </form>
+                </section>
+
+                <!-- ── Section 02: Payment Method ── -->
+                <section aria-labelledby="section-payment-heading" class="bg-white border border-[#E5E5E5] rounded-xl p-6 sm:p-8 shadow-sm">
+                    <!-- Section Header -->
+                    <div class="flex items-center gap-3 pb-5 border-b border-[#F0F0F0]">
+                        <span class="w-6 h-6 rounded-full bg-auraBlack text-white flex items-center justify-center text-[11px] font-semibold flex-shrink-0" aria-hidden="true">
+                            02
+                        </span>
+                        <h2 id="section-payment-heading" class="text-xs sm:text-[13px] font-semibold uppercase tracking-[0.22em] text-auraBlack">
+                            Payment Method
+                        </h2>
+                    </div>
+
+                    <!-- Single Payment Option: Cash on Delivery -->
+                    <div class="mt-6 border border-[#E5D7C5] bg-[#FDFBF7] rounded-xl p-5 flex items-center gap-4">
+                        <!-- Selected Radio Indicator -->
+                        <span class="w-4 h-4 rounded-full border border-auraBlack bg-white flex items-center justify-center flex-shrink-0" aria-hidden="true">
+                            <span class="w-2 h-2 rounded-full bg-auraBlack"></span>
+                        </span>
+
+                        <!-- Cash Icon -->
+                        <div class="w-10 h-10 rounded-lg bg-white border border-[#E5E0D8] flex items-center justify-center text-auraBlack flex-shrink-0 shadow-sm" aria-hidden="true">
+                            <svg class="w-5 h-5 text-auraBlack" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6H2.25m0 0v8.25m0 0a60.1 60.1 0 0 0 15.797 2.101c.727.198 1.453-.342 1.453-1.096V14.25m-16.5-6H18m0 0a2.25 2.25 0 0 1 2.25 2.25v7.5a2.25 2.25 0 0 1-2.25 2.25M18 4.5v3.75m0 0h3.75M18 4.5a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 4.5v3.75" />
+                            </svg>
+                        </div>
+
+                        <!-- Option Description -->
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-auraBlack">Cash on Delivery</p>
+                            <p class="text-xs text-auraMuted mt-0.5">Pay when your order is delivered.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ── Section 03: Order Review ── -->
+                <section aria-labelledby="section-review-heading" class="bg-white border border-[#E5E5E5] rounded-xl p-6 sm:p-8 shadow-sm">
+                    <!-- Section Header -->
+                    <div class="flex items-center justify-between gap-4 pb-5 border-b border-[#F0F0F0]">
+                        <div class="flex items-center gap-3">
+                            <span class="w-6 h-6 rounded-full bg-auraBlack text-white flex items-center justify-center text-[11px] font-semibold flex-shrink-0" aria-hidden="true">
+                                03
+                            </span>
+                            <h2 id="section-review-heading" class="text-xs sm:text-[13px] font-semibold uppercase tracking-[0.22em] text-auraBlack">
+                                Order Review
+                            </h2>
+                        </div>
+                        <span class="text-[11px] font-semibold uppercase tracking-[0.2em] text-auraMuted flex-shrink-0">
+                            {{ total_quantity }} ITEM{{ total_quantity|pluralize }}
+                        </span>
+                    </div>
+
+                    <!-- Items List -->
+                    <ul class="mt-4 divide-y divide-[#F0F0F0]" aria-label="Review cart items">
+                        {% for row in line_rows %}
+                        {% with line=row.line %}
+                        <li class="py-5 first:pt-2 last:pb-2 flex items-center justify-between gap-4">
+                            <!-- Left: Product Image & Details -->
+                            <div class="flex items-center gap-4 min-w-0">
+                                <div class="w-16 h-20 sm:w-20 sm:h-24 rounded-lg overflow-hidden bg-[#F3EEE6] flex items-center justify-center flex-shrink-0 border border-auraBorder/50">
+                                    {% if row.image and row.image.image %}
+                                    <img
+                                        src="{{ row.image.image.url }}"
+                                        alt="{{ row.image.alt_text|default:line.product_name }}"
+                                        loading="lazy"
+                                        class="h-full w-full object-cover"
+                                    >
+                                    {% else %}
+                                    <span class="text-[9px] uppercase tracking-[0.16em] text-auraMuted font-medium">AURA</span>
+                                    {% endif %}
+                                </div>
+
+                                <div class="min-w-0">
+                                    <p class="text-[10px] font-semibold uppercase tracking-[0.22em] text-auraChampagneDark mb-1">
+                                        {{ line.brand_name }}
+                                    </p>
+                                    <h3 class="font-serif text-base sm:text-lg text-auraBlack leading-snug truncate">
+                                        {{ line.product_name }}
+                                    </h3>
+                                    <p class="text-xs text-auraMuted mt-1">
+                                        {% if row.concentration %}{{ row.concentration }} | {% endif %}{{ line.variant_size }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Right: Line Total & Quantity -->
+                            <div class="text-right flex-shrink-0">
+                                <p class="text-sm sm:text-base font-semibold text-auraBlack">
+                                    ₹{{ line.line_total }}
+                                </p>
+                                <p class="text-xs text-auraMuted mt-1">
+                                    Qty: {{ line.quantity }}
+                                </p>
+                            </div>
+                        </li>
+                        {% endwith %}
+                        {% endfor %}
+                    </ul>
+
+                    <!-- Navigation Link Back to Shopping Bag -->
+                    <div class="mt-6 pt-5 border-t border-[#F0F0F0]">
+                        <a href="{% url 'cart:cart_view' %}"
+                           class="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-auraMuted hover:text-auraBlack transition-colors">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
+                            </svg>
+                            Back to Shopping Bag
+                        </a>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- RIGHT COLUMN: Order Summary                               -->
+            <!-- ========================================================= -->
+            <aside aria-labelledby="order-summary-heading" class="lg:sticky lg:top-24 lg:self-start">
+                <div class="bg-white border border-[#E5E5E5] rounded-xl p-6 sm:p-8 shadow-sm">
+                    <!-- Heading -->
+                    <h2 id="order-summary-heading" class="text-xs sm:text-[13px] font-semibold uppercase tracking-[0.22em] text-auraBlack mb-3">
+                        Order Summary
+                    </h2>
+
+                    <!-- Horizontal Accent Mark -->
+                    <div class="w-8 h-0.5 bg-auraBlack mb-6" aria-hidden="true"></div>
+
+                    <!-- Breakdown Rows -->
+                    <dl class="space-y-4 text-sm">
+                        <div class="flex items-center justify-between gap-4">
+                            <dt class="text-auraMuted font-light">Subtotal ({{ total_quantity }} item{{ total_quantity|pluralize }})</dt>
+                            <dd class="text-auraBlack font-semibold">₹{{ review.subtotal }}</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4">
+                            <dt class="text-auraMuted font-light">Shipping</dt>
+                            <dd class="text-emerald-600 font-semibold uppercase tracking-wider text-xs">FREE</dd>
+                        </div>
+                    </dl>
+
+                    <!-- Divider -->
+                    <div class="border-t border-[#F0F0F0] my-6"></div>
+
+                    <!-- Total Row -->
+                    <div class="flex items-baseline justify-between gap-4">
+                        <span class="text-sm font-semibold uppercase tracking-[0.16em] text-auraBlack">Total</span>
+                        <span class="font-serif text-2xl sm:text-3xl font-semibold text-auraBlack">₹{{ review.total }}</span>
+                    </div>
+
+                    <!-- Place Order Form -->
+                    <form
+                        method="post"
+                        action="{% url 'checkout:place_order' %}"
+                        id="place-order-form"
+                        class="mt-7"
+                    >
+                        {% csrf_token %}
+                        <button
+                            type="submit"
+                            id="place-order-btn"
+                            class="w-full py-4 text-xs font-semibold uppercase tracking-[0.24em] bg-auraBlack text-white rounded-none transition-all flex items-center justify-center hover:bg-auraDark focus:outline-none focus:ring-2 focus:ring-auraBlack/30 disabled:cursor-not-allowed disabled:opacity-75"
+                        >
+                            PLACE ORDER
+                        </button>
+                    </form>
+
+                    <p class="mt-4 text-center text-[11px] leading-relaxed text-auraMuted">
+                        Payment will be collected in cash when your order is delivered. Your delivery address and bag selection are saved.
+                    </p>
+                </div>
+            </aside>
+
+        </div>
+
+        {% else %}
+        <!-- Bag Attention / Issue State -->
+        <div class="mx-auto max-w-lg border border-[#E3C9A8] bg-[#FDF6EA] p-8 sm:p-12 text-center rounded-xl shadow-sm">
+            <p class="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8A5A22] mb-2">Attention Required</p>
+            <h2 class="font-serif text-2xl text-auraBlack">Your bag needs attention</h2>
+            <p class="mx-auto mt-3 max-w-sm text-xs sm:text-sm text-[#8A5A22] leading-relaxed">
+                {{ cart_issue|default:address_issue|default:"We could not prepare your order review right now. Please return to your shopping bag." }}
+            </p>
+            <a href="{% url 'cart:cart_view' %}"
+               class="mt-7 inline-flex items-center justify-center bg-auraBlack px-8 py-3.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white hover:bg-auraDark transition-colors">
+                Review Shopping Bag
+            </a>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+
+<!-- ========================================================= -->
+<!-- ADD ADDRESS MODAL                                          -->
+<!-- ========================================================= -->
+<div
+    id="add-address-modal"
+    class="modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="add-address-title"
+>
+    <!-- Backdrop with blur -->
+    <div id="add-address-backdrop" class="absolute inset-0 bg-auraBlack/30 backdrop-blur-[2px]"></div>
+
+    <!-- Modal Panel -->
+    <div
+        id="add-address-panel"
+        class="relative w-full max-w-lg bg-white rounded-2xl shadow-aura-card p-7 sm:p-9 max-h-[90vh] overflow-y-auto"
+    >
+        <!-- Close Button -->
+        <button
+            type="button"
+            id="close-add-address-btn"
+            class="absolute top-5 right-5 w-8 h-8 flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors duration-150 rounded-full hover:bg-[#F3F3F3]"
+            aria-label="Close modal"
+        >
+            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+
+        <!-- Header -->
+        <div class="mb-7">
+            <h2 id="add-address-title" class="font-serif text-2xl text-auraBlack font-normal tracking-tight mb-2">Add New Address</h2>
+            <div class="w-8 h-px bg-auraChampagneDark"></div>
+        </div>
+
+        <!-- Form -->
+        <form id="add-address-form" novalidate>
+            {% csrf_token %}
+
+            <!-- Error Banner -->
+            <div id="add-addr-error" class="hidden mb-5 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 leading-relaxed"></div>
+
+            <!-- Full Name -->
+            <div class="mb-5">
+                <label for="add-full-name" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Full Name <span class="text-red-400">*</span></label>
+                <input
+                    type="text"
+                    id="add-full-name"
+                    name="full_name"
+                    placeholder="e.g. Mohammed Adnan"
+                    autocomplete="name"
+                    class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                >
+                <p id="add-address-error-full_name" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+            </div>
+
+            <!-- Phone Number -->
+            <div class="mb-5">
+                <label for="add-phone" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Phone Number <span class="text-red-400">*</span></label>
+                <input
+                    type="tel"
+                    id="add-phone"
+                    name="phone_number"
+                    placeholder="+91 98765 43210"
+                    autocomplete="tel"
+                    maxlength="15"
+                    class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                >
+                <p id="add-address-error-phone_number" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+            </div>
+
+            <!-- Address Line 1 -->
+            <div class="mb-5">
+                <label for="add-line1" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Address Line 1 <span class="text-red-400">*</span></label>
+                <input
+                    type="text"
+                    id="add-line1"
+                    name="address_line1"
+                    placeholder="House / Flat / Building No. and Street"
+                    autocomplete="address-line1"
+                    class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                >
+                <p id="add-address-error-address_line1" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+            </div>
+
+            <!-- Address Line 2 -->
+            <div class="mb-5">
+                <label for="add-line2" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Address Line 2 <span class="text-auraMuted/40">(Optional)</span></label>
+                <input
+                    type="text"
+                    id="add-line2"
+                    name="address_line2"
+                    placeholder="Apartment, Suite, Floor (optional)"
+                    autocomplete="address-line2"
+                    class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                >
+                <p id="add-address-error-address_line2" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+            </div>
+
+            <!-- Landmark -->
+            <div class="mb-5">
+                <label for="add-landmark" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Landmark <span class="text-auraMuted/40">(Optional)</span></label>
+                <input
+                    type="text"
+                    id="add-landmark"
+                    name="landmark"
+                    placeholder="Near Metro Station, Mall, etc."
+                    class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                >
+                <p id="add-address-error-landmark" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+            </div>
+
+            <!-- City + Pincode Row -->
+            <div class="grid grid-cols-2 gap-4 mb-5">
+                <div>
+                    <label for="add-city" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">City <span class="text-red-400">*</span></label>
+                    <input
+                        type="text"
+                        id="add-city"
+                        name="city"
+                        placeholder="Mumbai"
+                        autocomplete="address-level2"
+                        class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                    >
+                    <p id="add-address-error-city" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+                </div>
+                <div>
+                    <label for="add-pincode" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Pincode <span class="text-red-400">*</span></label>
+                    <input
+                        type="text"
+                        id="add-pincode"
+                        name="pincode"
+                        placeholder="400001"
+                        maxlength="10"
+                        class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                    >
+                    <p id="add-address-error-pincode" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+                </div>
+            </div>
+
+            <!-- State -->
+            <div class="mb-5">
+                <label for="add-state" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">State <span class="text-red-400">*</span></label>
+                <input
+                    type="text"
+                    id="add-state"
+                    name="state"
+                    placeholder="Maharashtra"
+                    autocomplete="address-level1"
+                    class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150"
+                >
+                <p id="add-address-error-state" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+            </div>
+
+            <!-- Address Type -->
+            <div class="mb-6">
+                <label class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-3">Address Type</label>
+                <div class="flex items-center gap-3">
+                    {% for val, label in address_type_choices %}
+                    <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                        <input type="radio" name="address_type" value="{{ val }}" class="sr-only" {% if val == 'HOME' %}checked{% endif %}>
+                        <span>{{ label }}</span>
+                    </label>
+                    {% empty %}
+                    <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                        <input type="radio" name="address_type" value="HOME" class="sr-only" checked>
+                        <span>Home</span>
+                    </label>
+                    <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                        <input type="radio" name="address_type" value="WORK" class="sr-only">
+                        <span>Work</span>
+                    </label>
+                    <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                        <input type="radio" name="address_type" value="OTHER" class="sr-only">
+                        <span>Other</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Set as Default -->
+            <div class="mb-6 flex items-center gap-3">
+                <input type="checkbox" id="add-is-default" name="is_default" class="w-4 h-4 text-auraBlack border-auraBorder rounded focus:ring-auraBlack/20 cursor-pointer transition-colors duration-150 accent-auraBlack">
+                <label for="add-is-default" class="text-xs text-auraMuted cursor-pointer font-medium tracking-wide">Set as default delivery address</label>
+            </div>
+
+            <!-- Submit -->
+            <button
+                type="submit"
+                id="add-address-submit-btn"
+                class="w-full py-4 text-[11px] uppercase tracking-[0.2em] font-semibold bg-auraBlack text-white hover:bg-[#2A2A2A] active:scale-[0.99] transition-all duration-200 rounded-lg flex items-center justify-center gap-2 cursor-pointer"
+            >
+                <span id="add-addr-btn-text">Save Address</span>
+                <svg id="add-addr-spinner" class="addr-spinner hidden w-4 h-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+            </button>
+        </form>
+    </div>
+</div>
+
+
+<!-- ========================================================= -->
+<!-- EDIT ADDRESS MODAL                                         -->
+<!-- ========================================================= -->
+<div
+    id="edit-address-modal"
+    class="modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="edit-address-title"
+>
+    <!-- Backdrop with blur -->
+    <div id="edit-address-backdrop" class="absolute inset-0 bg-auraBlack/30 backdrop-blur-[2px]"></div>
+
+    <!-- Modal Panel -->
+    <div
+        id="edit-address-panel"
+        class="relative w-full max-w-lg bg-white rounded-2xl shadow-aura-card p-7 sm:p-9 max-h-[90vh] overflow-y-auto"
+    >
+        <!-- Close Button -->
+        <button
+            type="button"
+            id="close-edit-address-btn"
+            class="absolute top-5 right-5 w-8 h-8 flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors duration-150 rounded-full hover:bg-[#F3F3F3]"
+            aria-label="Close modal"
+        >
+            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+
+        <!-- Header -->
+        <div class="mb-7">
+            <h2 id="edit-address-title" class="font-serif text-2xl text-auraBlack font-normal tracking-tight mb-2">Edit Address</h2>
+            <div class="w-8 h-px bg-auraChampagneDark"></div>
+        </div>
+
+        <!-- Form -->
+        <form id="edit-address-form" novalidate>
+            {% csrf_token %}
+            <input type="hidden" id="edit-address-id" name="address_id">
+
+            <!-- Error Banner -->
+            <div id="edit-addr-error" class="hidden mb-5 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 leading-relaxed"></div>
+
+            <!-- Full Name -->
+            <div class="mb-5">
+                <label for="edit-full-name" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Full Name <span class="text-red-400">*</span></label>
+                <input type="text" id="edit-full-name" name="full_name" placeholder="e.g. Mohammed Adnan" autocomplete="name" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                <p id="edit-address-error-full_name" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+            </div>
+
+            <!-- Phone Number -->
+            <div class="mb-5">
+                <label for="edit-phone" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Phone Number <span class="text-red-400">*</span></label>
+                <input type="tel" id="edit-phone" name="phone_number" placeholder="+91 98765 43210" autocomplete="tel" maxlength="15" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                <p id="edit-address-error-phone_number" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+            </div>
+
+            <!-- Address Line 1 -->
+            <div class="mb-5">
+                <label for="edit-line1" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Address Line 1 <span class="text-red-400">*</span></label>
+                <input type="text" id="edit-line1" name="address_line1" placeholder="House / Flat / Building No. and Street" autocomplete="address-line1" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                <p id="edit-address-error-address_line1" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+            </div>
+
+            <!-- Address Line 2 -->
+            <div class="mb-5">
+                <label for="edit-line2" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Address Line 2 <span class="text-auraMuted/40">(Optional)</span></label>
+                <input type="text" id="edit-line2" name="address_line2" placeholder="Apartment, Suite, Floor (optional)" autocomplete="address-line2" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                <p id="edit-address-error-address_line2" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+            </div>
+
+            <!-- Landmark -->
+            <div class="mb-5">
+                <label for="edit-landmark" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Landmark <span class="text-auraMuted/40">(Optional)</span></label>
+                <input type="text" id="edit-landmark" name="landmark" placeholder="Near Metro Station, Mall, etc." class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                <p id="edit-address-error-landmark" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+            </div>
+
+            <!-- City + Pincode Row -->
+            <div class="grid grid-cols-2 gap-4 mb-5">
+                <div>
+                    <label for="edit-city" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">City <span class="text-red-400">*</span></label>
+                    <input type="text" id="edit-city" name="city" placeholder="Mumbai" autocomplete="address-level2" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                    <p id="edit-address-error-city" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+                </div>
+                <div>
+                    <label for="edit-pincode" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">Pincode <span class="text-red-400">*</span></label>
+                    <input type="text" id="edit-pincode" name="pincode" placeholder="400001" maxlength="10" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                    <p id="edit-address-error-pincode" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+                </div>
+            </div>
+
+            <!-- State -->
+            <div class="mb-5">
+                <label for="edit-state" class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-2">State <span class="text-red-400">*</span></label>
+                <input type="text" id="edit-state" name="state" placeholder="Maharashtra" autocomplete="address-level1" class="addr-input w-full border border-auraBorder bg-white px-4 py-3.5 text-sm text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150">
+                <p id="edit-address-error-state" class="field-error-text text-red-500 text-xs mt-1 hidden"></p>
+            </div>
+
+            <!-- Address Type -->
+            <div class="mb-6">
+                <label class="block text-[10px] uppercase tracking-[0.16em] text-auraMuted font-semibold mb-3">Address Type</label>
+                <div class="flex items-center gap-3">
+                    <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                        <input type="radio" name="address_type" value="HOME" class="sr-only" id="edit-type-home">
+                        <span>Home</span>
+                    </label>
+                    <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                        <input type="radio" name="address_type" value="WORK" class="sr-only" id="edit-type-work">
+                        <span>Work</span>
+                    </label>
+                    <label class="addr-type-radio flex items-center gap-2 px-4 py-2.5 border border-auraBorder rounded-lg cursor-pointer text-xs tracking-[0.1em] uppercase font-medium text-auraMuted hover:border-auraBlack hover:text-auraBlack transition-all duration-150 has-[:checked]:border-auraBlack has-[:checked]:text-auraBlack has-[:checked]:bg-[#F4F1EC]">
+                        <input type="radio" name="address_type" value="OTHER" class="sr-only" id="edit-type-other">
+                        <span>Other</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Set as Default -->
+            <div class="mb-6 flex items-center gap-3">
+                <input type="checkbox" id="edit-is-default" name="is_default" class="w-4 h-4 text-auraBlack border-auraBorder rounded focus:ring-auraBlack/20 cursor-pointer transition-colors duration-150 accent-auraBlack">
+                <label for="edit-is-default" class="text-xs text-auraMuted cursor-pointer font-medium tracking-wide">Set as default delivery address</label>
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" id="edit-address-submit-btn" class="w-full py-4 text-[11px] uppercase tracking-[0.2em] font-semibold bg-auraBlack text-white hover:bg-[#2A2A2A] active:scale-[0.99] transition-all duration-200 rounded-lg flex items-center justify-center gap-2 cursor-pointer">
+                <span id="edit-addr-btn-text">Save Changes</span>
+                <svg id="edit-addr-spinner" class="addr-spinner hidden w-4 h-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+
+    // ─── CSRF Token ───────────────────────────────────────────────────────────
+    function getCookie(name) {
+        var match = document.cookie.split(';').map(function (c) { return c.trim(); }).find(function (c) { return c.startsWith(name + '='); });
+        return match ? decodeURIComponent(match.split('=')[1]) : null;
+    }
+    var CSRF = getCookie('csrftoken');
+
+    // ─── Modal Open / Close Helpers ───────────────────────────────────────────
+    function openModal(modalId) {
+        var el = document.getElementById(modalId);
+        if (!el) return;
+        el.classList.remove('modal-hidden');
+        el.classList.add('modal-visible');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(modalId) {
+        var el = document.getElementById(modalId);
+        if (!el) return;
+        el.classList.remove('modal-visible');
+        el.classList.add('modal-hidden');
+        document.body.style.overflow = '';
+    }
+
+    // Close on backdrop click
+    ['add-address-backdrop', 'edit-address-backdrop'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('click', function () {
+                closeModal('add-address-modal');
+                closeModal('edit-address-modal');
+            });
+        }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeModal('add-address-modal');
+            closeModal('edit-address-modal');
+        }
+    });
+
+    // ─── Inline Form Error Helpers ────────────────────────────────────────────
+    function clearInlineErrors(form) {
+        form.querySelectorAll('.field-error-text').forEach(function (el) {
+            el.textContent = '';
+            el.classList.add('hidden');
+        });
+        form.querySelectorAll('.addr-input').forEach(function (input) {
+            input.classList.remove('border-red-500');
+        });
+    }
+
+    function displayInlineErrors(form, errors) {
+        for (var field in errors) {
+            if (Object.prototype.hasOwnProperty.call(errors, field)) {
+                var message = errors[field];
+                var input = form.querySelector('[name="' + field + '"]');
+                if (input) {
+                    input.classList.add('border-red-500');
+                    var errorTag = form.querySelector('#' + form.id.replace('-form', '') + '-error-' + field);
+                    if (errorTag) {
+                        errorTag.textContent = message;
+                        errorTag.classList.remove('hidden');
+                    }
+                }
+            }
+        }
+    }
+
+    // Clear inline errors as customer types
+    document.querySelectorAll('.addr-input').forEach(function (input) {
+        input.addEventListener('input', function () {
+            this.classList.remove('border-red-500');
+            var errorTag = this.nextElementSibling;
+            if (errorTag && errorTag.classList.contains('field-error-text')) {
+                errorTag.textContent = '';
+                errorTag.classList.add('hidden');
+            }
+        });
+    });
+
+    // ─── Place Order Submission Guard ─────────────────────────────────────────
+    // UX-only guard against double clicks. Server-side idempotency remains the
+    // authoritative protection and allows retries to recover the same order.
+    var placeOrderForm = document.getElementById('place-order-form');
+    if (placeOrderForm) {
+        placeOrderForm.addEventListener('submit', function () {
+            var button = document.getElementById('place-order-btn');
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'PLACING ORDER…';
+            }
+        });
+    }
+
+    // ─── Address Selection Controller ─────────────────────────────────────────
+    var addressForm = document.getElementById('checkout-address-form');
+    if (addressForm) {
+        addressForm.querySelectorAll('input[name="address_id"]').forEach(function (input) {
+            input.addEventListener('change', function () {
+                if (addressForm.requestSubmit) {
+                    addressForm.requestSubmit();
+                } else {
+                    addressForm.submit();
+                }
+            });
+        });
+    }
+
+    // ─── Add Address Modal Triggers ───────────────────────────────────────────
+    var openAddBtn = document.getElementById('open-add-address-btn');
+    if (openAddBtn) {
+        openAddBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var addForm = document.getElementById('add-address-form');
+            if (addForm) {
+                addForm.reset();
+                clearInlineErrors(addForm);
+            }
+            var errorBanner = document.getElementById('add-addr-error');
+            if (errorBanner) errorBanner.classList.add('hidden');
+            openModal('add-address-modal');
+        });
+    }
+    document.getElementById('close-add-address-btn')?.addEventListener('click', function () {
+        closeModal('add-address-modal');
+    });
+
+    // ─── Edit Address Modal Triggers ──────────────────────────────────────────
+    document.querySelectorAll('.edit-address-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation(); // Crucial: prevents triggering the parent card / radio selection
+
+            var editForm = document.getElementById('edit-address-form');
+            if (!editForm) return;
+
+            clearInlineErrors(editForm);
+            var errorBanner = document.getElementById('edit-addr-error');
+            if (errorBanner) errorBanner.classList.add('hidden');
+
+            // Populate form with address attributes from the button dataset
+            document.getElementById('edit-address-id').value = btn.dataset.addressId || '';
+            document.getElementById('edit-full-name').value  = btn.dataset.fullName || '';
+            document.getElementById('edit-phone').value      = btn.dataset.phoneNumber || '';
+            document.getElementById('edit-line1').value      = btn.dataset.addressLine1 || '';
+            document.getElementById('edit-line2').value      = btn.dataset.addressLine2 || '';
+            document.getElementById('edit-landmark').value   = btn.dataset.landmark || '';
+            document.getElementById('edit-city').value       = btn.dataset.city || '';
+            document.getElementById('edit-state').value      = btn.dataset.state || '';
+            document.getElementById('edit-pincode').value    = btn.dataset.pincode || '';
+
+            // Set address type radio
+            var addressType = btn.dataset.addressType;
+            if (addressType) {
+                var typeInput = editForm.querySelector('input[name="address_type"][value="' + addressType + '"]');
+                if (typeInput) typeInput.checked = true;
+            }
+
+            // Set default checkbox
+            var isDefault = btn.dataset.isDefault === 'true';
+            document.getElementById('edit-is-default').checked = isDefault;
+
+            // Store the dynamic edit URL
+            editForm.dataset.editUrl = btn.dataset.editUrl;
+
+            openModal('edit-address-modal');
+        });
+    });
+    document.getElementById('close-edit-address-btn')?.addEventListener('click', function () {
+        closeModal('edit-address-modal');
+    });
+
+    // ─── Add Address Submit ───────────────────────────────────────────────────
+    document.getElementById('add-address-form')?.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var form = this;
+        var errorBanner = document.getElementById('add-addr-error');
+        var btnText = document.getElementById('add-addr-btn-text');
+        var spinner = document.getElementById('add-addr-spinner');
+        var submitBtn = document.getElementById('add-address-submit-btn');
+
+        clearInlineErrors(form);
+        errorBanner.classList.add('hidden');
+        btnText.textContent = 'Saving…';
+        spinner.classList.remove('hidden');
+        submitBtn.disabled = true;
+
+        var formData = new FormData(form);
+
+        fetch('{% url "add_address" %}', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': CSRF,
+            },
+            body: formData,
+        })
+        .then(function (r) {
+            return r.json().then(function (data) {
+                return { status: r.status, ok: r.ok, data: data };
+            });
+        })
+        .then(function (res) {
+            if (res.ok && res.data.success) {
+                closeModal('add-address-modal');
+                // Automatically select the newly created address and re-run review_checkout
+                window.location.href = '{% url "checkout:checkout_review" %}?address=' + res.data.id;
+            } else {
+                if (res.data.errors) {
+                    displayInlineErrors(form, res.data.errors);
+                } else {
+                    errorBanner.textContent = res.data.message || 'Please check your details and try again.';
+                    errorBanner.classList.remove('hidden');
+                }
+            }
+        })
+        .catch(function () {
+            errorBanner.textContent = 'Something went wrong. Please try again.';
+            errorBanner.classList.remove('hidden');
+        })
+        .finally(function () {
+            btnText.textContent = 'Save Address';
+            spinner.classList.add('hidden');
+            submitBtn.disabled = false;
+        });
+    });
+
+    // ─── Edit Address Submit ──────────────────────────────────────────────────
+    document.getElementById('edit-address-form')?.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var form = this;
+        var addressId = document.getElementById('edit-address-id').value;
+        var errorBanner = document.getElementById('edit-addr-error');
+        var btnText = document.getElementById('edit-addr-btn-text');
+        var spinner = document.getElementById('edit-addr-spinner');
+        var submitBtn = document.getElementById('edit-address-submit-btn');
+
+        clearInlineErrors(form);
+        errorBanner.classList.add('hidden');
+        btnText.textContent = 'Saving…';
+        spinner.classList.remove('hidden');
+        submitBtn.disabled = true;
+
+        var formData = new FormData(form);
+        var editUrl = form.dataset.editUrl;
+
+        // Current selected address id in checkout
+        var currentSelectedInput = document.querySelector('#checkout-address-form input[name="address_id"]:checked');
+        var currentSelectedId = currentSelectedInput ? currentSelectedInput.value : addressId;
+
+        fetch(editUrl, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': CSRF,
+            },
+            body: formData,
+        })
+        .then(function (r) {
+            return r.json().then(function (data) {
+                return { status: r.status, ok: r.ok, data: data };
+            });
+        })
+        .then(function (res) {
+            if (res.ok && res.data.success) {
+                closeModal('edit-address-modal');
+                // Refresh checkout address cards and re-run review_checkout with preserved selection
+                window.location.href = '{% url "checkout:checkout_review" %}?address=' + currentSelectedId;
+            } else {
+                if (res.data.errors) {
+                    displayInlineErrors(form, res.data.errors);
+                } else {
+                    errorBanner.textContent = res.data.message || 'Please check your details and try again.';
+                    errorBanner.classList.remove('hidden');
+                }
+            }
+        })
+        .catch(function () {
+            errorBanner.textContent = 'Something went wrong. Please try again.';
+            errorBanner.classList.remove('hidden');
+        })
+        .finally(function () {
+            btnText.textContent = 'Save Changes';
+            spinner.classList.add('hidden');
+            submitBtn.disabled = false;
+        });
+    });
+
+})();
+</script>
+{% endblock %}

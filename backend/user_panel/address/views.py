@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from http import HTTPStatus
 from django.contrib.auth.decorators import login_required
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
 from .models import Address
 
@@ -21,9 +22,19 @@ def address_book(request):
         is_deleted=False,
     ).order_by("-is_default", "-created_at")
 
+    raw_next = request.GET.get("next", "")
+    next_url = ""
+    if raw_next and url_has_allowed_host_and_scheme(
+        raw_next,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        next_url = raw_next
+
     context = {
         "addresses" : addresses,
         "active_nav" : "addresses",
+        "next_url" : next_url,
     }
 
     return render(request,"address/address_book.html",context)

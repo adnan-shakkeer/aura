@@ -70,6 +70,8 @@ INSTALLED_APPS = [
     "user_panel.brands",
     "user_panel.cart",
     "user_panel.wishlist",
+    "user_panel.orders",
+    "user_panel.checkout",
 ]
 
 MIDDLEWARE = [
