@@ -10,7 +10,7 @@ class ConsoleAndSmtpEmailBackend(SmtpEmailBackend):
     def send_messages(self, email_messages):
         for message in email_messages:
             print("\n" + "="*50)
-            print("✉️  EMAIL INTERCEPTED (ConsoleAndSmtpEmailBackend)")
+            print("EMAIL INTERCEPTED (ConsoleAndSmtpEmailBackend)")
             print("="*50)
             print(f"To:      {', '.join(message.to)}")
             print(f"Subject: {message.subject}")

@@ -41,8 +41,11 @@ AURA | Sign In
 <!-- ========================================================= -->
 <!-- LOGIN FORM -->
 <!-- ========================================================= -->
-<form method="POST" action="" novalidate class="space-y-5">
+<form method="POST" action="{% url 'user_auth:login' %}" novalidate class="space-y-5">
     {% csrf_token %}
+    {% if next_url %}
+    <input type="hidden" name="next" value="{{ next_url }}">
+    {% endif %}
 
     <!-- Email Field -->
     <div>
@@ -119,7 +122,7 @@ AURA | Sign In
 <!-- ========================================================= -->
 <!-- GOOGLE AUTHENTICATION BUTTON -->
 <!-- ========================================================= -->
-<form method="POST" action="{% provider_login_url 'google' %}">
+<form method="POST" action="{% if next_url %}{% provider_login_url 'google' next=next_url %}{% else %}{% provider_login_url 'google' %}{% endif %}">
     {% csrf_token %}
     <button type="submit"
         class="w-full h-12 flex items-center justify-center gap-3 bg-white hover:bg-auraCream border border-auraBorder hover:border-auraChampagneDark rounded-lg text-xs uppercase tracking-[0.14em] font-medium text-auraBlack transition-all duration-200 shadow-sm">

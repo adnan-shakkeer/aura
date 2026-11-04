@@ -75,7 +75,7 @@
                 <a href="{% url 'profile' %}" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'profile' or not active_nav %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
                     <span>My Profile</span>
                 </a>
-                <a href="#orders" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'orders' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
+                <a href="{% url 'orders:my_orders' %}" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'orders' or request.resolver_match.url_name == 'my_orders' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
                     <span>My Orders</span>
                 </a>
                 <a href="#addresses" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'addresses' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">

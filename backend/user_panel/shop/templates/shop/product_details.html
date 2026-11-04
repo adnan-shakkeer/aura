@@ -199,12 +199,26 @@
 
                 <!-- Actions -->
                 <div class="flex flex-col gap-4">
+                    <form method="post" action="{% url 'checkout:buy_now_start' %}" class="w-full">
+                        {% csrf_token %}
+                        <input type="hidden" name="variant_id" value="{{ selected_variant.id }}">
+                        <input type="hidden" name="product_slug" value="{{ product.slug }}">
+                        <button
+                            type="submit"
+                            id="buy-now-btn"
+                            class="w-full bg-auraBlack text-auraIvory uppercase tracking-[0.24em] text-xs font-semibold transition-all duration-300 {% if is_unavailable or not selected_variant.stock %}opacity-50 cursor-not-allowed{% else %}hover:bg-black hover:shadow-aura-button active:scale-[0.99]{% endif %}"
+                            style="padding-top: 1.35rem; padding-bottom: 1.35rem;"
+                            {% if is_unavailable or not selected_variant.stock %}disabled{% endif %}
+                        >
+                            Buy Now
+                        </button>
+                    </form>
                     <button
                         type="button"
                         id="add-to-bag-btn"
                         data-variant-id="{{ selected_variant.id }}"
                         data-add-url="{% url 'cart:add_to_cart' %}"
-                        class="w-full bg-auraBlack text-auraIvory uppercase tracking-[0.22em] text-[11px] font-semibold py-4.5 transition-all duration-300 {% if is_unavailable or not selected_variant.stock %}opacity-50 cursor-not-allowed{% else %}hover:bg-black hover:shadow-aura-button active:scale-[0.99]{% endif %}" style="padding-top: 1.125rem; padding-bottom: 1.125rem;" {% if is_unavailable or not selected_variant.stock %}disabled{% endif %}>
+                        class="w-full bg-transparent text-auraBlack border border-auraBlack uppercase tracking-[0.22em] text-[11px] font-semibold py-4.5 transition-all duration-300 active:scale-[0.99] {% if is_unavailable or not selected_variant.stock %}opacity-50 cursor-not-allowed{% else %}hover:bg-auraBlack hover:text-auraIvory{% endif %}" style="padding-top: 1.125rem; padding-bottom: 1.125rem;" {% if is_unavailable or not selected_variant.stock %}disabled{% endif %}>
                         <span id="add-to-bag-label">{% if not is_unavailable and not selected_variant.stock %}Unavailable{% else %}Add to Bag{% endif %}</span>
                     </button>
                     <button
@@ -217,7 +231,7 @@
                         data-wishlisted="{% if is_wishlisted %}true{% else %}false{% endif %}"
                         aria-label="{% if is_wishlisted %}Remove {{ product.name }} from wishlist{% else %}Add {{ product.name }} to wishlist{% endif %}"
                         aria-pressed="{% if is_wishlisted %}true{% else %}false{% endif %}"
-                        class="w-full bg-transparent text-auraBlack border border-auraBlack uppercase tracking-[0.22em] text-[11px] font-semibold py-4.5 transition-all duration-300 active:scale-[0.99] {% if is_unavailable %}opacity-50 cursor-not-allowed{% else %}hover:bg-auraBlack hover:text-auraIvory{% endif %}" style="padding-top: 1.125rem; padding-bottom: 1.125rem;" {% if is_unavailable %}disabled{% endif %}>
+                        class="w-full bg-transparent text-auraMuted border border-auraBorder uppercase tracking-[0.22em] text-[11px] font-semibold py-4.5 transition-all duration-300 active:scale-[0.99] {% if is_unavailable %}opacity-50 cursor-not-allowed{% else %}hover:border-auraBlack hover:text-auraBlack{% endif %}" style="padding-top: 1.125rem; padding-bottom: 1.125rem;" {% if is_unavailable %}disabled{% endif %}>
                         <span id="add-to-wishlist-label">{% if is_wishlisted %}In Wishlist{% else %}Add to Wishlist{% endif %}</span>
                     </button>
                 </div>

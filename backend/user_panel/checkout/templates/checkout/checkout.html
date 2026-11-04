@@ -69,7 +69,11 @@
             <ol class="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.2em] text-auraMuted">
                 <li><a href="{% url 'home' %}" class="transition-colors hover:text-auraBlack">Home</a></li>
                 <li aria-hidden="true" class="text-auraBorder">/</li>
+                {% if checkout_mode == 'direct' %}
+                <li><a href="{{ back_url }}" class="transition-colors hover:text-auraBlack">{{ back_label }}</a></li>
+                {% else %}
                 <li><a href="{% url 'cart:cart_view' %}" class="transition-colors hover:text-auraBlack">Shopping Bag</a></li>
+                {% endif %}
                 <li aria-hidden="true" class="text-auraBorder">/</li>
                 <li class="text-auraBlack" aria-current="page">Checkout</li>
             </ol>
@@ -87,10 +91,16 @@
 
         <!-- Page Heading -->
         <header class="mb-8 sm:mb-10">
-            <p class="text-[11px] font-medium uppercase tracking-[0.28em] text-auraChampagneDark mb-2">Secure Checkout</p>
+            <p class="text-[11px] font-medium uppercase tracking-[0.28em] text-auraChampagneDark mb-2">
+                {% if checkout_mode == 'direct' %}Buy Now Checkout{% else %}Secure Checkout{% endif %}
+            </p>
             <h1 class="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal text-auraBlack tracking-tight">Checkout</h1>
             <p class="mt-2 text-xs sm:text-sm text-auraMuted leading-relaxed">
+                {% if checkout_mode == 'direct' %}
+                Review this Buy Now item, your delivery address and order details before placing your order. Your shopping bag stays unchanged.
+                {% else %}
                 Review your delivery address, payment method and order details before placing your order.
+                {% endif %}
             </p>
         </header>
 
@@ -162,7 +172,7 @@
                     {% endif %}
 
                     <!-- Address Cards -->
-                    <form method="post" action="{% url 'checkout:checkout_review' %}" id="checkout-address-form" class="mt-6">
+                    <form method="post" action="{{ address_form_action }}" id="checkout-address-form" class="mt-6">
                         {% csrf_token %}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {% for address in addresses %}
@@ -362,14 +372,14 @@
                         {% endfor %}
                     </ul>
 
-                    <!-- Navigation Link Back to Shopping Bag -->
+                    <!-- Navigation Link Back to Source -->
                     <div class="mt-6 pt-5 border-t border-[#F0F0F0]">
-                        <a href="{% url 'cart:cart_view' %}"
+                        <a href="{{ back_url }}"
                            class="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-auraMuted hover:text-auraBlack transition-colors">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
                             </svg>
-                            Back to Shopping Bag
+                            {{ back_label }}
                         </a>
                     </div>
                 </section>
@@ -413,7 +423,7 @@
                     <!-- Place Order Form -->
                     <form
                         method="post"
-                        action="{% url 'checkout:place_order' %}"
+                        action="{{ place_order_action }}"
                         id="place-order-form"
                         class="mt-7"
                     >
@@ -428,7 +438,12 @@
                     </form>
 
                     <p class="mt-4 text-center text-[11px] leading-relaxed text-auraMuted">
-                        Payment will be collected in cash when your order is delivered. Your delivery address and bag selection are saved.
+                        Payment will be collected in cash when your order is delivered.
+                        {% if checkout_mode == 'direct' %}
+                        Your Buy Now selection is checked out separately and your shopping bag is not changed.
+                        {% else %}
+                        Your delivery address and bag selection are saved.
+                        {% endif %}
                     </p>
                 </div>
             </aside>
@@ -439,13 +454,15 @@
         <!-- Bag Attention / Issue State -->
         <div class="mx-auto max-w-lg border border-[#E3C9A8] bg-[#FDF6EA] p-8 sm:p-12 text-center rounded-xl shadow-sm">
             <p class="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8A5A22] mb-2">Attention Required</p>
-            <h2 class="font-serif text-2xl text-auraBlack">Your bag needs attention</h2>
+            <h2 class="font-serif text-2xl text-auraBlack">
+                {% if checkout_mode == 'direct' %}Buy Now needs attention{% else %}Your bag needs attention{% endif %}
+            </h2>
             <p class="mx-auto mt-3 max-w-sm text-xs sm:text-sm text-[#8A5A22] leading-relaxed">
-                {{ cart_issue|default:address_issue|default:"We could not prepare your order review right now. Please return to your shopping bag." }}
+                {{ cart_issue|default:address_issue|default:"We could not prepare your order review right now. Please try again." }}
             </p>
-            <a href="{% url 'cart:cart_view' %}"
+            <a href="{{ issue_url }}"
                class="mt-7 inline-flex items-center justify-center bg-auraBlack px-8 py-3.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white hover:bg-auraDark transition-colors">
-                Review Shopping Bag
+                {{ issue_label }}
             </a>
         </div>
         {% endif %}
@@ -1007,7 +1024,7 @@
             if (res.ok && res.data.success) {
                 closeModal('add-address-modal');
                 // Automatically select the newly created address and re-run review_checkout
-                window.location.href = '{% url "checkout:checkout_review" %}?address=' + res.data.id;
+                window.location.href = '{{ checkout_review_url }}?address=' + res.data.id;
             } else {
                 if (res.data.errors) {
                     displayInlineErrors(form, res.data.errors);
@@ -1068,7 +1085,7 @@
             if (res.ok && res.data.success) {
                 closeModal('edit-address-modal');
                 // Refresh checkout address cards and re-run review_checkout with preserved selection
-                window.location.href = '{% url "checkout:checkout_review" %}?address=' + currentSelectedId;
+                window.location.href = '{{ checkout_review_url }}?address=' + currentSelectedId;
             } else {
                 if (res.data.errors) {
                     displayInlineErrors(form, res.data.errors);

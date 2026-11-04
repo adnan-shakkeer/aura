@@ -8,7 +8,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -31,6 +31,7 @@
                     },
                     fontFamily: {
                         serif: ['"Cormorant Garamond"', 'serif'],
+                        display: ['"Playfair Display"', 'serif'],
                         sans: ['"Plus Jakarta Sans"', 'sans-serif'],
                     },
                 }
@@ -95,11 +96,20 @@
             </a>
 
             <!-- ORDERS -->
-            <a href="#" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'orders' %}bg-white/10 border-r-2 border-white text-white{% else %}text-[#8A8F98] hover:text-white hover:bg-white/5{% endif %}">
+            <a href="{% url 'admin_orders:list' %}" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'admin_orders' %}bg-white/10 border-r-2 border-white text-white{% else %}text-[#8A8F98] hover:text-white hover:bg-white/5{% endif %}">
                 <span class="absolute inset-0 w-full h-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                 <div class="flex items-center gap-3 relative z-10">
-                    <i data-lucide="shopping-bag" class="w-4 h-4 {% if request.resolver_match.app_name != 'orders' %}group-hover:text-white transition-colors duration-300{% endif %}"></i>
-                    <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'orders' %}font-semibold{% else %}font-medium{% endif %}">Orders</span>
+                    <i data-lucide="shopping-bag" class="w-4 h-4 {% if request.resolver_match.app_name != 'admin_orders' %}group-hover:text-white transition-colors duration-300{% endif %}"></i>
+                    <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'admin_orders' %}font-semibold{% else %}font-medium{% endif %}">Orders</span>
+                </div>
+            </a>
+
+            <!-- RETURNS -->
+            <a href="{% url 'admin_returns:list' %}" class="flex items-center justify-between py-3 px-4 rounded-sm transition-all duration-300 group relative overflow-hidden {% if request.resolver_match.app_name == 'admin_returns' %}bg-white/10 border-r-2 border-white text-white{% else %}text-[#8A8F98] hover:text-white hover:bg-white/5{% endif %}">
+                <span class="absolute inset-0 w-full h-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                <div class="flex items-center gap-3 relative z-10">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4 {% if request.resolver_match.app_name != 'admin_returns' %}group-hover:text-white transition-colors duration-300{% endif %}"></i>
+                    <span class="text-xs uppercase tracking-widest {% if request.resolver_match.app_name == 'admin_returns' %}font-semibold{% else %}font-medium{% endif %}">Returns</span>
                 </div>
             </a>
 
