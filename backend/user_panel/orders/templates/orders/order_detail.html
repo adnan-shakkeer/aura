@@ -1,0 +1,1008 @@
+{% extends "user_panel/base.html" %}
+{% load static %}
+
+{% block title %}Order #{{ order.order_number }} | AURA{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Status Badges */
+    .order-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+    }
+
+    .order-status-badge--pending {
+        background: #F6F1E8;
+        color: #8C7355;
+        border: 1px solid #EADBCE;
+    }
+
+    .order-status-badge--shipped {
+        background: #EBF3F7;
+        color: #2F6F8E;
+        border: 1px solid #D1E4EE;
+    }
+
+    .order-status-badge--out_for_delivery {
+        background: #FBF4E6;
+        color: #8A5A22;
+        border: 1px solid #F0DEBF;
+    }
+
+    .order-status-badge--delivered,
+    .order-status-badge--return_approved {
+        background: #ECF8F1;
+        color: #247A4A;
+        border: 1px solid #C8ECD6;
+    }
+
+    .order-status-badge--cancelled,
+    .order-status-badge--return_rejected {
+        background: #FDF0F0;
+        color: #B3261E;
+        border: 1px solid #F8D2D2;
+    }
+
+    .order-status-badge--return_requested {
+        background: #FFF7EC;
+        color: #B25E00;
+        border: 1px solid #FFE4C2;
+    }
+
+    /* Modal Backdrop and Panel Transitions */
+    .aura-modal-backdrop {
+        transition: opacity 0.25s ease;
+    }
+
+    .aura-modal-panel {
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+    }
+
+    .aura-modal-hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .aura-modal-hidden .aura-modal-panel {
+        transform: translateY(16px) scale(0.98);
+        opacity: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-auraIvory min-h-screen text-auraBlack py-8 sm:py-12">
+
+    <!-- Toast Notification Container for Messages -->
+    {% if messages %}
+    <div id="aura-toast-container" class="fixed top-24 right-6 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+        {% for message in messages %}
+        {% if 'admin' not in message.tags %}
+        <div class="aura-toast flex items-start gap-3 p-4 rounded-xl bg-white border border-auraBorder border-l-4 border-l-auraChampagneDark shadow-aura-card pointer-events-auto transition-all duration-300">
+            <svg class="w-5 h-5 text-auraChampagneDark flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+            <div class="flex-1 text-xs font-medium text-auraBlack tracking-wide leading-relaxed">
+                {{ message }}
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" class="text-auraMuted hover:text-auraBlack text-xs p-1" aria-label="Close notification">
+                ✕
+            </button>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <!-- ========================================================= -->
+        <!-- NAVIGATION BREADCRUMB & ORDER HEADER -->
+        <!-- ========================================================= -->
+        <div class="mb-6 sm:mb-8">
+            <!-- Back to Orders Link -->
+            <div class="mb-4">
+                <a
+                    href="{% url 'orders:my_orders' %}"
+                    class="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-auraMuted transition-colors hover:text-auraBlack group"
+                >
+                    <svg class="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+                    </svg>
+                    Back to My Orders
+                </a>
+            </div>
+
+            <!-- Meta Badges Row (Inspired by VERSE header badges) -->
+            <div class="flex flex-wrap items-center gap-2.5 mb-3">
+                <!-- Date Pill -->
+                <span class="inline-flex items-center gap-1.5 rounded-full border border-auraBorder bg-white px-3 py-1 text-[10px] font-semibold tracking-[0.14em] uppercase text-auraMuted shadow-sm">
+                    <svg class="w-3.5 h-3.5 text-auraMuted/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6.75 3v2.25M17.25 3v2.253 18.75m3-18.75H3.75a2.25 2.25 0 0 0-2.25 2.25v13.5a2.25 2.25 0 0 0 2.25 2.25h16.5a2.25 2.25 0 0 0 2.25-2.25V7.5a2.25 2.25 0 0 0-2.25-2.25Z" />
+                    </svg>
+                    {{ order.created_at|date:"F j, Y" }}
+                </span>
+
+                <!-- Payment Method Pill -->
+                <span class="inline-flex items-center gap-1.5 rounded-full border border-auraBorder bg-white px-3 py-1 text-[10px] font-semibold tracking-[0.14em] uppercase text-auraMuted shadow-sm">
+                    <svg class="w-3.5 h-3.5 text-auraMuted/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+                    </svg>
+                    {{ order.get_payment_method_display }}
+                </span>
+
+                <!-- Order Status Pill -->
+                <span class="order-status-badge order-status-badge--{{ order.status|lower }} shadow-sm">
+                    <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
+                    {{ order.get_status_display }}
+                </span>
+
+                <!-- Payment Status Pill -->
+                <span class="inline-flex items-center gap-1.5 rounded-full border border-auraBorder bg-white px-3 py-1 text-[10px] font-semibold tracking-[0.14em] uppercase {% if order.payment_status == 'PAID' %}text-[#247A4A]{% else %}text-auraChampagneDark{% endif %} shadow-sm">
+                    <span class="h-1.5 w-1.5 rounded-full {% if order.payment_status == 'PAID' %}bg-[#247A4A]{% else %}bg-auraChampagneDark{% endif %}" aria-hidden="true"></span>
+                    {{ order.get_payment_status_display }}
+                </span>
+            </div>
+
+            <!-- Order Number Title -->
+            <h1 class="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal text-auraBlack tracking-tight">
+                ORDER #{{ order.order_number }}
+            </h1>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- FULFILMENT TIMELINE CARD (Full-Width, Inspired by VERSE)  -->
+        <!-- ========================================================= -->
+        <section class="rounded-2xl border border-auraBorder bg-white p-6 sm:p-10 shadow-aura-subtle mb-8" aria-label="Order Tracking Timeline">
+            <div class="relative">
+                <!-- Timeline milestones row -->
+                <div class="grid grid-cols-{{ timeline_steps|length }} items-center relative">
+                    <!-- Background Connector Line spanning between centers of first and last milestone -->
+                    <div class="absolute top-5 left-[calc(100%/{{ timeline_steps|length }}/2)] right-[calc(100%/{{ timeline_steps|length }}/2)] h-[2px] bg-auraBorder/80 -translate-y-1/2 z-0" aria-hidden="true"></div>
+
+                    {% for step in timeline_steps %}
+                    <div class="relative z-10 flex flex-col items-center text-center">
+                        <!-- Circle Indicator -->
+                        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center font-semibold text-xs transition-all duration-300
+                            {% if step.key == 'cancelled' %}
+                                bg-[#FDF0F0] text-[#B3261E] ring-4 ring-[#FDF0F0] border border-red-200
+                            {% elif step.is_completed %}
+                                bg-[#247A4A] text-white ring-4 ring-[#ECF8F1]
+                            {% elif step.is_current %}
+                                bg-auraBlack text-white ring-4 ring-auraBorder
+                            {% else %}
+                                border-2 border-auraBorder bg-white text-auraMuted/70
+                            {% endif %}
+                        ">
+                            {% if step.key == 'cancelled' %}
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                </svg>
+                            {% elif step.is_completed %}
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                            {% else %}
+                                <span class="h-2 w-2 rounded-full bg-auraBorder"></span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Milestone Label -->
+                        <p class="mt-3 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] {% if step.is_completed or step.is_current %}text-auraBlack{% else %}text-auraMuted/60{% endif %}">
+                            {{ step.label }}
+                        </p>
+
+                        <!-- Timestamp / Status Underneath -->
+                        {% if step.timestamp %}
+                            <p class="mt-1 text-[10px] text-auraMuted font-medium">
+                                {{ step.timestamp|date:"M d" }}
+                            </p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TWO-COLUMN LAYOUT: ORDER ITEMS & SUMMARY                 -->
+        <!-- ========================================================= -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+            <!-- ===================================================== -->
+            <!-- LEFT COLUMN: ORDER ITEMS + SHIPPING ADDRESS          -->
+            <!-- ===================================================== -->
+            <div class="lg:col-span-7 xl:col-span-8 space-y-8">
+
+                <!-- 1. ORDER ITEMS CARD -->
+                <section class="rounded-2xl border border-auraBorder bg-white p-6 sm:p-8 shadow-aura-subtle" aria-labelledby="order-items-heading">
+                    <div class="flex items-center justify-between pb-5 border-b border-auraBorder">
+                        <h2 id="order-items-heading" class="text-xs font-semibold uppercase tracking-[0.22em] text-auraBlack">
+                            Order Items
+                        </h2>
+                        <span class="text-xs text-auraMuted tracking-wider">
+                            {{ order.items.count }} product{{ order.items.count|pluralize }}
+                        </span>
+                    </div>
+
+                    <div class="divide-y divide-auraBorder/70">
+                        {% for row in item_rows %}
+                        <article class="py-6 flex flex-col sm:flex-row items-start justify-between gap-5 first:pt-6 last:pb-2">
+                            <!-- Left: Product Snapshot & Outcome -->
+                            <div class="flex items-start gap-4 sm:gap-5 min-w-0 flex-1">
+                                <!-- Product Image Surface -->
+                                <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl border border-auraBorder/70 bg-[#F7F4EE] p-2 flex items-center justify-center shrink-0 overflow-hidden">
+                                    {% if row.image %}
+                                    <img
+                                        src="{{ row.image.image.url }}"
+                                        alt="{{ row.image.alt_text|default:row.item.product_name }}"
+                                        loading="lazy"
+                                        class="h-full w-full object-contain"
+                                    >
+                                    {% else %}
+                                    <span class="flex h-full w-full select-none flex-col items-center justify-center gap-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-auraMuted/70">
+                                        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                                        </svg>
+                                        AURA
+                                    </span>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Snapshot Meta -->
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-[10px] uppercase tracking-[0.22em] font-semibold text-auraMuted mb-1">
+                                        {{ row.item.brand_name }}
+                                    </p>
+                                    <h3 class="font-serif text-lg sm:text-xl font-normal text-auraBlack leading-snug">
+                                        {{ row.item.product_name }}
+                                    </h3>
+
+                                    <!-- Attribute Tags -->
+                                    <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                                        {% if row.item.variant_size %}
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-md border border-auraBorder bg-auraCream text-[10px] font-semibold tracking-wider uppercase text-auraBlack">
+                                            {{ row.item.variant_size }}
+                                        </span>
+                                        {% endif %}
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-md border border-auraBorder bg-auraCream text-[10px] font-semibold tracking-wider uppercase text-auraMuted">
+                                            SKU: {{ row.item.sku }}
+                                        </span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-md border border-auraBorder bg-auraCream text-[10px] font-semibold tracking-wider uppercase text-auraMuted">
+                                            ₹{{ row.item.unit_price|floatformat:2 }}
+                                        </span>
+                                    </div>
+
+                                    <!-- Product-Level Status Outcome -->
+                                    <div class="mt-3.5 flex flex-wrap items-center gap-2.5">
+                                        <span class="order-status-badge order-status-badge--{{ row.outcome_key }}">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
+                                            {{ row.outcome_status }}
+                                        </span>
+
+                                        {% if row.item.cancelled_at %}
+                                        <span class="text-[11px] text-auraMuted">
+                                            Cancelled on {{ row.item.cancelled_at|date:"M j, Y" }}
+                                            {% if row.item.cancellation_reason %}
+                                                &ndash; <span class="italic">"{{ row.item.cancellation_reason }}"</span>
+                                            {% endif %}
+                                        </span>
+                                        {% elif row.return_item %}
+                                        <span class="text-[11px] text-auraMuted">
+                                            Requested on {{ row.return_item.requested_at|date:"M j, Y" }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- Rejection Note if Return Rejected -->
+                                    {% if row.rejection_note %}
+                                    <div class="mt-3 rounded-xl border border-red-200 bg-red-50/80 p-3 text-xs text-red-800">
+                                        <p class="font-semibold uppercase tracking-wider text-[10px] text-red-900">Rejection Reason:</p>
+                                        <p class="mt-0.5 text-xs leading-relaxed text-red-800">{{ row.rejection_note }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Right: Price, Qty and Actions -->
+                            <div class="flex flex-row items-center justify-between sm:flex-col sm:items-end gap-3 w-full sm:w-auto pt-3 sm:pt-0 border-t border-auraBorder/50 sm:border-t-0">
+                                <div class="text-left sm:text-right">
+                                    <p class="font-serif text-xl sm:text-2xl font-medium text-auraBlack">
+                                        ₹{{ row.item.line_total|floatformat:2 }}
+                                    </p>
+                                    <span class="inline-block mt-1 px-2.5 py-0.5 rounded-full border border-auraBorder bg-[#FBF8F2] text-[10px] font-semibold tracking-widest uppercase text-auraMuted">
+                                        QTY: {{ row.item.quantity }}
+                                    </span>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="flex items-center gap-2">
+                                    {% if row.is_cancellable %}
+                                    <button
+                                        type="button"
+                                        onclick="openCancelModal('{{ row.item.id }}', '{{ row.item.product_name|escapejs }}')"
+                                        class="inline-flex items-center justify-center px-3.5 py-1.5 rounded-full border border-red-200 bg-white text-[10px] font-semibold uppercase tracking-[0.18em] text-red-700 hover:bg-red-50 hover:border-red-300 transition-colors"
+                                    >
+                                        Cancel Item
+                                    </button>
+                                    {% elif row.is_returnable %}
+                                    <button
+                                        type="button"
+                                        onclick="openReturnModal('{{ row.item.id }}', '{{ row.item.product_name|escapejs }}')"
+                                        class="btn-return-item inline-flex items-center justify-center px-3.5 py-1.5 rounded-full border border-auraBlack bg-auraBlack text-[10px] font-semibold uppercase tracking-[0.18em] text-white hover:bg-neutral-800 transition-colors"
+                                    >
+                                        Return Item
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <!-- 2. SHIPPING ADDRESS CARD (Matches VERSE Placement below Items) -->
+                <section class="rounded-2xl border border-auraBorder bg-white p-6 sm:p-8 shadow-aura-subtle" aria-labelledby="shipping-address-heading">
+                    <div class="flex items-center justify-between pb-5 border-b border-auraBorder">
+                        <h2 id="shipping-address-heading" class="text-xs font-semibold uppercase tracking-[0.22em] text-auraBlack">
+                            Shipping Address
+                        </h2>
+                        <span class="rounded-md border border-auraBorder bg-auraCream px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-auraMuted">
+                            {{ order.get_delivery_address_type_display }}
+                        </span>
+                    </div>
+
+                    <div class="mt-6 flex items-start gap-4 sm:gap-5">
+                        <!-- Location Icon in Rounded Box -->
+                        <div class="w-11 h-11 rounded-xl border border-auraBorder bg-auraCream flex items-center justify-center text-auraBlack shrink-0 mt-0.5">
+                            <svg class="w-5 h-5 text-auraBlack" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                            </svg>
+                        </div>
+
+                        <!-- Address Details -->
+                        <div class="min-w-0 flex-1">
+                            <p class="font-semibold text-sm sm:text-base text-auraBlack uppercase tracking-wide">
+                                {{ order.delivery_full_name }}
+                            </p>
+                            <div class="mt-1.5 space-y-0.5 text-xs sm:text-[13px] text-auraMuted leading-relaxed">
+                                <p class="text-auraBlack">{{ order.delivery_address_line1 }}</p>
+                                {% if order.delivery_address_line2 %}
+                                    <p class="text-auraBlack">{{ order.delivery_address_line2 }}</p>
+                                {% endif %}
+                                {% if order.delivery_landmark %}
+                                    <p class="text-auraMuted">Landmark: {{ order.delivery_landmark }}</p>
+                                {% endif %}
+                                <p class="text-auraBlack">{{ order.delivery_city }}, {{ order.delivery_state }} - {{ order.delivery_pincode }}</p>
+                                <p class="mt-2 text-auraBlack font-medium">
+                                    {{ order.delivery_phone_number }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- ===================================================== -->
+            <!-- RIGHT COLUMN: ORDER SUMMARY + ACTIONS + CONCIERGE    -->
+            <!-- ===================================================== -->
+            <div class="lg:col-span-5 xl:col-span-4 space-y-6">
+
+                <!-- 1. ORDER SUMMARY CARD (Inspired by VERSE summary card) -->
+                <section class="rounded-2xl border border-auraBorder bg-white p-6 sm:p-8 shadow-aura-subtle" aria-labelledby="order-summary-heading">
+                    <h2 id="order-summary-heading" class="text-xs font-semibold uppercase tracking-[0.22em] text-auraBlack pb-5 border-b border-auraBorder">
+                        Order Summary
+                    </h2>
+
+                    <div class="mt-5 space-y-3 text-xs">
+                        <!-- Subtotal -->
+                        <div class="flex items-center justify-between text-auraMuted">
+                            <span>Subtotal</span>
+                            <span class="font-medium text-auraBlack">₹{{ financials.subtotal|floatformat:2 }}</span>
+                        </div>
+
+                        <!-- Delivery Charges -->
+                        <div class="flex items-center justify-between text-auraMuted">
+                            <span>Delivery Charges</span>
+                            {% if order.shipping_charge > 0 %}
+                                <span class="font-medium text-auraBlack">₹{{ order.shipping_charge|floatformat:2 }}</span>
+                            {% else %}
+                                <span class="font-semibold text-[#247A4A] tracking-wider uppercase">FREE</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Tax if applicable -->
+                        {% if order.tax_total > 0 %}
+                        <div class="flex items-center justify-between text-auraMuted">
+                            <span>Estimated Tax</span>
+                            <span class="font-medium text-auraBlack">₹{{ order.tax_total|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+
+                        <!-- Discount if applicable -->
+                        {% if order.discount_total > 0 %}
+                        <div class="flex items-center justify-between text-[#247A4A]">
+                            <span>Discount</span>
+                            <span class="font-medium">-₹{{ order.discount_total|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+
+                        <!-- Original Order Total (displayed when cancellations or returns occurred) -->
+                        {% if financials.cancelled_total > 0 or financials.approved_return_total > 0 %}
+                        <div class="flex items-center justify-between pt-2 border-t border-auraBorder/60 text-auraMuted">
+                            <span>Original Order Total</span>
+                            <span class="font-medium text-auraBlack">₹{{ financials.original_total|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+
+                        <!-- Cancelled Value Adjustment -->
+                        {% if financials.cancelled_total > 0 %}
+                        <div class="flex items-center justify-between text-red-700">
+                            <span>Cancelled Items</span>
+                            <span class="font-medium">-₹{{ financials.cancelled_total|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+
+                        <!-- Approved Return Value Adjustment -->
+                        {% if financials.approved_return_total > 0 %}
+                        <div class="flex items-center justify-between text-[#8A5A22]">
+                            <span>Approved Returns</span>
+                            <span class="font-medium">-₹{{ financials.approved_return_total|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+
+                        <!-- Bold Divider Line -->
+                        <div class="border-t-2 border-auraBlack my-4"></div>
+
+                        <!-- Final TOTAL -->
+                        <div class="flex items-baseline justify-between pt-1">
+                            <span class="text-xs uppercase tracking-[0.22em] font-semibold text-auraBlack">TOTAL</span>
+                            <span class="font-serif text-3xl font-medium text-auraBlack tracking-tight">₹{{ financials.adjusted_total|floatformat:2 }}</span>
+                        </div>
+
+                        <!-- Payment Information Breakdown -->
+                        <div class="mt-6 pt-5 border-t border-auraBorder space-y-2.5 text-xs">
+                            <div class="flex items-center justify-between text-auraMuted">
+                                <span>Payment Method</span>
+                                <span class="font-medium text-auraBlack">{{ order.get_payment_method_display }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-auraMuted">
+                                <span>Payment Status</span>
+                                <span class="font-medium text-auraBlack">{{ order.get_payment_status_display }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-auraMuted">
+                                <span>Amount Paid</span>
+                                <span class="font-medium text-auraBlack">₹{{ financials.amount_collected|floatformat:2 }}</span>
+                            </div>
+
+                            <!-- Outstanding Balance Due if any -->
+                            {% if financials.total_due > 0 %}
+                            <div class="flex items-center justify-between font-semibold text-auraBlack pt-2 border-t border-auraBorder/60">
+                                <span>Balance Due</span>
+                                <span class="font-serif text-base text-auraBlack">₹{{ financials.total_due|floatformat:2 }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Credit Due if any -->
+                            {% if financials.credit_due > 0 %}
+                            <div class="flex items-center justify-between font-semibold text-[#247A4A] pt-2 border-t border-auraBorder/60">
+                                <span>Credit Due</span>
+                                <span class="font-serif text-base text-[#247A4A]">₹{{ financials.credit_due|floatformat:2 }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. ORDER-LEVEL ACTION CARDS (Inspired by VERSE Screenshots 2 & 3) -->
+                {% if is_order_cancellable %}
+                <!-- CANCEL ORDER ACTION CARD (Shown only while PENDING and active items remain) -->
+                <div class="rounded-2xl border border-auraBorder bg-white p-5 sm:p-6 shadow-aura-subtle">
+                    <button
+                        type="button"
+                        onclick="openCancelOrderModal()"
+                        class="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.2em] text-red-700 transition-colors hover:border-red-400 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                        CANCEL ORDER
+                    </button>
+                </div>
+                {% elif order.status == 'DELIVERED' %}
+                <!-- Order Delivered Actions Card -->
+                <div class="rounded-2xl border border-auraBorder bg-white p-5 sm:p-6 shadow-aura-subtle space-y-3">
+                    {% if can_download_invoice %}
+                    <a
+                        href="{% url 'orders:download_invoice' order.order_number %}"
+                        class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-auraBlack px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-neutral-800"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        DOWNLOAD INVOICE
+                    </a>
+                    {% endif %}
+
+                    {% if is_order_returnable %}
+                    <!-- Return Order Action Button -->
+                    <button
+                        type="button"
+                        onclick="openReturnOrderModal()"
+                        class="btn-return-order w-full inline-flex items-center justify-center gap-2 rounded-xl border border-auraBorder bg-white px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.2em] text-auraBlack transition-colors hover:border-auraBlack hover:bg-auraIvory"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                        </svg>
+                        RETURN ORDER
+                    </button>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- 3. CONCIERGE HELP CARD (Inspired by VERSE 'NEED HELP?' card) -->
+                <section class="rounded-2xl border border-auraBorder bg-white p-5 sm:p-6 shadow-aura-subtle flex items-center justify-between transition-colors hover:border-auraChampagneDark group">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-10 h-10 rounded-xl border border-auraBorder bg-auraCream flex items-center justify-center text-auraBlack shrink-0 group-hover:bg-auraBlack group-hover:text-white transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a.75.75 0 0 1-.974-.94 4.025 4.025 0 0 0 .736-2.025A7.838 7.838 0 0 1 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-auraBlack">Need Help?</p>
+                            <p class="text-xs text-auraMuted mt-0.5">Contact our fragrance concierge team</p>
+                        </div>
+                    </div>
+                    <span class="text-auraMuted group-hover:text-auraBlack transition-transform group-hover:translate-x-1">
+                        &rarr;
+                    </span>
+                </section>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ============================================================= -->
+<!-- RETURN MODAL (MANDATORY EXACT WORDING & INTERACTION)          -->
+<!-- ============================================================= -->
+<div
+    id="aura-return-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="return-modal-heading"
+    aria-describedby="return-modal-description"
+    class="aura-modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+>
+    <!-- Backdrop -->
+    <div
+        id="return-modal-backdrop"
+        onclick="closeReturnModal()"
+        class="aura-modal-backdrop fixed inset-0 bg-auraBlack/60 backdrop-blur-sm"
+        aria-hidden="true"
+    ></div>
+
+    <!-- Panel -->
+    <div class="aura-modal-panel relative w-full max-w-lg rounded-2xl border border-auraBorder bg-white p-6 shadow-2xl sm:p-8">
+        <h2 id="return-modal-heading" class="font-serif text-2xl font-normal text-auraBlack">
+            Return Item?
+        </h2>
+
+        <p id="return-modal-description" class="mt-2 text-xs leading-relaxed text-auraMuted sm:text-sm">
+            Please provide a reason to return <span id="return-modal-product-name" class="font-medium text-auraBlack"></span>.
+        </p>
+
+        <form
+            id="return-modal-form"
+            method="post"
+            action=""
+            onsubmit="handleReturnSubmit(this)"
+            class="mt-6"
+        >
+            {% csrf_token %}
+            <div>
+                <label for="return-modal-reason" class="block text-[10px] font-semibold uppercase tracking-[0.2em] text-auraBlack">
+                    REASON FOR RETURN *
+                </label>
+                <textarea
+                    id="return-modal-reason"
+                    name="reason"
+                    rows="4"
+                    required
+                    placeholder="Enter return reason..."
+                    class="mt-2 w-full rounded-xl border border-auraBorder p-3.5 text-xs text-auraBlack placeholder:text-auraMuted/70 focus:border-auraBlack focus:outline-none focus:ring-1 focus:ring-auraBlack"
+                ></textarea>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                    type="button"
+                    onclick="closeReturnModal()"
+                    class="inline-flex h-11 items-center justify-center rounded-full border border-auraBorder bg-white px-6 text-[10px] font-semibold uppercase tracking-[0.2em] text-auraBlack transition-colors hover:border-auraBlack/40"
+                >
+                    CANCEL
+                </button>
+                <button
+                    type="submit"
+                    id="return-submit-btn"
+                    class="inline-flex h-11 items-center justify-center rounded-full bg-auraBlack px-6 text-[10px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    SUBMIT RETURN
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================= -->
+<!-- RETURN ENTIRE ORDER MODAL                                     -->
+<!-- ============================================================= -->
+<div
+    id="aura-return-order-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="return-order-modal-heading"
+    aria-describedby="return-order-modal-description"
+    class="aura-modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+>
+    <!-- Backdrop -->
+    <div
+        id="return-order-modal-backdrop"
+        onclick="closeReturnOrderModal()"
+        class="aura-modal-backdrop fixed inset-0 bg-auraBlack/60 backdrop-blur-sm"
+        aria-hidden="true"
+    ></div>
+
+    <!-- Panel -->
+    <div class="aura-modal-panel relative w-full max-w-lg rounded-2xl border border-auraBorder bg-white p-6 shadow-2xl sm:p-8">
+        <h2 id="return-order-modal-heading" class="font-serif text-2xl font-normal text-auraBlack">
+            Return Order?
+        </h2>
+
+        <p id="return-order-modal-description" class="mt-2 text-xs leading-relaxed text-auraMuted sm:text-sm">
+            This action will submit return requests for all eligible products in order #{{ order.order_number }}. Any products already cancelled or under return review will remain unchanged.
+        </p>
+
+        <form
+            id="return-order-modal-form"
+            method="post"
+            action="{% url 'orders:return_order' order.order_number %}"
+            onsubmit="handleReturnOrderSubmit(this)"
+            class="mt-6"
+        >
+            {% csrf_token %}
+            <div>
+                <label for="return-order-modal-reason" class="block text-[10px] font-semibold uppercase tracking-[0.2em] text-auraBlack">
+                    REASON FOR RETURN *
+                </label>
+                <textarea
+                    id="return-order-modal-reason"
+                    name="reason"
+                    rows="4"
+                    required
+                    placeholder="Enter return reason for all eligible items..."
+                    class="mt-2 w-full rounded-xl border border-auraBorder p-3.5 text-xs text-auraBlack placeholder:text-auraMuted/70 focus:border-auraBlack focus:outline-none focus:ring-1 focus:ring-auraBlack"
+                ></textarea>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                    type="button"
+                    onclick="closeReturnOrderModal()"
+                    class="inline-flex h-11 items-center justify-center rounded-full border border-auraBorder bg-white px-6 text-[10px] font-semibold uppercase tracking-[0.2em] text-auraBlack transition-colors hover:border-auraBlack/40"
+                >
+                    KEEP ORDER
+                </button>
+                <button
+                    type="submit"
+                    id="return-order-submit-btn"
+                    class="inline-flex h-11 items-center justify-center rounded-full bg-auraBlack px-6 text-[10px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    SUBMIT RETURN
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================= -->
+<!-- CANCEL ITEM MODAL                                            -->
+<!-- ============================================================= -->
+<div
+    id="aura-cancel-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="cancel-modal-heading"
+    aria-describedby="cancel-modal-description"
+    class="aura-modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+>
+    <!-- Backdrop -->
+    <div
+        id="cancel-modal-backdrop"
+        onclick="closeCancelModal()"
+        class="aura-modal-backdrop fixed inset-0 bg-auraBlack/60 backdrop-blur-sm"
+        aria-hidden="true"
+    ></div>
+
+    <!-- Panel -->
+    <div class="aura-modal-panel relative w-full max-w-lg rounded-2xl border border-auraBorder bg-white p-6 shadow-2xl sm:p-8">
+        <h2 id="cancel-modal-heading" class="font-serif text-2xl font-normal text-auraBlack">
+            Cancel Item?
+        </h2>
+
+        <p id="cancel-modal-description" class="mt-2 text-xs leading-relaxed text-auraMuted sm:text-sm">
+            Are you sure you want to cancel <span id="cancel-modal-product-name" class="font-medium text-auraBlack"></span>? This item will be removed and stock will be restored immediately.
+        </p>
+
+        <form
+            id="cancel-modal-form"
+            method="post"
+            action=""
+            onsubmit="handleCancelSubmit(this)"
+            class="mt-6"
+        >
+            {% csrf_token %}
+            <div>
+                <label for="cancel-modal-reason" class="block text-[10px] font-semibold uppercase tracking-[0.2em] text-auraBlack">
+                    REASON FOR CANCELLATION (OPTIONAL)
+                </label>
+                <textarea
+                    id="cancel-modal-reason"
+                    name="reason"
+                    rows="3"
+                    placeholder="Enter cancellation reason (optional)..."
+                    class="mt-2 w-full rounded-xl border border-auraBorder p-3.5 text-xs text-auraBlack placeholder:text-auraMuted/70 focus:border-auraBlack focus:outline-none focus:ring-1 focus:ring-auraBlack"
+                ></textarea>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                    type="button"
+                    onclick="closeCancelModal()"
+                    class="inline-flex h-11 items-center justify-center rounded-full border border-auraBorder bg-white px-6 text-[10px] font-semibold uppercase tracking-[0.2em] text-auraBlack transition-colors hover:border-auraBlack/40"
+                >
+                    CANCEL
+                </button>
+                <button
+                    type="submit"
+                    id="cancel-submit-btn"
+                    class="inline-flex h-11 items-center justify-center rounded-full bg-red-700 px-6 text-[10px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    CONFIRM CANCELLATION
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================= -->
+<!-- CANCEL ENTIRE ORDER MODAL                                     -->
+<!-- ============================================================= -->
+<div
+    id="aura-cancel-order-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="cancel-order-modal-heading"
+    aria-describedby="cancel-order-modal-description"
+    class="aura-modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+>
+    <!-- Backdrop -->
+    <div
+        id="cancel-order-modal-backdrop"
+        onclick="closeCancelOrderModal()"
+        class="aura-modal-backdrop fixed inset-0 bg-auraBlack/60 backdrop-blur-sm"
+        aria-hidden="true"
+    ></div>
+
+    <!-- Panel -->
+    <div class="aura-modal-panel relative w-full max-w-lg rounded-2xl border border-auraBorder bg-white p-6 shadow-2xl sm:p-8">
+        <h2 id="cancel-order-modal-heading" class="font-serif text-2xl font-normal text-auraBlack">
+            Cancel Order?
+        </h2>
+
+        <p id="cancel-order-modal-description" class="mt-2 text-xs leading-relaxed text-auraMuted sm:text-sm">
+            Are you sure you want to cancel order #{{ order.order_number }}? All remaining active items in this order will be cancelled, and inventory stock will be restored immediately.
+        </p>
+
+        <form
+            id="cancel-order-modal-form"
+            method="post"
+            action="{% url 'orders:cancel_order' order.order_number %}"
+            onsubmit="handleCancelOrderSubmit(this)"
+            class="mt-6"
+        >
+            {% csrf_token %}
+            <div>
+                <label for="cancel-order-modal-reason" class="block text-[10px] font-semibold uppercase tracking-[0.2em] text-auraBlack">
+                    REASON FOR CANCELLATION (OPTIONAL)
+                </label>
+                <textarea
+                    id="cancel-order-modal-reason"
+                    name="reason"
+                    rows="3"
+                    placeholder="Enter cancellation reason (optional)..."
+                    class="mt-2 w-full rounded-xl border border-auraBorder p-3.5 text-xs text-auraBlack placeholder:text-auraMuted/70 focus:border-auraBlack focus:outline-none focus:ring-1 focus:ring-auraBlack"
+                ></textarea>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                    type="button"
+                    onclick="closeCancelOrderModal()"
+                    class="inline-flex h-11 items-center justify-center rounded-full border border-auraBorder bg-white px-6 text-[10px] font-semibold uppercase tracking-[0.2em] text-auraBlack transition-colors hover:border-auraBlack/40"
+                >
+                    KEEP ORDER
+                </button>
+                <button
+                    type="submit"
+                    id="cancel-order-submit-btn"
+                    class="inline-flex h-11 items-center justify-center rounded-full bg-red-700 px-6 text-[10px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    CONFIRM CANCELLATION
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const orderNumber = "{{ order.order_number|escapejs }}";
+
+        // Return Order Modal Logic
+    function openReturnOrderModal() {
+        const modal = document.getElementById('aura-return-order-modal');
+        const textarea = document.getElementById('return-order-modal-reason');
+        if (modal) {
+            if (textarea) textarea.value = '';
+            modal.classList.remove('aura-modal-hidden');
+            document.body.style.overflow = 'hidden';
+            if (textarea) setTimeout(() => textarea.focus(), 50);
+        }
+    }
+
+    function closeReturnOrderModal() {
+        const modal = document.getElementById('aura-return-order-modal');
+        if (modal) {
+            modal.classList.add('aura-modal-hidden');
+            document.body.style.overflow = '';
+        }
+    }
+
+    function handleReturnOrderSubmit(form) {
+        const btn = document.getElementById('return-order-submit-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'SUBMITTING...';
+        }
+    }
+
+    // Return Modal Logic
+    function openReturnModal(itemId, productName) {
+        const modal = document.getElementById('aura-return-modal');
+        const form = document.getElementById('return-modal-form');
+        const prodSpan = document.getElementById('return-modal-product-name');
+        const textarea = document.getElementById('return-modal-reason');
+
+        prodSpan.textContent = productName;
+        form.action = `/orders/${orderNumber}/items/${itemId}/return/`;
+        textarea.value = '';
+
+        modal.classList.remove('aura-modal-hidden');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => textarea.focus(), 50);
+    }
+
+    function closeReturnModal() {
+        const modal = document.getElementById('aura-return-modal');
+        if (modal) {
+            modal.classList.add('aura-modal-hidden');
+            document.body.style.overflow = '';
+        }
+    }
+
+    function handleReturnSubmit(form) {
+        const btn = document.getElementById('return-submit-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'SUBMITTING...';
+        }
+    }
+
+    // Cancel Item Modal Logic
+    function openCancelModal(itemId, productName) {
+        const modal = document.getElementById('aura-cancel-modal');
+        const form = document.getElementById('cancel-modal-form');
+        const prodSpan = document.getElementById('cancel-modal-product-name');
+        const textarea = document.getElementById('cancel-modal-reason');
+
+        prodSpan.textContent = productName;
+        form.action = `/orders/${orderNumber}/items/${itemId}/cancel/`;
+        textarea.value = '';
+
+        modal.classList.remove('aura-modal-hidden');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => textarea.focus(), 50);
+    }
+
+    function closeCancelModal() {
+        const modal = document.getElementById('aura-cancel-modal');
+        if (modal) {
+            modal.classList.add('aura-modal-hidden');
+            document.body.style.overflow = '';
+        }
+    }
+
+    function handleCancelSubmit(form) {
+        const btn = document.getElementById('cancel-submit-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'CANCELLING...';
+        }
+    }
+
+    // Cancel Order Modal Logic
+    function openCancelOrderModal() {
+        const modal = document.getElementById('aura-cancel-order-modal');
+        const textarea = document.getElementById('cancel-order-modal-reason');
+        if (modal) {
+            if (textarea) textarea.value = '';
+            modal.classList.remove('aura-modal-hidden');
+            document.body.style.overflow = 'hidden';
+            if (textarea) setTimeout(() => textarea.focus(), 50);
+        }
+    }
+
+    function closeCancelOrderModal() {
+        const modal = document.getElementById('aura-cancel-order-modal');
+        if (modal) {
+            modal.classList.add('aura-modal-hidden');
+            document.body.style.overflow = '';
+        }
+    }
+
+    function handleCancelOrderSubmit(form) {
+        const btn = document.getElementById('cancel-order-submit-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'CANCELLING...';
+        }
+    }
+
+    // Return guidance: Smoothly scroll to order items and highlight eligible return buttons
+    function handleReturnOrderClick() {
+        const itemsHeading = document.getElementById('order-items-heading');
+        if (itemsHeading) {
+            itemsHeading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const returnButtons = document.querySelectorAll('.btn-return-item');
+            returnButtons.forEach(btn => {
+                btn.classList.add('ring-4', 'ring-auraChampagneDark', 'transition-all');
+                setTimeout(() => {
+                    btn.classList.remove('ring-4', 'ring-auraChampagneDark');
+                }, 2500);
+            });
+        }
+    }
+
+    // Keyboard accessibility: Escape closes any open modal
+    document.addEventListener('keydown', function(evt) {
+        if (evt.key === 'Escape') {
+            closeReturnModal();
+            closeCancelModal();
+            closeCancelOrderModal();
+            closeReturnOrderModal();
+        }
+    });
+</script>
+{% endblock %}

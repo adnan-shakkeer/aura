@@ -10,6 +10,7 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.db import transaction
 from django.views.decorators.cache import never_cache
 
@@ -33,6 +34,23 @@ from .validators.password_validator import (
     validate_new_password,
     validate_confirm_password,
 )
+
+def _get_safe_next_url(request):
+    """Return a same-host continuation URL or an empty string."""
+    next_url = request.POST.get("next") or request.GET.get("next") or ""
+
+    if not next_url:
+        return ""
+
+    if url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+
+    return ""
+
 
 def generate_signup_otp(email):
     """
@@ -339,9 +357,12 @@ def login(request):
 
     """
 
+    next_url = _get_safe_next_url(request)
+
     context = {
         "login_data": {},
         "errors": {},
+        "next_url": next_url,
     }
 
     status_code = HTTPStatus.OK
@@ -411,7 +432,7 @@ def login(request):
                     user,
                 )
 
-                return redirect("home")
+                return redirect(next_url or "home")
 
         # =============================================
         # Return Login Page With Errors
@@ -423,6 +444,7 @@ def login(request):
             },
 
             "errors": errors,
+            "next_url": next_url,
         }
 
         

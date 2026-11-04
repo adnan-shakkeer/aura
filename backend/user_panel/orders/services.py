@@ -2,28 +2,28 @@
 
 Architecture
 ------------
-Two public operations are exposed:
+Cart checkout and direct Buy Now checkout share validation, pricing and
+order creation, but never share token state:
 
-``review_checkout(user, address_id)``
-    Read-only validation and price calculation. It validates the cart,
-    the delivery address and stock using the canonical cart rules, then
-    returns a ``CheckoutReview`` containing the calculated lines/totals
-    and a signed review token.
+``review_checkout(user, address_id)`` / ``place_order(...)``
+    Cart checkout validates the current cart, deducts stock and clears the
+    cart inside the placement transaction.
 
-``place_order(user, address_id, review_token)``
-    Re-validates everything inside a single database transaction and
-    converts the cart into an order, deducts stock and clears the cart.
-    It returns an ``OrderPlacementResult`` so callers can distinguish a
-    created order, a duplicate submission and a required re-review.
+``review_direct_checkout(...)`` / ``place_direct_order(...)``
+    Buy Now checkout validates one selected variant. Placement locks only
+    that variant, creates the order and deducts stock; it never reads,
+    locks or clears any cart.
 
-Lock order (matching ``cart.services`` to avoid deadlocks)
------------------------------------------------------------
-1. ``Cart`` row (``select_for_update``).
-2. ``ProductVariant`` rows in ascending primary-key order.
-3. ``CartItem`` rows.
-4. Order / OrderItem creation.
-5. Stock updates.
-6. Cart clearing.
+Both review functions return a ``CheckoutReview`` with a signed token
+bound to the user and checkout source. Both placement functions return an
+``OrderPlacementResult`` so callers can distinguish a created order, a
+duplicate submission and a required re-review.
+
+Lock order
+----------
+Cart checkout: ``Cart``, then ``ProductVariant`` rows in ascending PK
+order, then ``CartItem`` rows, then order creation, stock updates and cart
+clearing. Direct checkout locks only the selected ``ProductVariant``.
 
 Money is always handled with ``Decimal``; browser-supplied totals are
 never accepted as authoritative.
@@ -47,15 +47,30 @@ from user_panel.cart.services import (
     _validate_stock,
 )
 
+from .exceptions import (
+    EmptyCartError,
+    ExpiredReviewTokenError,
+    InsufficientStockError,
+    InvalidAddressError,
+    InvalidQuantityError,
+    InvalidReviewTokenError,
+    OrderServiceError,
+    UnexpectedOrderFailure,
+    VariantUnavailableError,
+)
 from .models import Order, OrderItem
 
 
 REVIEW_TOKEN_SALT = "orders.checkout.review"
+DIRECT_REVIEW_TOKEN_SALT = "orders.checkout.direct"
 REVIEW_TOKEN_MAX_AGE = 30 * 60
 
 ORDER_NUMBER_MAX_ATTEMPTS = 5
 
 ZERO = Decimal("0.00")
+
+SOURCE_CART = "cart"
+SOURCE_DIRECT = "direct"
 
 STATUS_CREATED = "created"
 STATUS_DUPLICATE = "duplicate"
@@ -64,6 +79,14 @@ STATUS_REVIEW_REQUIRED = "review_required"
 REASON_PRICE_CHANGED = "price_changed"
 REASON_CART_CHANGED = "cart_changed"
 REASON_ADDRESS_CHANGED = "address_changed"
+REASON_SELECTION_CHANGED = "selection_changed"
+
+_DIRECT_INVALID_TOKEN_MESSAGE = (
+    "This Buy Now review is not valid. Please review your selection again."
+)
+_DIRECT_EXPIRED_TOKEN_MESSAGE = (
+    "Your Buy Now session has expired. Please review your selection again."
+)
 
 _REQUIRED_ADDRESS_FIELDS = (
     "full_name",
@@ -75,52 +98,9 @@ _REQUIRED_ADDRESS_FIELDS = (
 )
 
 
-class OrderServiceError(Exception):
-    """Raised when a checkout/order operation violates a business rule."""
-
-    code = "order_error"
-
-    def __init__(self, message=None, *, code=None):
-        if code is not None:
-            self.code = code
-        super().__init__(message or "We could not process your order.")
-
-
-class EmptyCartError(OrderServiceError):
-    code = "empty_cart"
-
-
-class VariantUnavailableError(OrderServiceError):
-    code = "variant_unavailable"
-
-
-class InsufficientStockError(OrderServiceError):
-    code = "insufficient_stock"
-
-
-class InvalidQuantityError(OrderServiceError):
-    code = "invalid_quantity"
-
-
-class InvalidAddressError(OrderServiceError):
-    code = "invalid_address"
-
-
-class InvalidReviewTokenError(OrderServiceError):
-    code = "invalid_review_token"
-
-
-class ExpiredReviewTokenError(OrderServiceError):
-    code = "expired_review_token"
-
-
-class UnexpectedOrderFailure(OrderServiceError):
-    code = "unexpected_failure"
-
-
 @dataclass(frozen=True)
 class CheckoutLine:
-    cart_item_id: int
+    cart_item_id: int | None
     variant_id: int
     product_name: str
     brand_name: str
@@ -142,6 +122,7 @@ class CheckoutReview:
     tax_total: Decimal
     total: Decimal
     token: str
+    source: str = SOURCE_CART
 
 
 @dataclass(frozen=True)
@@ -260,7 +241,7 @@ def _collect_cart_state(cart, *, lock=False):
 def _build_lines(state):
     return [
         CheckoutLine(
-            cart_item_id=item.pk,
+            cart_item_id=item.pk if item is not None else None,
             variant_id=variant.pk,
             product_name=variant.product.name,
             brand_name=variant.product.brand.name,
@@ -272,6 +253,26 @@ def _build_lines(state):
         )
         for item, variant, quantity in state
     ]
+
+
+def _direct_state(variant_id, quantity, *, lock=False):
+    """Validate a single direct purchase and return its checkout state."""
+    try:
+        quantity = _validate_quantity(quantity)
+    except CartServiceError as exc:
+        raise InvalidQuantityError(str(exc)) from None
+
+    try:
+        variant = _get_eligible_variant(variant_id, lock=lock)
+    except CartServiceError as exc:
+        raise VariantUnavailableError(str(exc)) from None
+
+    try:
+        _validate_stock(variant, quantity)
+    except CartServiceError as exc:
+        raise InsufficientStockError(str(exc)) from None
+
+    return [(None, variant, quantity)], variant
 
 
 def _calculate_totals(lines):
@@ -307,7 +308,7 @@ def _totals_payload(totals):
     return {key: str(value) for key, value in totals.items()}
 
 
-def _build_review(user, address, cart, state):
+def _build_review(user, address, cart, state, *, source=SOURCE_CART):
     lines = _build_lines(state)
     totals = _calculate_totals(lines)
 
@@ -317,7 +318,7 @@ def _build_review(user, address, cart, state):
     payload = {
         "sid": submission_id,
         "uid": user.pk,
-        "cid": cart.pk,
+        "src": source,
         "aid": address.pk,
         "address": _address_fingerprint(address),
         "items": _lines_payload(lines),
@@ -326,9 +327,17 @@ def _build_review(user, address, cart, state):
         "exp": issued_at + REVIEW_TOKEN_MAX_AGE,
     }
 
+    if source == SOURCE_DIRECT:
+        payload["vid"] = lines[0].variant_id
+        payload["qty"] = lines[0].quantity
+        token_salt = DIRECT_REVIEW_TOKEN_SALT
+    else:
+        payload["cid"] = cart.pk
+        token_salt = REVIEW_TOKEN_SALT
+
     token = signing.dumps(
         payload,
-        salt=REVIEW_TOKEN_SALT,
+        salt=token_salt,
         compress=True,
     )
 
@@ -342,6 +351,7 @@ def _build_review(user, address, cart, state):
         tax_total=totals["tax_total"],
         total=totals["total"],
         token=token,
+        source=source,
     )
 
 
@@ -360,42 +370,75 @@ def review_checkout(user, address_id):
     return _build_review(user, address, cart, state)
 
 
-def _decode_review_token(review_token):
+def validate_direct_purchase(variant_id, quantity=1):
+    """Validate a Buy Now selection without touching the cart."""
+    _state, variant = _direct_state(variant_id, quantity)
+    return variant
+
+
+def review_direct_checkout(user, variant_id, quantity, address_id):
+    """Validate one selected variant and return a direct checkout review."""
+    _assert_active_user(user)
+
+    address = _get_valid_address(user, address_id)
+    state, _variant = _direct_state(variant_id, quantity)
+
+    return _build_review(
+        user,
+        address,
+        None,
+        state,
+        source=SOURCE_DIRECT,
+    )
+
+
+def _decode_review_token(
+    review_token,
+    *,
+    salt=REVIEW_TOKEN_SALT,
+    invalid_message=(
+        "This checkout review is not valid. Please review your cart again."
+    ),
+):
     """Return ``(payload, expired)``; signature is always verified."""
     if not isinstance(review_token, str) or not review_token:
-        raise InvalidReviewTokenError(
-            "This checkout review is not valid. Please review your cart again."
-        )
+        raise InvalidReviewTokenError(invalid_message)
 
     try:
         payload = signing.loads(
             review_token,
-            salt=REVIEW_TOKEN_SALT,
+            salt=salt,
             max_age=REVIEW_TOKEN_MAX_AGE,
         )
         expired = False
     except signing.SignatureExpired:
         try:
-            payload = signing.loads(review_token, salt=REVIEW_TOKEN_SALT)
+            payload = signing.loads(review_token, salt=salt)
         except signing.BadSignature:
-            raise InvalidReviewTokenError(
-                "This checkout review is not valid. Please review your cart again."
-            ) from None
+            raise InvalidReviewTokenError(invalid_message) from None
         expired = True
     except (signing.BadSignature, TypeError, ValueError):
-        raise InvalidReviewTokenError(
-            "This checkout review is not valid. Please review your cart again."
-        ) from None
+        raise InvalidReviewTokenError(invalid_message) from None
 
     if not isinstance(payload, dict):
-        raise InvalidReviewTokenError(
-            "This checkout review is not valid. Please review your cart again."
-        )
+        raise InvalidReviewTokenError(invalid_message)
 
     return payload, expired
 
 
-def _assert_token_identity(payload, user):
+def _token_source(payload):
+    """Return the token source; pre-source cart tokens remain compatible."""
+    return payload.get("src", SOURCE_CART)
+
+
+def _assert_token_identity(
+    payload,
+    user,
+    *,
+    invalid_message=(
+        "This checkout review is not valid. Please review your cart again."
+    ),
+):
     if payload.get("uid") != user.pk:
         raise InvalidReviewTokenError(
             "This checkout review is not valid for your account."
@@ -409,9 +452,7 @@ def _assert_token_identity(payload, user):
         or not submission_id
         or len(submission_id) > max_length
     ):
-        raise InvalidReviewTokenError(
-            "This checkout review is not valid. Please review your cart again."
-        )
+        raise InvalidReviewTokenError(invalid_message)
 
 
 def _find_existing_order(submission_id, user):
@@ -444,6 +485,35 @@ def _detect_change(payload, cart, address, lines, totals):
 
     if _line_identity(token_items) != _line_identity(current_items):
         return REASON_CART_CHANGED
+
+    if token_items != current_items:
+        return REASON_PRICE_CHANGED
+
+    if payload.get("totals") != _totals_payload(totals):
+        return REASON_PRICE_CHANGED
+
+    return None
+
+
+def _detect_direct_change(payload, address, variant, quantity, lines, totals):
+    """Return the reason a previously reviewed Buy Now selection changed."""
+    if (
+        payload.get("vid") != variant.pk
+        or payload.get("qty") != quantity
+    ):
+        return REASON_SELECTION_CHANGED
+
+    if payload.get("aid") != address.pk:
+        return REASON_ADDRESS_CHANGED
+
+    if payload.get("address") != _address_fingerprint(address):
+        return REASON_ADDRESS_CHANGED
+
+    current_items = _lines_payload(lines)
+    token_items = payload.get("items") or []
+
+    if _line_identity(token_items) != _line_identity(current_items):
+        return REASON_SELECTION_CHANGED
 
     if token_items != current_items:
         return REASON_PRICE_CHANGED
@@ -575,6 +645,11 @@ def _place_order_atomic(user, address_id, review_token):
     payload, expired = _decode_review_token(review_token)
     _assert_token_identity(payload, user)
 
+    if _token_source(payload) != SOURCE_CART:
+        raise InvalidReviewTokenError(
+            "This checkout review is not valid. Please review your bag again."
+        )
+
     submission_id = payload["sid"]
 
     existing = _find_existing_order(submission_id, user)
@@ -641,6 +716,109 @@ def place_order(user, address_id, review_token):
     """
     try:
         return _place_order_atomic(user, address_id, review_token)
+    except OrderServiceError:
+        raise
+    except Exception as exc:
+        raise UnexpectedOrderFailure(
+            "We could not place your order. Please try again."
+        ) from exc
+
+
+@transaction.atomic
+def _place_direct_order_atomic(user, address_id, review_token):
+    _assert_active_user(user)
+
+    payload, expired = _decode_review_token(
+        review_token,
+        salt=DIRECT_REVIEW_TOKEN_SALT,
+        invalid_message=_DIRECT_INVALID_TOKEN_MESSAGE,
+    )
+    _assert_token_identity(
+        payload,
+        user,
+        invalid_message=_DIRECT_INVALID_TOKEN_MESSAGE,
+    )
+
+    if _token_source(payload) != SOURCE_DIRECT:
+        raise InvalidReviewTokenError(_DIRECT_INVALID_TOKEN_MESSAGE)
+
+    submission_id = payload["sid"]
+
+    existing = _find_existing_order(submission_id, user)
+    if existing is not None:
+        return OrderPlacementResult(
+            status=STATUS_DUPLICATE,
+            order=existing,
+            recovered=expired,
+        )
+
+    if expired:
+        raise ExpiredReviewTokenError(_DIRECT_EXPIRED_TOKEN_MESSAGE)
+
+    address = _get_valid_address(user, address_id)
+
+    variant_id = payload.get("vid")
+    quantity = payload.get("qty")
+
+    if (
+        not isinstance(variant_id, int)
+        or isinstance(variant_id, bool)
+        or variant_id < 1
+        or not isinstance(quantity, int)
+        or isinstance(quantity, bool)
+    ):
+        raise InvalidReviewTokenError(_DIRECT_INVALID_TOKEN_MESSAGE)
+
+    state, variant = _direct_state(
+        variant_id,
+        quantity,
+        lock=True,
+    )
+    lines = _build_lines(state)
+    totals = _calculate_totals(lines)
+
+    reason = _detect_direct_change(
+        payload,
+        address,
+        variant,
+        quantity,
+        lines,
+        totals,
+    )
+    if reason is not None:
+        review = _build_review(
+            user,
+            address,
+            None,
+            state,
+            source=SOURCE_DIRECT,
+        )
+        return OrderPlacementResult(
+            status=STATUS_REVIEW_REQUIRED,
+            review=review,
+            reason=reason,
+        )
+
+    order, duplicate = _create_order_with_retry(
+        user=user,
+        submission_id=submission_id,
+        address=address,
+        totals=totals,
+    )
+
+    if duplicate:
+        return OrderPlacementResult(status=STATUS_DUPLICATE, order=order)
+
+    _create_order_items(order, state)
+    _deduct_stock(state)
+
+    return OrderPlacementResult(status=STATUS_CREATED, order=order)
+
+
+def place_direct_order(user, address_id, review_token):
+    """Convert one Buy Now selection into a COD order without touching carts."""
+    try:
+        return _place_direct_order_atomic(user, address_id, review_token)
     except OrderServiceError:
         raise
     except Exception as exc:

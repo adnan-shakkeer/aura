@@ -1,0 +1,385 @@
+{% extends "user_panel/account_base.html" %}
+
+{% block title %}My Orders | AURA{% endblock %}
+
+{% block breadcrumb_active %}My Orders{% endblock %}
+
+{% block page_header %}
+<div class="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+        <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-auraChampagneDark">
+            Account
+        </p>
+        <h1 class="font-serif text-3xl font-normal leading-tight tracking-tight text-auraBlack sm:text-4xl lg:text-[2.6rem]">
+            My Orders
+        </h1>
+        <p class="mt-2 max-w-2xl text-xs font-light leading-relaxed text-auraMuted sm:text-sm">
+            Track and manage your recent AURA purchases.
+        </p>
+    </div>
+
+    <span class="inline-flex w-fit items-center justify-center rounded-full bg-auraBlack px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white">
+        {{ page_obj.paginator.count }}
+        {% if search_query %}
+            Result{{ page_obj.paginator.count|pluralize }}
+        {% else %}
+            Order{{ page_obj.paginator.count|pluralize }}
+        {% endif %}
+    </span>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .order-card {
+        position: relative;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .order-card::before {
+        content: "";
+        position: absolute;
+        inset: 0 0 auto;
+        height: 3px;
+        background: #D4C5B0;
+    }
+
+    .order-card:hover {
+        border-color: #D8D0C4;
+        box-shadow: 0 12px 32px -16px rgba(26, 26, 26, 0.22);
+    }
+
+    .order-card--delivered::before {
+        background: #2F9E6B;
+    }
+
+    .order-card--cancelled::before {
+        background: #D9534F;
+    }
+
+    .order-card--shipped::before {
+        background: #4C8DF5;
+    }
+
+    .order-card--out_for_delivery::before {
+        background: #C8943A;
+    }
+
+    .order-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        border-radius: 9999px;
+        padding: 0.28rem 0.6rem;
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        line-height: 1.2;
+        text-transform: uppercase;
+    }
+
+    .order-status::before {
+        content: "";
+        width: 5px;
+        height: 5px;
+        flex-shrink: 0;
+        border-radius: 9999px;
+        background: currentColor;
+    }
+
+    .order-status--pending {
+        background: #F4EFE6;
+        color: #8A6A42;
+    }
+
+    .order-status--shipped {
+        background: #EAF2FE;
+        color: #2C5FA8;
+    }
+
+    .order-status--out_for_delivery {
+        background: #FBF3E4;
+        color: #8A5A22;
+    }
+
+    .order-status--delivered {
+        background: #E9F8F0;
+        color: #247A4A;
+    }
+
+    .order-status--cancelled {
+        background: #FDECEC;
+        color: #B3261E;
+    }
+
+    .order-search:focus {
+        border-color: #1A1A1A;
+        box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.06);
+        outline: none;
+    }
+
+    .order-product-name {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .order-card {
+            transition: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block account_content %}
+
+<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <form
+        method="get"
+        action="{% url 'orders:my_orders' %}"
+        role="search"
+        class="relative w-full sm:max-w-xl"
+    >
+        <label for="order-search" class="sr-only">Search by order number</label>
+        <svg class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-auraMuted" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+        </svg>
+        <input
+            type="search"
+            id="order-search"
+            name="q"
+            value="{{ search_query }}"
+            placeholder="Search by order number..."
+            autocomplete="off"
+            maxlength="100"
+            class="order-search h-12 w-full rounded-full border border-auraBorder bg-white pl-11 pr-12 text-sm text-auraBlack placeholder:text-auraMuted/70"
+        >
+        <button
+            type="submit"
+            aria-label="Search orders"
+            class="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-auraBlack text-white transition-colors hover:bg-auraDark focus:outline-none focus-visible:ring-2 focus-visible:ring-auraBlack focus-visible:ring-offset-2"
+        >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+        </button>
+    </form>
+
+    {% if search_query %}
+    <a
+        href="{% url 'orders:my_orders' %}"
+        class="inline-flex w-fit items-center gap-2 rounded-full border border-auraBorder bg-white px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-auraMuted transition-colors hover:border-auraBlack/40 hover:text-auraBlack"
+    >
+        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+        </svg>
+        Clear
+    </a>
+    {% endif %}
+</div>
+
+{% if search_query %}
+<p class="mb-5 text-[11px] text-auraMuted">
+    {{ page_obj.paginator.count }} order{{ page_obj.paginator.count|pluralize }} found for
+    <span class="font-medium text-auraBlack">&ldquo;{{ search_query }}&rdquo;</span>.
+</p>
+{% endif %}
+
+{% if order_cards %}
+<div class="space-y-4 sm:space-y-5">
+    {% for card in order_cards %}
+    <article
+        class="order-card order-card--{{ card.order.status|lower }} overflow-hidden rounded-2xl border border-auraBorder bg-white shadow-aura-subtle"
+        data-order-card
+        data-order-number="{{ card.order.order_number }}"
+    >
+        <div class="p-4 pt-5 sm:p-6 sm:pt-7 lg:p-7 lg:pt-8">
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-center">
+
+                <div class="flex min-w-0 flex-1 items-start gap-4">
+                    <div class="flex h-20 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-auraBorder bg-[#F3EEE6] sm:h-24 sm:w-20">
+                        {% if card.image %}
+                        <img
+                            src="{{ card.image.image.url }}"
+                            alt="{{ card.image.alt_text|default:card.first_item.product_name }}"
+                            loading="lazy"
+                            class="h-full w-full object-contain object-center p-2"
+                        >
+                        {% else %}
+                        <span class="flex h-full w-full select-none flex-col items-center justify-center gap-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-auraMuted/70">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                            </svg>
+                            AURA
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <h2 class="break-words text-sm font-semibold tracking-[0.02em] text-auraBlack sm:text-[15px]">
+                                {{ card.order.order_number }}
+                            </h2>
+                            <span class="order-status order-status--{{ card.order.status|lower }}">
+                                {{ card.order.get_status_display }}
+                            </span>
+                        </div>
+
+                        <div class="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-[10px] uppercase tracking-[0.14em] text-auraMuted">
+                            <span class="inline-flex items-center gap-1.5">
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3.75 8.25h16.5M4.5 5.25h15A.75.75 0 0 1 20.25 6v13.5a.75.75 0 0 1-.75.75h-15a.75.75 0 0 1-.75-.75V6a.75.75 0 0 1 .75-.75Z" />
+                                </svg>
+                                {{ card.order.created_at|date:"M j, Y" }}
+                            </span>
+                            <span class="h-1 w-1 rounded-full bg-auraBorder" aria-hidden="true"></span>
+                            <span class="inline-flex items-center gap-1.5 rounded-full border border-auraBorder bg-auraCream px-2.5 py-1 text-[9px] font-semibold tracking-[0.14em] text-auraMuted">
+                                {{ card.order.get_payment_method_display }}
+                            </span>
+                            <span class="inline-flex items-center gap-1.5">
+                                <span class="h-1 w-1 rounded-full {% if card.order.payment_status == 'PAID' %}bg-[#2F9E6B]{% else %}bg-auraChampagneDark{% endif %}" aria-hidden="true"></span>
+                                {{ card.order.get_payment_status_display }}
+                            </span>
+                        </div>
+
+                        <div class="mt-4 border-t border-auraBorder/70 pt-3.5">
+                            {% if card.first_item %}
+                            <p class="text-[9px] font-semibold uppercase tracking-[0.2em] text-auraMuted">
+                                {{ card.first_item.brand_name }}
+                            </p>
+                            <p class="order-product-name mt-1 font-serif text-base font-medium leading-snug tracking-[0.01em] text-auraBlack sm:text-lg">
+                                {{ card.first_item.product_name }}
+                            </p>
+                            <p class="mt-1 text-[10px] uppercase tracking-[0.16em] text-auraMuted">
+                                {{ card.first_item.variant_size }}
+                                <span class="mx-1.5 text-auraBorder" aria-hidden="true">&bull;</span>
+                                Qty {{ card.total_quantity }}
+                                {% if card.extra_item_count %}
+                                <span class="mx-1.5 text-auraBorder" aria-hidden="true">&bull;</span>
+                                +{{ card.extra_item_count }} more item{{ card.extra_item_count|pluralize }}
+                                {% endif %}
+                            </p>
+                            {% else %}
+                            <p class="text-xs text-auraMuted">Item details unavailable for this order.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-end justify-between gap-4 border-t border-auraBorder/70 pt-4 lg:w-48 lg:flex-col lg:items-end lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+                    <div class="text-left lg:text-right">
+                        <p class="text-[9px] font-semibold uppercase tracking-[0.2em] text-auraMuted">Order Total</p>
+                        <p class="mt-1 font-serif text-2xl font-medium text-auraBlack">
+                            ₹{{ card.order.total|floatformat:2 }}
+                        </p>
+                    </div>
+
+                    <a
+                        href="{% url 'orders:order_detail' card.order.order_number %}"
+                        class="inline-flex items-center gap-2 rounded-full border border-auraBlack bg-auraBlack px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-white transition-colors duration-200 hover:bg-auraDark"
+                    >
+                        DETAILS
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="mt-8 flex flex-col items-center justify-between gap-4 border-t border-auraBorder pt-6 sm:flex-row" aria-label="Order history pagination">
+    <div class="flex items-center gap-2">
+        {% if page_obj.has_previous %}
+        <a
+            href="?{% if base_query %}{{ base_query }}&{% endif %}page={{ page_obj.previous_page_number }}"
+            class="inline-flex items-center gap-2 rounded-full border border-auraBorder bg-white px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-auraBlack transition-colors hover:border-auraBlack/40"
+        >
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+            </svg>
+            Previous
+        </a>
+        {% else %}
+        <span class="inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-auraBorder/60 bg-auraCream px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-auraMuted/40" aria-disabled="true">
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+            </svg>
+            Previous
+        </span>
+        {% endif %}
+    </div>
+
+    <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-auraMuted">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    </p>
+
+    <div class="flex items-center gap-2">
+        {% if page_obj.has_next %}
+        <a
+            href="?{% if base_query %}{{ base_query }}&{% endif %}page={{ page_obj.next_page_number }}"
+            class="inline-flex items-center gap-2 rounded-full border border-auraBorder bg-white px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-auraBlack transition-colors hover:border-auraBlack/40"
+        >
+            Next
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+            </svg>
+        </a>
+        {% else %}
+        <span class="inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-auraBorder/60 bg-auraCream px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-auraMuted/40" aria-disabled="true">
+            Next
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+            </svg>
+        </span>
+        {% endif %}
+    </div>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="rounded-2xl border border-dashed border-auraBorder bg-white/50 px-6 py-14 text-center sm:px-10 sm:py-20">
+    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-auraBorder bg-auraCream text-auraMuted">
+        {% if search_query %}
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+        </svg>
+        {% else %}
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+        </svg>
+        {% endif %}
+    </div>
+
+    {% if search_query %}
+    <h2 class="mt-5 font-serif text-2xl font-normal text-auraBlack">No orders match your search</h2>
+    <p class="mx-auto mt-2 max-w-md text-xs leading-relaxed text-auraMuted sm:text-sm">
+        We could not find an order with that order number. Check the number and try again.
+    </p>
+    <a
+        href="{% url 'orders:my_orders' %}"
+        class="mt-6 inline-flex items-center justify-center rounded-full bg-auraBlack px-6 py-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-auraDark"
+    >
+        Clear Search
+    </a>
+    {% else %}
+    <h2 class="mt-5 font-serif text-2xl font-normal text-auraBlack">No orders yet</h2>
+    <p class="mx-auto mt-2 max-w-md text-xs leading-relaxed text-auraMuted sm:text-sm">
+        Your AURA orders will appear here once you place your first order.
+    </p>
+    <a
+        href="{% url 'shop:shop_list' %}"
+        class="mt-6 inline-flex items-center justify-center rounded-full bg-auraBlack px-6 py-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-auraDark"
+    >
+        Continue Shopping
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

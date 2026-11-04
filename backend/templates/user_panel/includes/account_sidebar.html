@@ -49,15 +49,15 @@
 
         <!-- MY ORDERS -->
         <a 
-            href="#orders"
+            href="{% url 'orders:my_orders' %}"
             class="group flex items-center gap-3.5 px-4 py-3 rounded-lg text-xs tracking-[0.14em] uppercase transition-all duration-200
-                {% if active_nav == 'orders' or request.resolver_match.url_name == 'orders' %}
+                {% if active_nav == 'orders' or request.resolver_match.url_name == 'my_orders' %}
                     bg-[#ECE7DF] text-auraBlack font-semibold shadow-sm
                 {% else %}
                     text-auraMuted hover:text-auraBlack hover:bg-[#F2EFEA]/80 font-normal
                 {% endif %}"
         >
-            <svg class="w-4 h-4 flex-shrink-0 transition-colors duration-200 {% if active_nav == 'orders' or request.resolver_match.url_name == 'orders' %}text-auraBlack{% else %}text-auraMuted group-hover:text-auraBlack{% endif %}" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 flex-shrink-0 transition-colors duration-200 {% if active_nav == 'orders' or request.resolver_match.url_name == 'my_orders' %}text-auraBlack{% else %}text-auraMuted group-hover:text-auraBlack{% endif %}" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
             </svg>
             <span class="truncate">My Orders</span>

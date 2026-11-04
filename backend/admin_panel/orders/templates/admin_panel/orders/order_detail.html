@@ -1,0 +1,523 @@
+{% extends "dashboard/base_admin.html" %}
+
+{% block breadcrumbs %}
+ADMIN / <a href="{% url 'admin_orders:list' %}" class="hover:text-auraGold transition-colors">ORDERS</a> / <span class="text-auraGold">#{{ order.order_number }}</span>
+{% endblock %}
+
+{% block admin_content %}
+<div class="mb-12">
+    <!-- Header Section with Back Navigation & Status Update Controls -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-[#A8842C]/30 pb-6 mb-8">
+        <!-- Order Identity -->
+        <div class="flex items-start gap-4">
+            <a href="{% url 'admin_orders:list' %}" 
+               class="w-10 h-10 rounded-sm border border-[#E8E5DF] bg-white flex items-center justify-center text-[#141414] hover:border-[#A8842C] hover:bg-[#FAF8F5] transition-colors flex-shrink-0 mt-1" 
+               title="Back to Orders">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            </a>
+            <div>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <h2 class="font-serif text-3xl font-bold tracking-wide text-[#141414]">
+                        #{{ order.order_number }}
+                    </h2>
+                    <!-- Status Badge -->
+                    {% if order.status == 'DELIVERED' %}
+                        <span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest font-semibold border border-[#1E7E4D]/30 bg-[#F0FDF4] text-[#1E7E4D] rounded-sm">
+                            Delivered
+                        </span>
+                    {% elif order.status == 'SHIPPED' %}
+                        <span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest font-semibold border border-[#C9C4BB] bg-[#FAF8F5] text-[#4A4640] rounded-sm">
+                            Shipped
+                        </span>
+                    {% elif order.status == 'OUT_FOR_DELIVERY' %}
+                        <span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest font-semibold border border-[#B54708]/30 bg-[#FFF7ED] text-[#B54708] rounded-sm">
+                            Out for Delivery
+                        </span>
+                    {% elif order.status == 'PENDING' %}
+                        <span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest font-semibold border border-auraBorder bg-[#FAF3E3]/40 text-[#A8842C] rounded-sm">
+                            Pending
+                        </span>
+                    {% elif order.status == 'CANCELLED' %}
+                        <span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest font-semibold border border-[#B42318]/30 bg-[#FEF2F2] text-[#B42318] rounded-sm">
+                            Cancelled
+                        </span>
+                    {% endif %}
+                </div>
+                <!-- Metadata Subtitle -->
+                <div class="flex items-center gap-2 mt-2 text-xs text-[#6E6A63] flex-wrap">
+                    <span class="flex items-center gap-1">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-[#A8842C]"></i>
+                        Placed on {{ order.created_at|date:"M d, Y \a\t H:i" }}
+                    </span>
+                    <span>•</span>
+                    <span class="flex items-center gap-1 font-medium text-[#141414]">
+                        <i data-lucide="wallet" class="w-3.5 h-3.5 text-[#A8842C]"></i>
+                        {{ order.get_payment_method_display }}
+                    </span>
+                    <span>•</span>
+                    <span class="flex items-center gap-1">
+                        Payment: 
+                        {% if order.payment_status == 'PAID' %}
+                            <span class="text-[#1E7E4D] font-semibold">Paid</span>
+                        {% else %}
+                            <span class="text-[#B54708] font-semibold">Unpaid (Awaiting COD)</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Fulfilment Status Update Controls -->
+        <div class="flex items-center gap-3">
+            {% if can_update_status %}
+            <form action="{% url 'admin_orders:update_status' order.order_number %}" method="POST" class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                {% csrf_token %}
+                <select name="new_status" required
+                        class="bg-white border border-[#2B2B2B] rounded-sm py-2 px-3 text-xs uppercase tracking-widest text-[#141414] focus:outline-none focus:border-[#A8842C]">
+                    {% for val, label in next_status_choices %}
+                    <option value="{{ val }}">Mark as {{ label }}</option>
+                    {% endfor %}
+                </select>
+
+                <input type="text" name="note" placeholder="Optional audit note..." 
+                       class="bg-white border border-[#E8E5DF] rounded-sm py-2 px-3 text-xs text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C] w-48">
+
+                <button type="submit" 
+                        class="inline-flex items-center gap-2 px-5 py-2 bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold hover:bg-black transition-colors rounded-sm shadow-sm whitespace-nowrap">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span>Update Status</span>
+                </button>
+            </form>
+            {% else %}
+            <div class="inline-flex items-center gap-2 px-4 py-2 bg-[#F7F5F0] border border-[#E8E5DF] text-xs text-[#6E6A63] rounded-sm">
+                <i data-lucide="lock" class="w-3.5 h-3.5 text-[#A8842C]"></i>
+                <span>Lifecycle Complete ({{ order.get_status_display }})</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main Two-Column Layout (Matching VERSE Structure in AURA Visual Identity) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- LEFT COLUMN: Customer Info, Order Items, Payment Details (2 Columns on Large Screens) -->
+        <div class="lg:col-span-2 space-y-8">
+            
+            <!-- 1. CUSTOMER INFORMATION CARD -->
+            <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
+                <div class="flex items-center gap-2.5 border-b border-[#E8E5DF] pb-4 mb-5">
+                    <div class="w-8 h-8 rounded-full bg-[#FAF3E3] border border-[#A8842C]/30 flex items-center justify-center">
+                        <i data-lucide="user" class="w-4 h-4 text-[#A8842C]"></i>
+                    </div>
+                    <h3 class="text-xs uppercase tracking-[0.2em] text-[#141414] font-bold">Customer Information</h3>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Contact Details -->
+                    <div>
+                        <div class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Contact Details</div>
+                        <div class="text-sm font-semibold text-[#141414]">
+                            {{ order.delivery_full_name|default:order.user.get_full_name|default:order.user.username }}
+                        </div>
+                        <div class="text-xs text-[#6E6A63] flex items-center gap-1.5 mt-1">
+                            <i data-lucide="mail" class="w-3.5 h-3.5 text-[#A8842C]"></i>
+                            {{ order.user.email|default:"No account email recorded" }}
+                        </div>
+                        <div class="text-xs text-[#6E6A63] flex items-center gap-1.5 mt-1">
+                            <i data-lucide="phone" class="w-3.5 h-3.5 text-[#A8842C]"></i>
+                            {{ order.delivery_phone_number|default:"No phone number" }}
+                        </div>
+                    </div>
+
+                    <!-- Shipping Address Snapshot -->
+                    <div>
+                        <div class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Shipping Address (Historical Snapshot)</div>
+                        <div class="text-xs text-[#141414] leading-relaxed">
+                            <span class="font-medium">{{ order.delivery_full_name }}</span><br>
+                            {{ order.delivery_address_line1 }}<br>
+                            {% if order.delivery_address_line2 %}{{ order.delivery_address_line2 }}<br>{% endif %}
+                            {% if order.delivery_landmark %}Landmark: {{ order.delivery_landmark }}<br>{% endif %}
+                            {{ order.delivery_city }}, {{ order.delivery_state }} – {{ order.delivery_pincode }}<br>
+                            <span class="inline-block mt-1 px-2 py-0.5 text-[9px] uppercase tracking-wider bg-[#F7F5F0] border border-[#E8E5DF] text-[#6E6A63] rounded-sm">
+                                {{ order.get_delivery_address_type_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. ORDER ITEMS CARD -->
+            <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
+                <div class="flex items-center justify-between border-b border-[#E8E5DF] pb-4 mb-5">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-[#FAF3E3] border border-[#A8842C]/30 flex items-center justify-center">
+                            <i data-lucide="package" class="w-4 h-4 text-[#A8842C]"></i>
+                        </div>
+                        <h3 class="text-xs uppercase tracking-[0.2em] text-[#141414] font-bold">Order Items</h3>
+                    </div>
+                    <span class="px-3 py-1 bg-[#F7F5F0] border border-[#E8E5DF] text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold rounded-full">
+                        {{ items_count }} Item{{ items_count|pluralize }}
+                    </span>
+                </div>
+
+                <!-- Products Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-[#E8E5DF] text-[9px] uppercase tracking-[0.2em] text-[#6E6A63]">
+                                <th class="pb-3 font-semibold">Product</th>
+                                <th class="pb-3 font-semibold">SKU</th>
+                                <th class="pb-3 font-semibold">Price</th>
+                                <th class="pb-3 font-semibold text-center">Qty</th>
+                                <th class="pb-3 font-semibold text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[#EFECE6]">
+                            {% for row in item_rows %}
+                            <tr class="py-4">
+                                <!-- Product Details -->
+                                <td class="py-4 pr-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-14 h-14 rounded-sm bg-[#FAF8F5] border border-[#E8E5DF] overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                            {% if row.image_url %}
+                                                <img src="{{ row.image_url }}" alt="{{ row.item.product_name }}" class="w-full h-full object-cover">
+                                            {% else %}
+                                                <i data-lucide="sparkles" class="w-6 h-6 text-[#A8842C]/40"></i>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            <div class="text-[9px] uppercase tracking-widest text-[#A8842C] font-semibold">
+                                                {{ row.item.brand_name }}
+                                            </div>
+                                            <div class="text-xs font-bold text-[#141414]">
+                                                {{ row.item.product_name }}
+                                            </div>
+                                            <div class="text-[10px] text-[#6E6A63]">
+                                                Size: {{ row.item.variant_size }}
+                                            </div>
+
+                                            <!-- Item-Level Status Badges & Reasons -->
+                                            {% if row.is_cancelled %}
+                                                <div class="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                                    <span class="inline-flex items-center px-2 py-0.5 text-[8px] uppercase tracking-widest font-semibold border border-[#B42318]/30 bg-[#FEF2F2] text-[#B42318] rounded-sm">
+                                                        Cancelled
+                                                    </span>
+                                                    {% if row.cancelled_at %}
+                                                    <span class="text-[10px] text-[#6E6A63]">on {{ row.cancelled_at|date:"M d, Y" }}</span>
+                                                    {% endif %}
+                                                </div>
+                                                {% if row.cancellation_reason %}
+                                                <div class="text-[10px] text-[#B42318] italic mt-0.5">
+                                                    Reason: "{{ row.cancellation_reason }}"
+                                                </div>
+                                                {% endif %}
+                                            {% elif row.return_item %}
+                                                <div class="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                                    {% if row.return_item.status == 'REQUESTED' %}
+                                                        <span class="inline-flex items-center px-2 py-0.5 text-[8px] uppercase tracking-widest font-semibold border border-[#B54708]/30 bg-[#FFF7ED] text-[#B54708] rounded-sm">
+                                                            Return Requested
+                                                        </span>
+                                                        <span class="text-[10px] text-[#6E6A63]">on {{ row.return_item.requested_at|date:"M d, Y" }}</span>
+                                                    {% elif row.return_item.status == 'APPROVED' %}
+                                                        <span class="inline-flex items-center px-2 py-0.5 text-[8px] uppercase tracking-widest font-semibold border border-[#1E7E4D]/30 bg-[#F0FDF4] text-[#1E7E4D] rounded-sm">
+                                                            Return Approved
+                                                        </span>
+                                                        {% if row.return_item.decided_at %}
+                                                        <span class="text-[10px] text-[#6E6A63]">on {{ row.return_item.decided_at|date:"M d, Y" }}</span>
+                                                        {% endif %}
+                                                    {% elif row.return_item.status == 'REJECTED' %}
+                                                        <span class="inline-flex items-center px-2 py-0.5 text-[8px] uppercase tracking-widest font-semibold border border-[#B42318]/30 bg-[#FEF2F2] text-[#B42318] rounded-sm">
+                                                            Return Rejected
+                                                        </span>
+                                                        {% if row.return_item.decided_at %}
+                                                        <span class="text-[10px] text-[#6E6A63]">on {{ row.return_item.decided_at|date:"M d, Y" }}</span>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                </div>
+                                                <div class="text-[10px] text-[#6E6A63] mt-0.5">
+                                                    Reason: "{{ row.return_item.reason }}"
+                                                </div>
+                                                {% if row.return_item.decision_note %}
+                                                <div class="text-[10px] text-[#141414] mt-0.5">
+                                                    Decision Note: "{{ row.return_item.decision_note }}"
+                                                </div>
+                                                {% endif %}
+                                            {% else %}
+                                                <div class="mt-1">
+                                                    <span class="inline-flex items-center px-2 py-0.5 text-[8px] uppercase tracking-widest border border-auraBorder bg-[#FAF8F5] text-[#6E6A63] rounded-sm">
+                                                        {{ order.get_status_display }}
+                                                    </span>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- SKU -->
+                                <td class="py-4 text-xs font-mono text-[#6E6A63]">
+                                    {{ row.item.sku }}
+                                </td>
+
+                                <!-- Unit Price -->
+                                <td class="py-4">
+                                    <span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:600;color:#141414;">₹{{ row.item.unit_price }}</span>
+                                </td>
+
+                                <!-- Quantity -->
+                                <td class="py-4 text-xs text-center text-[#141414] font-semibold">
+                                    {{ row.item.quantity }}
+                                </td>
+
+                                <!-- Line Total -->
+                                <td class="py-4 text-right">
+                                    <div style="font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:#141414;line-height:1.2;">₹{{ row.item.line_total }}</div>
+                                    {% if row.is_cancelled %}
+                                    <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:#B42318;font-weight:600;">Voided</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 3. PAYMENT DETAILS CARD -->
+            <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
+                <div class="flex items-center gap-2.5 border-b border-[#E8E5DF] pb-4 mb-5">
+                    <div class="w-8 h-8 rounded-full bg-[#FAF3E3] border border-[#A8842C]/30 flex items-center justify-center">
+                        <i data-lucide="credit-card" class="w-4 h-4 text-[#A8842C]"></i>
+                    </div>
+                    <h3 class="text-xs uppercase tracking-[0.2em] text-[#141414] font-bold">Payment Details</h3>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <div class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Payment Method</div>
+                        <div class="flex items-center gap-2 text-xs font-semibold text-[#141414]">
+                            <i data-lucide="truck" class="w-4 h-4 text-[#A8842C]"></i>
+                            <span>{{ order.get_payment_method_display }} (COD)</span>
+                        </div>
+                        <div class="text-[11px] text-[#6E6A63] mt-1">
+                            Payment collected upon physical delivery of goods.
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Payment Status</div>
+                        <div>
+                            {% if order.payment_status == 'PAID' %}
+                                <span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest font-semibold border border-[#1E7E4D]/30 bg-[#F0FDF4] text-[#1E7E4D] rounded-sm">
+                                    Paid
+                                </span>
+                                <div style="margin-top:10px;">
+                                    <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:500;color:#6E6A63;">Amount Collected: </span>
+                                    <span style="font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:#141414;">₹{{ order.payment_collected_amount }}</span>
+                                </div>
+                                <div class="text-[11px] text-[#6E6A63] mt-0.5">
+                                    Collected on: {{ order.payment_collected_at|date:"M d, Y \a\t H:i" }}
+                                </div>
+                                {% if order.payment_collected_by %}
+                                <div class="text-[11px] text-[#6E6A63]">
+                                    Collected by: {{ order.payment_collected_by.get_full_name|default:order.payment_collected_by.username }}
+                                </div>
+                                {% endif %}
+                            {% else %}
+                                <span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest font-semibold border border-[#B54708]/30 bg-[#FFF7ED] text-[#B54708] rounded-sm">
+                                    Unpaid
+                                </span>
+                                <div style="margin-top:10px;">
+                                    <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:500;color:#6E6A63;">Amount Collected: </span>
+                                    <span style="font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:#141414;">₹0.00</span>
+                                </div>
+                                <div style="margin-top:6px;">
+                                    <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:600;color:#B54708;">Balance Due: </span>
+                                    <span style="font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:#B54708;">₹{{ financials.total_due }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. AUDIT EVENTS LOG CARD -->
+            <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
+                <div class="flex items-center gap-2.5 border-b border-[#E8E5DF] pb-4 mb-5">
+                    <div class="w-8 h-8 rounded-full bg-[#FAF3E3] border border-[#A8842C]/30 flex items-center justify-center">
+                        <i data-lucide="history" class="w-4 h-4 text-[#A8842C]"></i>
+                    </div>
+                    <h3 class="text-xs uppercase tracking-[0.2em] text-[#141414] font-bold">Fulfilment Audit History</h3>
+                </div>
+
+                <div class="divide-y divide-[#EFECE6]">
+                    <div class="py-3 flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-3">
+                            <span class="w-2 h-2 rounded-full bg-[#1E7E4D]"></span>
+                            <span class="font-semibold text-[#141414]">Order Placed</span>
+                            <span class="text-[#6E6A63]">Initial customer placement</span>
+                        </div>
+                        <div class="text-[#6E6A63] text-right">
+                            {{ order.created_at|date:"M d, Y H:i" }}
+                        </div>
+                    </div>
+                    {% for event in status_events %}
+                    <div class="py-3 flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-3">
+                            <span class="w-2 h-2 rounded-full bg-[#A8842C]"></span>
+                            <span class="font-semibold text-[#141414]">Status Changed: {{ event.get_status_display }}</span>
+                            {% if event.changed_by %}
+                            <span class="text-[11px] text-[#6E6A63]">by {{ event.changed_by.get_full_name|default:event.changed_by.username }}</span>
+                            {% endif %}
+                            {% if event.note %}
+                            <span class="text-[11px] text-[#A8842C] italic">"{{ event.note }}"</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-[#6E6A63] text-right">
+                            {{ event.created_at|date:"M d, Y H:i" }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Price Summary Card & Visual Order Timeline -->
+        <div class="space-y-8">
+            
+            <!-- 1. PRICE SUMMARY CARD -->
+            <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
+                <div class="flex items-center gap-2.5 border-b border-[#E8E5DF] pb-4 mb-5">
+                    <div class="w-8 h-8 rounded-full bg-[#FAF3E3] border border-[#A8842C]/30 flex items-center justify-center">
+                        <i data-lucide="calculator" class="w-4 h-4 text-[#A8842C]"></i>
+                    </div>
+                    <h3 class="text-xs uppercase tracking-[0.2em] text-[#141414] font-bold">Price Summary</h3>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Subtotal — 16px Playfair Display -->
+                    <div class="flex justify-between items-center">
+                        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:500;color:#6E6A63;">Subtotal ({{ items_count }} item{{ items_count|pluralize }})</span>
+                        <span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:600;color:#141414;">₹{{ financials.subtotal }}</span>
+                    </div>
+
+                    <!-- Shipping Charges — 16px -->
+                    <div class="flex justify-between items-center">
+                        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:500;color:#6E6A63;">Shipping Charges</span>
+                        <span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:600;color:#1E7E4D;">
+                            {% if order.shipping_charge > 0 %}₹{{ order.shipping_charge }}{% else %}FREE{% endif %}
+                        </span>
+                    </div>
+
+                    <!-- Original Order Total — 18px -->
+                    <div class="flex justify-between items-center" style="padding-top:10px;border-top:1px solid #EFECE6;">
+                        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:500;color:#6E6A63;">Original Order Total</span>
+                        <span style="font-family:'Playfair Display',serif;font-size:18px;font-weight:600;color:#141414;">₹{{ financials.original_total }}</span>
+                    </div>
+
+                    {% if financials.cancelled_total > 0 %}
+                    <!-- Cancelled deduction — 16px red -->
+                    <div class="flex justify-between items-center">
+                        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:500;color:#B42318;">Cancelled Items Deduction</span>
+                        <span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:600;color:#B42318;">-₹{{ financials.cancelled_total }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if financials.approved_return_total > 0 %}
+                    <!-- Return deduction — 16px red -->
+                    <div class="flex justify-between items-center">
+                        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:500;color:#B42318;">Approved Returns Deduction</span>
+                        <span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:600;color:#B42318;">-₹{{ financials.approved_return_total }}</span>
+                    </div>
+                    {% endif %}
+
+                    <!-- CURRENT ADJUSTED TOTAL — hero amount 30px -->
+                    <div class="flex justify-between items-baseline" style="padding-top:14px;border-top:2px solid #141414;">
+                        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#141414;">Current Adjusted Total</span>
+                        <span style="font-family:'Playfair Display',serif;font-size:30px;font-weight:600;color:#141414;line-height:1.1;">₹{{ financials.adjusted_total }}</span>
+                    </div>
+
+                    {% if order.payment_status == 'PAID' %}
+                    <!-- Payment Collected — 19px green -->
+                    <div class="flex justify-between items-center" style="padding-top:12px;border-top:1px solid #EFECE6;">
+                        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:600;color:#1E7E4D;">Payment Collected</span>
+                        <span style="font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:#1E7E4D;">₹{{ financials.amount_collected }}</span>
+                    </div>
+                    {% else %}
+                    <!-- Balance Due — 19px amber -->
+                    <div class="flex justify-between items-center" style="padding-top:12px;border-top:1px solid #EFECE6;">
+                        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:600;color:#B54708;">Balance Due</span>
+                        <span style="font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:#B54708;">₹{{ financials.total_due }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if financials.credit_due > 0 %}
+                    <!-- Credit Due — 19px green -->
+                    <div class="flex justify-between items-center">
+                        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:600;color:#1E7E4D;">Credit Due to Customer</span>
+                        <span style="font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:#1E7E4D;">₹{{ financials.credit_due }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 2. VISUAL ORDER TIMELINE (VERSE Reference Adaptation) -->
+            <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
+                <div class="flex items-center gap-2.5 border-b border-[#E8E5DF] pb-4 mb-6">
+                    <div class="w-8 h-8 rounded-full bg-[#FAF3E3] border border-[#A8842C]/30 flex items-center justify-center">
+                        <i data-lucide="git-commit" class="w-4 h-4 text-[#A8842C]"></i>
+                    </div>
+                    <h3 class="text-xs uppercase tracking-[0.2em] text-[#141414] font-bold">Order Timeline</h3>
+                </div>
+
+                <div class="relative pl-6 space-y-8 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#E8E5DF]">
+                    {% for node in timeline %}
+                    <div class="relative group">
+                        <!-- Node Circle Icon -->
+                        <div class="absolute -left-6 top-0 w-6 h-6 rounded-full flex items-center justify-center -translate-x-1/2
+                            {% if node.status == 'completed' %}
+                                bg-[#141414] text-white border-2 border-[#141414]
+                            {% elif node.status == 'active' %}
+                                bg-[#FAF3E3] text-[#A8842C] border-2 border-[#A8842C] animate-pulse
+                            {% elif node.status == 'cancelled' %}
+                                bg-[#FEF2F2] text-[#B42318] border-2 border-[#B42318]
+                            {% else %}
+                                bg-[#FAF8F5] text-[#A8A29A] border-2 border-[#E8E5DF]
+                            {% endif %}">
+                            {% if node.status == 'completed' %}
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                            {% elif node.status == 'cancelled' %}
+                                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                            {% else %}
+                                <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Milestone Information -->
+                        <div>
+                            <div class="text-xs font-bold text-[#141414]">
+                                {{ node.title }}
+                            </div>
+                            <div class="text-[11px] text-[#6E6A63] mt-0.5">
+                                {{ node.subtitle }}
+                            </div>
+                            {% if node.timestamp %}
+                            <div class="text-[10px] text-[#A8842C] font-medium mt-0.5">
+                                {{ node.timestamp|date:"M d, Y · H:i" }}
+                            </div>
+                            {% endif %}
+                            {% if node.note %}
+                            <div class="text-[10px] text-[#6E6A63] italic mt-0.5">
+                                Note: "{{ node.note }}"
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+

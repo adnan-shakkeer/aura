@@ -56,8 +56,8 @@ class PanelAccessMiddleware:
     Redirect authenticated users who manually visit the wrong panel.
 
     Scenario A — an administrator (``is_staff`` or ``is_superuser``) opens a
-    User Panel page (``/``, ``/shop/``, ``/brands/``, ``/cart/``, ``/profile/``,
-    ``/address/`` or the user auth pages): redirect to the Admin Dashboard
+    User Panel page (``/``, ``/shop/``, ``/brands/``, ``/cart/``, ``/orders/``,
+    ``/profile/``, ``/address/`` or the user auth pages): redirect to the Admin Dashboard
     (``dashboard:index``) with the message
     "Admin users cannot access the User Panel."
 
@@ -88,6 +88,7 @@ class PanelAccessMiddleware:
         "/shop",
         "/brands",
         "/cart",
+        "/orders",
         "/profile",
         "/address",
         "/login",

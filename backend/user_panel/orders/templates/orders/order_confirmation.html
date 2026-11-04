@@ -250,12 +250,12 @@
                     <a href="{% url 'shop:shop_list' %}" class="inline-flex h-14 flex-1 items-center justify-center rounded-md bg-auraBlack px-6 text-[10px] font-semibold uppercase tracking-[0.24em] text-white transition-colors duration-300 hover:bg-auraDark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-auraBlack">
                         Continue Shopping
                     </a>
-                    <button type="button" disabled aria-disabled="true" title="Order history is coming soon" class="inline-flex h-14 flex-1 cursor-not-allowed items-center justify-center gap-3 rounded-md border border-auraBlack/25 bg-transparent px-6 text-[10px] font-semibold uppercase tracking-[0.24em] text-auraBlack/55">
+                    <a href="{% url 'orders:my_orders' %}" class="inline-flex h-14 flex-1 items-center justify-center gap-3 rounded-md border border-auraBlack/25 bg-transparent px-6 text-[10px] font-semibold uppercase tracking-[0.24em] text-auraBlack transition-colors duration-300 hover:border-auraBlack/50 hover:bg-auraBlack/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-auraBlack">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
                         </svg>
                         View Orders
-                    </button>
+                    </a>
                 </div>
             </article>
         </div>
