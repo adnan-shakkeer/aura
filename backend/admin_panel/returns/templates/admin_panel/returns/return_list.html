@@ -13,26 +13,55 @@
     display: none !important;
   }
 </style>
-<div class="max-w-screen-xl mx-auto px-4 md:px-8 py-8">
+<div class="mb-10">
 
   {# ── Page heading ─────────────────────────────────────────────────────────── #}
-  <div class="flex items-end justify-between mb-6">
+  <div class="flex flex-col lg:flex-row justify-between lg:items-end gap-6 border-b border-[#A8842C]/30 pb-4 mb-8">
     <div>
-      <h1 class="font-serif text-2xl md:text-3xl text-[#141414] tracking-tight">Return Management</h1>
-      <p class="mt-1 text-sm text-[#6E6A63]">Oversee and resolve customer product return requests.</p>
+      <h2 class="font-serif text-3xl md:text-4xl tracking-wide text-[#141414] mb-2">Return Management</h2>
+      <div class="inline-flex items-center justify-center px-4 py-1 border border-[#A8842C]/50 bg-[#FAF3E3] rounded-full">
+        <span class="text-[10px] uppercase tracking-widest text-[#A8842C] font-semibold">{{ kpis.total }} Returns Found</span>
+      </div>
     </div>
-    <span class="text-xs text-[#6E6A63] border border-[#E8E5DF] rounded px-3 py-1 bg-white">
-      {{ kpis.total }} total
-    </span>
+
+    {# Search + submit #}
+    <form method="GET" action="" class="flex items-center gap-2 w-full lg:w-auto">
+      {% if status_filter and status_filter != 'all' %}
+        <input type="hidden" name="status" value="{{ status_filter }}">
+      {% endif %}
+      <div class="relative flex-1 lg:w-80">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <i data-lucide="search" class="w-4 h-4 text-[#6E6A63]"></i>
+        </div>
+        <input
+          type="text"
+          name="search"
+          value="{{ search_query }}"
+          placeholder="Search by order ID, return ID, product, customer..."
+          class="w-full bg-white border border-[#2B2B2B] rounded-sm py-2.5 pl-10 pr-10 text-xs text-[#141414] placeholder-[#A8A29A] focus:outline-none focus:border-[#A8842C] transition-colors"
+        >
+        {% if search_query %}
+          <a href="?{% if status_filter and status_filter != 'all' %}status={{ status_filter }}{% endif %}"
+             class="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6E6A63] hover:text-[#141414] transition-colors" title="Clear Search">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </a>
+        {% endif %}
+      </div>
+      <button type="submit"
+        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold rounded-sm hover:bg-black transition-colors shadow-sm whitespace-nowrap">
+        <i data-lucide="search" class="w-3.5 h-3.5"></i>
+        <span>Search</span>
+      </button>
+    </form>
   </div>
 
   {# ── Django messages ───────────────────────────────────────────────────────── #}
   {% if messages %}
     {% for message in messages %}
       {% if "admin" in message.tags %}
-        <div class="mb-4 px-4 py-3 rounded text-sm font-medium border
-          {% if message.tags and 'error' in message.tags %}bg-red-50 border-red-200 text-red-700
-          {% else %}bg-green-50 border-green-200 text-green-700{% endif %}">
+        <div class="mb-4 px-4 py-3 rounded-sm text-sm font-medium border
+          {% if message.tags and 'error' in message.tags %}bg-[#FEF2F2] border-[#B42318]/30 text-[#B42318]
+          {% else %}bg-[#F0FDF4] border-[#1E7E4D]/30 text-[#1E7E4D]{% endif %}">
           {{ message }}
         </div>
       {% endif %}
@@ -40,523 +69,525 @@
   {% endif %}
 
   {# ── KPI Cards ─────────────────────────────────────────────────────────────── #}
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
     {# Total Returns #}
-    <div class="bg-white border border-[#E8E5DF] rounded-sm p-5">
+    <div class="bg-white border border-[#E8E5DF] rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
       <div class="flex items-center justify-between mb-3">
-        <span class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Total Returns</span>
-        <i data-lucide="rotate-ccw" class="w-4 h-4 text-[#6E6A63]"></i>
+        <span class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Total Returns</span>
+        <div class="w-8 h-8 rounded-full bg-[#FAF8F5] border border-[#E8E5DF] flex items-center justify-center">
+          <i data-lucide="rotate-ccw" class="w-4 h-4 text-[#A8842C]"></i>
+        </div>
       </div>
-      <p class="text-3xl font-bold text-[#141414]">{{ kpis.total }}</p>
-      <p class="mt-1 text-xs text-[#6E6A63]">All time</p>
+      <div class="font-serif text-3xl font-bold text-[#141414] mb-1">{{ kpis.total }}</div>
+      <div class="flex items-center gap-1.5 text-[11px] text-[#1E7E4D] font-medium">
+        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+        <span>All time volume</span>
+      </div>
     </div>
 
     {# Pending #}
-    <div class="bg-white border border-[#E8E5DF] rounded-sm p-5">
+    <div class="bg-white border border-[#E8E5DF] rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
       <div class="flex items-center justify-between mb-3">
-        <span class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Pending</span>
-        <i data-lucide="clock" class="w-4 h-4 text-[#B54708]"></i>
+        <span class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Pending</span>
+        <div class="w-8 h-8 rounded-full bg-[#FFF7ED] border border-[#B54708]/30 flex items-center justify-center">
+          <i data-lucide="clock" class="w-4 h-4 text-[#B54708]"></i>
+        </div>
       </div>
-      <p class="text-3xl font-bold text-[#B54708]">{{ kpis.pending }}</p>
-      <p class="mt-1 text-xs text-[#6E6A63]">Needs action</p>
+      <div class="font-serif text-3xl font-bold text-[#141414] mb-1">{{ kpis.pending }}</div>
+      <div class="flex items-center gap-1.5 text-[11px] text-[#B54708] font-medium">
+        <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+        <span>Needs action</span>
+      </div>
     </div>
 
     {# Approved #}
-    <div class="bg-white border border-[#E8E5DF] rounded-sm p-5">
+    <div class="bg-white border border-[#E8E5DF] rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
       <div class="flex items-center justify-between mb-3">
-        <span class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Approved</span>
-        <i data-lucide="check-circle" class="w-4 h-4 text-[#1E7E4D]"></i>
+        <span class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Approved</span>
+        <div class="w-8 h-8 rounded-full bg-[#F0FDF4] border border-[#1E7E4D]/30 flex items-center justify-center">
+          <i data-lucide="check-circle" class="w-4 h-4 text-[#1E7E4D]"></i>
+        </div>
       </div>
-      <p class="text-3xl font-bold text-[#1E7E4D]">{{ kpis.approved }}</p>
-      <p class="mt-1 text-xs text-[#6E6A63]">Stock restored</p>
+      <div class="font-serif text-3xl font-bold text-[#141414] mb-1">{{ kpis.approved }}</div>
+      <div class="flex items-center gap-1.5 text-[11px] text-[#1E7E4D] font-medium">
+        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+        <span>Stock restored</span>
+      </div>
     </div>
 
     {# Rejected #}
-    <div class="bg-white border border-[#E8E5DF] rounded-sm p-5">
+    <div class="bg-white border border-[#E8E5DF] rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
       <div class="flex items-center justify-between mb-3">
-        <span class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Rejected</span>
-        <i data-lucide="x-circle" class="w-4 h-4 text-[#B42318]"></i>
+        <span class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Rejected</span>
+        <div class="w-8 h-8 rounded-full bg-[#FEF2F2] border border-[#B42318]/30 flex items-center justify-center">
+          <i data-lucide="x-circle" class="w-4 h-4 text-[#B42318]"></i>
+        </div>
       </div>
-      <p class="text-3xl font-bold text-[#B42318]">{{ kpis.rejected }}</p>
-      <p class="mt-1 text-xs text-[#6E6A63]">Not refunded</p>
+      <div class="font-serif text-3xl font-bold text-[#141414] mb-1">{{ kpis.rejected }}</div>
+      <div class="flex items-center gap-1.5 text-[11px] text-[#B42318] font-medium">
+        <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+        <span>Not refunded</span>
+      </div>
     </div>
   </div>
 
-  {# ── Search + Status Filter ────────────────────────────────────────────────── #}
-  <div class="bg-white border border-[#E8E5DF] rounded-sm p-5 mb-6">
-    <form method="GET" action="" class="flex flex-col md:flex-row gap-3">
-      {# Preserve status filter when searching #}
-      {% if status_filter and status_filter != 'all' %}
-        <input type="hidden" name="status" value="{{ status_filter }}">
-      {% endif %}
-
-      <div class="relative flex-1">
-        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6E6A63]"></i>
-        <input
-          type="text"
-          name="search"
-          value="{{ search_query }}"
-          placeholder="Search by order ID, return ID, product, customer..."
-          class="w-full pl-9 pr-4 py-2 text-sm border border-[#E8E5DF] rounded-sm focus:outline-none focus:border-[#A8842C] text-[#141414] placeholder-[#6E6A63]"
-        >
-      </div>
-
-      <button type="submit"
-        class="px-6 py-2 bg-[#141414] text-white text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#2a2a2a] transition-colors duration-200 flex items-center gap-2 whitespace-nowrap">
-        <i data-lucide="search" class="w-3.5 h-3.5"></i>
-        Search
-      </button>
-
-      {% if search_query %}
-        <a href="?{% if status_filter and status_filter != 'all' %}status={{ status_filter }}{% endif %}"
-          class="px-4 py-2 border border-[#E8E5DF] text-xs text-[#6E6A63] uppercase tracking-widest rounded-sm hover:bg-[#F9F7F4] transition-colors whitespace-nowrap flex items-center gap-1">
-          <i data-lucide="x" class="w-3 h-3"></i>
-          Clear
-        </a>
-      {% endif %}
-    </form>
-
-    {# Status filter tabs #}
-    <div class="flex gap-1 mt-4 border-t border-[#E8E5DF] pt-4">
+  {# ── Status filter tabs ────────────────────────────────────────────────────── #}
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div class="flex items-center gap-6 overflow-x-auto pb-2 w-full sm:w-auto">
       {% for tab_key, tab_label in status_tabs %}
-        <a href="?status={{ tab_key }}{% if search_query %}&search={{ search_query }}{% endif %}"
-          class="px-4 py-1.5 text-xs uppercase tracking-widest font-medium rounded-sm transition-colors
-            {% if status_filter == tab_key %}bg-[#141414] text-white{% else %}text-[#6E6A63] hover:bg-[#F9F7F4]{% endif %}">
+        <a href="?status={{ tab_key }}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}"
+           class="text-[11px] uppercase tracking-widest font-semibold pb-2 border-b-2 transition-colors whitespace-nowrap
+             {% if status_filter == tab_key %}text-[#A8842C] border-[#A8842C]{% else %}text-[#6E6A63] border-transparent hover:text-[#141414] hover:border-[#141414]/30{% endif %}">
           {{ tab_label }}
         </a>
       {% endfor %}
     </div>
+
+    <div class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold whitespace-nowrap">
+      {{ page_obj.paginator.count }} Total
+    </div>
   </div>
 
   {# ── Returns Table ─────────────────────────────────────────────────────────── #}
-  <div class="bg-white border border-[#E8E5DF] rounded-sm overflow-hidden">
-    <div class="flex items-center justify-between px-6 py-4 border-b border-[#E8E5DF]">
-      <div class="flex items-center gap-2">
-        <i data-lucide="rotate-ccw" class="w-4 h-4 text-[#A8842C]"></i>
-        <h2 class="text-xs uppercase tracking-widest font-semibold text-[#141414]">Return Requests</h2>
-      </div>
-      <span class="text-xs text-[#6E6A63]">{{ page_obj.paginator.count }} total</span>
-    </div>
+  <div class="bg-white border border-[#E8E5DF] rounded-xl shadow-sm overflow-hidden mb-8">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="border-b border-[#E8E5DF] bg-[#F7F5F0]">
+            <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Return ID</th>
+            <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Order</th>
+            <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Product</th>
+            <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Customer</th>
+            <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Reason</th>
+            <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Status</th>
+            <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Date</th>
+            <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#EFECE6]">
+          {% for ri in page_obj %}
+            {% with order=ri.order_item.order oi=ri.order_item %}
+            <tr class="hover:bg-[#FAF8F4] transition-colors duration-200 group">
 
-    {% if page_obj.object_list %}
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-[#E8E5DF] bg-[#FAFAF9]">
-              <th class="px-6 py-3 text-left text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Return ID</th>
-              <th class="px-4 py-3 text-left text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Order</th>
-              <th class="px-4 py-3 text-left text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Product</th>
-              <th class="px-4 py-3 text-left text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Customer</th>
-              <th class="px-4 py-3 text-left text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Reason</th>
-              <th class="px-4 py-3 text-left text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Status</th>
-              <th class="px-4 py-3 text-left text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Date</th>
-              <th class="px-6 py-3 text-right text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[#E8E5DF]">
-            {% for ri in page_obj %}
-              {% with order=ri.order_item.order oi=ri.order_item %}
-              <tr class="hover:bg-[#FAFAF9] transition-colors">
+              {# RETURN ID #}
+              <td class="py-5 px-6 whitespace-nowrap">
+                <span class="block text-xs font-semibold text-[#141414]">#{{ ri.pk }}</span>
+                <span class="block text-[10px] text-[#6E6A63] font-mono mt-0.5">{{ ri.return_request.request_number }}</span>
+              </td>
 
-                {# RETURN ID #}
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="text-[#141414] font-semibold text-sm">#{{ ri.pk }}</span>
-                  <br>
-                  <span class="text-[10px] text-[#6E6A63] font-mono">{{ ri.return_request.request_number }}</span>
-                </td>
+              {# ORDER #}
+              <td class="py-5 px-6 whitespace-nowrap">
+                <a href="{% url 'admin_orders:detail' order.order_number %}"
+                   class="text-xs font-mono text-[#A8842C] hover:underline">
+                  #{{ order.order_number }}
+                </a>
+              </td>
 
-                {# ORDER #}
-                <td class="px-4 py-4 whitespace-nowrap">
-                  <a href="{% url 'admin_orders:detail' order.order_number %}"
-                    class="text-xs font-mono text-[#A8842C] hover:underline">
-                    #{{ order.order_number }}
-                  </a>
-                </td>
-
-                {# PRODUCT #}
-                <td class="px-4 py-4">
-                  <div class="flex items-center gap-3">
+              {# PRODUCT #}
+              <td class="py-5 px-6">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-sm bg-[#FAF8F5] border border-[#E8E5DF] overflow-hidden flex-shrink-0 flex items-center justify-center">
                     {% with img=oi.variant.images.first %}
                       {% if img %}
-                        <img src="{{ img.image.url }}" alt="{{ oi.product_name }}"
-                          class="w-10 h-10 object-cover rounded-sm border border-[#E8E5DF] flex-shrink-0">
+                        <img src="{{ img.image.url }}" alt="{{ oi.product_name }}" class="w-full h-full object-cover">
                       {% else %}
-                        <div class="w-10 h-10 bg-[#F9F7F4] rounded-sm border border-[#E8E5DF] flex items-center justify-center flex-shrink-0">
-                          <i data-lucide="package" class="w-4 h-4 text-[#6E6A63]"></i>
-                        </div>
+                        <i data-lucide="sparkles" class="w-5 h-5 text-[#A8842C]/40"></i>
                       {% endif %}
                     {% endwith %}
-                    <div class="min-w-0">
-                      <p class="text-xs font-semibold text-[#141414] leading-tight truncate max-w-[140px]">{{ oi.product_name }}</p>
-                      {% if oi.brand_name %}<p class="text-[10px] text-[#A8842C] uppercase tracking-wide">{{ oi.brand_name }}</p>{% endif %}
-                      <p class="text-[10px] text-[#6E6A63] font-mono mt-0.5">{{ oi.sku }}</p>
-                      <p class="text-[10px] text-[#6E6A63]">Qty: {{ ri.quantity }}</p>
-                    </div>
                   </div>
-                </td>
-
-                {# CUSTOMER #}
-                <td class="px-4 py-4">
-                  <p class="text-xs font-medium text-[#141414]">{{ order.delivery_full_name }}</p>
-                  {% if order.user %}
-                    <p class="text-[10px] text-[#6E6A63] mt-0.5">{{ order.user.email }}</p>
-                  {% endif %}
-                </td>
-
-                {# REASON #}
-                <td class="px-4 py-4 max-w-[180px]">
-                  <p class="text-xs text-[#141414] leading-relaxed line-clamp-2">{{ ri.reason }}</p>
-                  {% if ri.status == ReturnItemStatus.REJECTED and ri.decision_note %}
-                    <p class="text-[10px] text-[#B42318] mt-1 italic line-clamp-1" title="{{ ri.decision_note }}">
-                      Note: {{ ri.decision_note }}
-                    </p>
-                  {% endif %}
-                </td>
-
-                {# STATUS #}
-                <td class="px-4 py-4 whitespace-nowrap">
-                  {% if ri.status == ReturnItemStatus.REQUESTED %}
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-amber-50 text-amber-700 border border-amber-200">
-                      <i data-lucide="clock" class="w-3 h-3"></i>Pending
-                    </span>
-                  {% elif ri.status == ReturnItemStatus.APPROVED %}
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-green-50 text-green-700 border border-green-200">
-                      <i data-lucide="check-circle" class="w-3 h-3"></i>Approved
-                    </span>
-                  {% else %}
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-red-50 text-red-700 border border-red-200">
-                      <i data-lucide="x-circle" class="w-3 h-3"></i>Rejected
-                    </span>
-                  {% endif %}
-                </td>
-
-                {# DATE #}
-                <td class="px-4 py-4 whitespace-nowrap text-xs text-[#6E6A63]">
-                  {% if ri.status == ReturnItemStatus.REQUESTED %}
-                    {{ ri.requested_at|date:"M d, Y" }}
-                    <br><span class="text-[10px]">Requested</span>
-                  {% else %}
-                    {{ ri.decided_at|date:"M d, Y" }}
-                    <br>
-                    <span class="text-[10px] {% if ri.status == ReturnItemStatus.APPROVED %}text-[#1E7E4D]{% else %}text-[#B42318]{% endif %}">
-                      {{ ri.status|title }}
-                    </span>
-                  {% endif %}
-                </td>
-
-                {# ACTIONS #}
-                <td class="px-6 py-4 whitespace-nowrap text-right">
-                  <div class="flex items-center justify-end gap-2">
-                    {% if ri.status == ReturnItemStatus.REQUESTED %}
-                      <button
-                        onclick="openApproveModal({{ ri.pk }}, '{{ oi.product_name|escapejs }}', {{ ri.quantity }})"
-                        class="inline-flex items-center gap-1 px-3 py-1.5 bg-[#141414] text-white text-[10px] uppercase tracking-widest font-semibold rounded-sm hover:bg-[#2a2a2a] transition-colors">
-                        <i data-lucide="check" class="w-3 h-3"></i>Approve
-                      </button>
-                      <button
-                        onclick="openRejectModal({{ ri.pk }}, '{{ oi.product_name|escapejs }}')"
-                        class="inline-flex items-center gap-1 px-3 py-1.5 border border-[#B42318] text-[#B42318] text-[10px] uppercase tracking-widest font-semibold rounded-sm hover:bg-red-50 transition-colors">
-                        <i data-lucide="x" class="w-3 h-3"></i>Reject
-                      </button>
+                  <div class="max-w-[180px]">
+                    <div class="text-xs font-semibold text-[#141414] truncate">{{ oi.product_name }}</div>
+                    {% if oi.brand_name %}
+                      <div class="text-[10px] uppercase tracking-wider text-[#A8842C] font-medium">{{ oi.brand_name }}</div>
                     {% endif %}
-                    <button
-                      onclick="openReviewModal({{ ri.pk }})"
-                      class="inline-flex items-center gap-1 px-3 py-1.5 border border-[#E8E5DF] text-[#6E6A63] text-[10px] uppercase tracking-widest font-semibold rounded-sm hover:bg-[#F9F7F4] transition-colors">
-                      <i data-lucide="eye" class="w-3 h-3"></i>View
-                    </button>
+                    <div class="text-[10px] uppercase tracking-wider text-[#6E6A63]">
+                      {% if oi.variant_size %}{{ oi.variant_size }} · {% endif %}SKU: {{ oi.sku }}
+                    </div>
+                    <div class="text-[10px] text-[#6E6A63] mt-0.5">Qty: {{ ri.quantity }}</div>
                   </div>
-                </td>
-              </tr>
-
-              {# ── Approve Confirmation Modal ─────────────────────────────────── #}
-              <div id="approve-modal-{{ ri.pk }}" class="aura-modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-                <div class="absolute inset-0 bg-black/60" onclick="closeApproveModal({{ ri.pk }})"></div>
-                <div class="relative bg-white rounded-sm shadow-2xl w-full max-w-md">
-                  <div class="flex items-center justify-between px-6 py-4 border-b border-[#E8E5DF]">
-                    <div class="flex items-center gap-2">
-                      <i data-lucide="check-circle" class="w-5 h-5 text-[#1E7E4D]"></i>
-                      <h3 class="font-semibold text-sm text-[#141414] uppercase tracking-widest">Confirm Approval</h3>
-                    </div>
-                    <button onclick="closeApproveModal({{ ri.pk }})" class="text-[#6E6A63] hover:text-[#141414] transition-colors">
-                      <i data-lucide="x" class="w-4 h-4"></i>
-                    </button>
-                  </div>
-                  <form method="POST" action="{% url 'admin_returns:approve' ri.pk %}">
-                    {% csrf_token %}
-                    <div class="px-6 py-5 space-y-4">
-                      <p class="text-sm text-[#141414]">
-                        Approve return for <strong>{{ oi.product_name }}</strong>?
-                      </p>
-                      <p class="text-xs text-[#6E6A63]">
-                        <strong>{{ ri.quantity }}</strong> unit(s) will be restored to inventory immediately.
-                        This action cannot be undone.
-                      </p>
-                      <div>
-                        <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-1.5">
-                          Admin Note <span class="normal-case text-[#6E6A63] font-normal">(optional)</span>
-                        </label>
-                        <textarea
-                          name="note"
-                          rows="3"
-                          placeholder="Add an internal note for this approval..."
-                          class="w-full px-3 py-2 text-sm border border-[#E8E5DF] rounded-sm focus:outline-none focus:border-[#A8842C] text-[#141414] placeholder-[#6E6A63] resize-none"
-                        ></textarea>
-                      </div>
-                    </div>
-                    <div class="flex gap-3 px-6 pb-5">
-                      <button type="submit"
-                        class="flex-1 py-2.5 bg-[#1E7E4D] text-white text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#166035] transition-colors">
-                        Confirm Approval
-                      </button>
-                      <button type="button" onclick="closeApproveModal({{ ri.pk }})"
-                        class="flex-1 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#F9F7F4] transition-colors">
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
                 </div>
-              </div>
+              </td>
 
-              {# ── Reject Modal ───────────────────────────────────────────────── #}
-              <div id="reject-modal-{{ ri.pk }}" class="aura-modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-                <div class="absolute inset-0 bg-black/60" onclick="closeRejectModal({{ ri.pk }})"></div>
-                <div class="relative bg-white rounded-sm shadow-2xl w-full max-w-md">
-                  <div class="flex items-center justify-between px-6 py-4 border-b border-[#E8E5DF]">
-                    <div class="flex items-center gap-2">
-                      <i data-lucide="x-circle" class="w-5 h-5 text-[#B42318]"></i>
-                      <h3 class="font-semibold text-sm text-[#141414] uppercase tracking-widest">Reject Return</h3>
-                    </div>
-                    <button onclick="closeRejectModal({{ ri.pk }})" class="text-[#6E6A63] hover:text-[#141414] transition-colors">
-                      <i data-lucide="x" class="w-4 h-4"></i>
-                    </button>
+              {# CUSTOMER #}
+              <td class="py-5 px-6">
+                <div class="text-xs font-semibold text-[#141414]">{{ order.delivery_full_name }}</div>
+                {% if order.user %}
+                  <div class="text-[11px] text-[#6E6A63]">{{ order.user.email }}</div>
+                {% endif %}
+              </td>
+
+              {# REASON #}
+              <td class="py-5 px-6 max-w-[220px]">
+                <p class="text-xs text-[#141414] leading-relaxed line-clamp-2">{{ ri.reason }}</p>
+                {% if ri.status == ReturnItemStatus.REJECTED and ri.decision_note %}
+                  <p class="text-[10px] text-[#B42318] mt-1 italic line-clamp-1" title="{{ ri.decision_note }}">
+                    Note: {{ ri.decision_note }}
+                  </p>
+                {% endif %}
+              </td>
+
+              {# STATUS #}
+              <td class="py-5 px-6 whitespace-nowrap">
+                {% if ri.status == ReturnItemStatus.REQUESTED %}
+                  <span class="inline-flex items-center justify-center px-3 py-1 text-[9px] uppercase tracking-widest font-semibold border border-[#A8842C]/30 bg-[#FAF3E3]/60 text-[#A8842C] rounded-sm min-w-[100px]">
+                    Pending
+                  </span>
+                {% elif ri.status == ReturnItemStatus.APPROVED %}
+                  <span class="inline-flex items-center justify-center px-3 py-1 text-[9px] uppercase tracking-widest font-semibold border border-[#1E7E4D]/30 bg-[#F0FDF4] text-[#1E7E4D] rounded-sm min-w-[100px]">
+                    Approved
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center justify-center px-3 py-1 text-[9px] uppercase tracking-widest font-semibold border border-[#B42318]/30 bg-[#FEF2F2] text-[#B42318] rounded-sm min-w-[100px]">
+                    Rejected
+                  </span>
+                {% endif %}
+              </td>
+
+              {# DATE #}
+              <td class="py-5 px-6 whitespace-nowrap">
+                {% if ri.status == ReturnItemStatus.REQUESTED %}
+                  <div class="text-xs text-[#141414]">{{ ri.requested_at|date:"M d, Y" }}</div>
+                  <div class="text-[10px] text-[#6E6A63]">Requested</div>
+                {% else %}
+                  <div class="text-xs text-[#141414]">{{ ri.decided_at|date:"M d, Y" }}</div>
+                  <div class="text-[10px] {% if ri.status == ReturnItemStatus.APPROVED %}text-[#1E7E4D]{% else %}text-[#B42318]{% endif %}">
+                    {{ ri.status|title }}
                   </div>
-                  <form method="POST" action="{% url 'admin_returns:reject' ri.pk %}">
-                    {% csrf_token %}
-                    <div class="px-6 py-5 space-y-4">
-                      <p class="text-sm text-[#141414]">
-                        Reject return for <strong>{{ oi.product_name }}</strong>?
-                      </p>
-                      <div class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-sm">
-                        <i data-lucide="alert-triangle" class="w-4 h-4 text-[#B42318] flex-shrink-0 mt-0.5"></i>
-                        <p class="text-xs text-[#B42318]">
-                          Rejecting is permanent. The customer will not be able to submit another return for this item.
-                          No stock changes will occur.
-                        </p>
-                      </div>
-                      <div>
-                        <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-1.5">
-                          Rejection Reason <span class="text-[#B42318]">*</span>
-                        </label>
-                        <textarea
-                          name="note"
-                          rows="4"
-                          required
-                          placeholder="Provide a clear reason for rejecting this return request..."
-                          class="w-full px-3 py-2 text-sm border border-[#E8E5DF] rounded-sm focus:outline-none focus:border-[#B42318] text-[#141414] placeholder-[#6E6A63] resize-none"
-                        ></textarea>
-                        <p class="mt-1 text-[10px] text-[#6E6A63]">This note is mandatory and will be recorded.</p>
-                      </div>
-                    </div>
-                    <div class="flex gap-3 px-6 pb-5">
-                      <button type="submit"
-                        class="flex-1 py-2.5 bg-[#B42318] text-white text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#8e1b12] transition-colors">
-                        Confirm Rejection
-                      </button>
-                      <button type="button" onclick="closeRejectModal({{ ri.pk }})"
-                        class="flex-1 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#F9F7F4] transition-colors">
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
+                {% endif %}
+              </td>
 
-              {# ── Review Modal ───────────────────────────────────────────────── #}
-              <div id="review-modal-{{ ri.pk }}" class="aura-modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-                <div class="absolute inset-0 bg-black/60" onclick="closeReviewModal({{ ri.pk }})"></div>
-                <div class="relative bg-white rounded-sm shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                  {# Header #}
-                  <div class="flex items-center justify-between px-6 py-4 border-b border-[#E8E5DF] sticky top-0 bg-white z-10">
-                    <div class="flex items-center gap-2">
-                      <i data-lucide="file-text" class="w-5 h-5 text-[#A8842C]"></i>
-                      <h3 class="font-semibold text-sm text-[#141414] uppercase tracking-widest">Return Review</h3>
-                      <span class="ml-2 text-xs text-[#6E6A63] font-mono">{{ ri.return_request.request_number }}</span>
-                    </div>
-                    <button onclick="closeReviewModal({{ ri.pk }})" class="text-[#6E6A63] hover:text-[#141414] transition-colors">
-                      <i data-lucide="x" class="w-4 h-4"></i>
-                    </button>
+              {# ACTIONS #}
+              <td class="py-5 px-6 text-right whitespace-nowrap">
+                <button type="button"
+                        onclick="openReviewModal({{ ri.pk }})"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold hover:bg-black transition-colors rounded-sm shadow-sm">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                  <span>View</span>
+                </button>
+              </td>
+            </tr>
+            {% endwith %}
+          {% empty %}
+            <tr>
+              <td colspan="8" class="py-20 px-6 text-center">
+                <div class="flex flex-col items-center justify-center">
+                  <div class="w-16 h-16 rounded-full bg-[#F5F3EE] border border-[#E8E5DF] flex items-center justify-center mb-4">
+                    <i data-lucide="search-x" class="w-6 h-6 text-[#6E6A63]"></i>
                   </div>
-
-                  <div class="px-6 py-5 space-y-5">
-                    {# Status badge #}
-                    <div class="flex items-center gap-3">
-                      <span class="text-[10px] text-[#6E6A63] uppercase tracking-widest font-semibold">Status:</span>
-                      {% if ri.status == ReturnItemStatus.REQUESTED %}
-                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-amber-50 text-amber-700 border border-amber-200">
-                          <i data-lucide="clock" class="w-3 h-3"></i>Pending Review
-                        </span>
-                      {% elif ri.status == ReturnItemStatus.APPROVED %}
-                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-green-50 text-green-700 border border-green-200">
-                          <i data-lucide="check-circle" class="w-3 h-3"></i>Approved
-                        </span>
-                      {% else %}
-                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-red-50 text-red-700 border border-red-200">
-                          <i data-lucide="x-circle" class="w-3 h-3"></i>Rejected
-                        </span>
-                      {% endif %}
-                      <span class="text-[10px] text-[#6E6A63] ml-auto">Item #{{ ri.pk }}</span>
-                    </div>
-
-                    {# Product section #}
-                    <div class="border border-[#E8E5DF] rounded-sm p-4">
-                      <h4 class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-3">Product</h4>
-                      <div class="flex items-center gap-4">
-                        {% with img=oi.variant.images.first %}
-                          {% if img %}
-                            <img src="{{ img.image.url }}" alt="{{ oi.product_name }}"
-                              class="w-16 h-16 object-cover rounded-sm border border-[#E8E5DF] flex-shrink-0">
-                          {% else %}
-                            <div class="w-16 h-16 bg-[#F9F7F4] rounded-sm border border-[#E8E5DF] flex items-center justify-center flex-shrink-0">
-                              <i data-lucide="package" class="w-6 h-6 text-[#6E6A63]"></i>
-                            </div>
-                          {% endif %}
-                        {% endwith %}
-                        <div>
-                          {% if oi.brand_name %}<p class="text-[10px] text-[#A8842C] uppercase tracking-wide font-medium">{{ oi.brand_name }}</p>{% endif %}
-                          <p class="text-sm font-semibold text-[#141414]">{{ oi.product_name }}</p>
-                          <p class="text-xs text-[#6E6A63] font-mono mt-0.5">{{ oi.sku }}</p>
-                          <div class="flex items-center gap-4 mt-1">
-                            <span class="text-xs text-[#6E6A63]">Unit Price: <strong style="font-family:'Playfair Display',serif;font-size:13px;" class="text-[#141414]">₹{{ oi.unit_price }}</strong></span>
-                            <span class="text-xs text-[#6E6A63]">Qty: <strong class="text-[#141414]">{{ ri.quantity }}</strong></span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {# Order + Customer #}
-                    <div class="grid grid-cols-2 gap-4">
-                      <div class="border border-[#E8E5DF] rounded-sm p-4">
-                        <h4 class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Order</h4>
-                        <a href="{% url 'admin_orders:detail' order.order_number %}"
-                          class="text-xs font-mono text-[#A8842C] hover:underline">
-                          #{{ order.order_number }}
-                        </a>
-                        <p class="text-xs text-[#6E6A63] mt-1">Placed {{ order.created_at|date:"M d, Y" }}</p>
-                      </div>
-                      <div class="border border-[#E8E5DF] rounded-sm p-4">
-                        <h4 class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Customer</h4>
-                        <p class="text-xs font-medium text-[#141414]">{{ order.delivery_full_name }}</p>
-                        {% if order.user %}<p class="text-[10px] text-[#6E6A63]">{{ order.user.email }}</p>{% endif %}
-                      </div>
-                    </div>
-
-                    {# Return reason #}
-                    <div class="border border-[#E8E5DF] rounded-sm p-4">
-                      <h4 class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Return Reason</h4>
-                      <p class="text-sm text-[#141414] leading-relaxed">{{ ri.reason }}</p>
-                      <p class="text-[10px] text-[#6E6A63] mt-2">Requested: {{ ri.requested_at|date:"M d, Y – H:i" }}</p>
-                    </div>
-
-                    {# Decision section — only for decided items #}
-                    {% if ri.status != ReturnItemStatus.REQUESTED %}
-                      <div class="border rounded-sm p-4 {% if ri.status == ReturnItemStatus.APPROVED %}border-green-200 bg-green-50{% else %}border-red-200 bg-red-50{% endif %}">
-                        <h4 class="text-[10px] uppercase tracking-widest font-semibold mb-2 {% if ri.status == ReturnItemStatus.APPROVED %}text-green-700{% else %}text-red-700{% endif %}">
-                          Decision
-                        </h4>
-                        <p class="text-xs {% if ri.status == ReturnItemStatus.APPROVED %}text-green-700{% else %}text-red-700{% endif %}">
-                          {{ ri.status|title }} on {{ ri.decided_at|date:"M d, Y – H:i" }}
-                          {% if ri.decided_by %} by {{ ri.decided_by.get_full_name|default:ri.decided_by.email }}{% endif %}
-                        </p>
-                        {% if ri.decision_note %}
-                          <p class="mt-2 text-xs text-[#141414] italic">"{{ ri.decision_note }}"</p>
-                        {% endif %}
-                        {% if ri.stock_restored_at %}
-                          <p class="mt-1 text-[10px] text-green-600">Stock restored at {{ ri.stock_restored_at|date:"M d, Y – H:i" }}</p>
-                        {% endif %}
-                      </div>
-                    {% endif %}
-                  </div>
-
-                  {# Modal footer — action buttons for REQUESTED items #}
-                  {% if ri.status == ReturnItemStatus.REQUESTED %}
-                    <div class="flex gap-3 px-6 pb-5 border-t border-[#E8E5DF] pt-4">
-                      <button
-                        onclick="closeReviewModal({{ ri.pk }}); openApproveModal({{ ri.pk }}, '{{ oi.product_name|escapejs }}', {{ ri.quantity }})"
-                        class="flex-1 py-2.5 bg-[#1E7E4D] text-white text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#166035] transition-colors flex items-center justify-center gap-1">
-                        <i data-lucide="check" class="w-3.5 h-3.5"></i>Approve
-                      </button>
-                      <button
-                        onclick="closeReviewModal({{ ri.pk }}); openRejectModal({{ ri.pk }}, '{{ oi.product_name|escapejs }}')"
-                        class="flex-1 py-2.5 bg-[#B42318] text-white text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#8e1b12] transition-colors flex items-center justify-center gap-1">
-                        <i data-lucide="x" class="w-3.5 h-3.5"></i>Reject
-                      </button>
-                      <button
-                        onclick="closeReviewModal({{ ri.pk }})"
-                        class="px-5 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#F9F7F4] transition-colors">
-                        Close
-                      </button>
-                    </div>
-                  {% else %}
-                    <div class="px-6 pb-5 border-t border-[#E8E5DF] pt-4">
-                      <button onclick="closeReviewModal({{ ri.pk }})"
-                        class="w-full py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#F9F7F4] transition-colors">
-                        Close
-                      </button>
-                    </div>
+                  <h3 class="font-serif text-2xl text-[#141414] mb-2">No returns found</h3>
+                  <p class="text-sm text-[#6E6A63] mb-6">
+                    {% if search_query or status_filter != 'all' %}No return requests match your active search or filter criteria.{% else %}Customer return requests will appear here.{% endif %}
+                  </p>
+                  {% if search_query or status_filter != 'all' %}
+                    <a href="{% url 'admin_returns:list' %}" class="inline-flex items-center gap-2 px-6 py-2.5 border border-[#A8842C] text-[#A8842C] text-[10px] uppercase tracking-widest font-semibold hover:bg-[#FAF3E3] transition-colors rounded-sm">
+                      Clear Filters <i data-lucide="x" class="w-3 h-3"></i>
+                    </a>
                   {% endif %}
                 </div>
-              </div>
-              {% endwith %}
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <div class="flex flex-col items-center justify-center py-20 text-center">
-        <i data-lucide="rotate-ccw" class="w-12 h-12 text-[#E8E5DF] mb-4"></i>
-        <p class="text-sm font-medium text-[#141414]">No return requests found</p>
-        {% if search_query or status_filter != 'all' %}
-          <p class="text-xs text-[#6E6A63] mt-1">Try adjusting your filters or search term.</p>
-          <a href="{% url 'admin_returns:list' %}" class="mt-4 text-xs text-[#A8842C] hover:underline">Clear all filters</a>
-        {% else %}
-          <p class="text-xs text-[#6E6A63] mt-1">Customer return requests will appear here.</p>
-        {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {# ── Pagination ─────────────────────────────────────────────────────────── #}
+    {% if page_obj.has_other_pages %}
+      <div class="py-4 px-6 border-t border-[#E8E5DF] bg-[#F7F5F0] flex flex-col sm:flex-row items-center justify-between gap-3">
+        <span class="text-xs text-[#6E6A63]">
+          Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} returns
+        </span>
+        <div class="flex items-center gap-2">
+          {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}"
+               class="px-3 py-1.5 border border-[#E8E5DF] bg-white text-xs text-[#141414] hover:border-[#A8842C] rounded-sm transition-colors">
+              Previous
+            </a>
+          {% endif %}
+
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+              <span class="px-3 py-1.5 border border-[#A8842C] bg-[#FAF3E3] text-xs font-bold text-[#A8842C] rounded-sm">{{ num }}</span>
+            {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+              <a href="?page={{ num }}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}"
+                 class="px-3 py-1.5 border border-[#E8E5DF] bg-white text-xs text-[#141414] hover:border-[#A8842C] rounded-sm transition-colors">{{ num }}</a>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}"
+               class="px-3 py-1.5 border border-[#E8E5DF] bg-white text-xs text-[#141414] hover:border-[#A8842C] rounded-sm transition-colors">
+              Next
+            </a>
+          {% endif %}
+        </div>
       </div>
     {% endif %}
   </div>
 
-  {# ── Pagination ─────────────────────────────────────────────────────────────── #}
-  {% if page_obj.has_other_pages %}
-    <div class="flex items-center justify-between mt-6">
-      <p class="text-xs text-[#6E6A63]">
-        Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} returns
-      </p>
-      <div class="flex items-center gap-1">
-        {% if page_obj.has_previous %}
-          <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}"
-            class="px-3 py-1.5 text-xs border border-[#E8E5DF] text-[#6E6A63] rounded-sm hover:bg-[#F9F7F4] transition-colors flex items-center gap-1">
-            <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>Prev
-          </a>
-        {% endif %}
+  {# ── Modals (rendered outside the table for valid markup) ─────────────────── #}
+  {% for ri in page_obj %}
+    {% with order=ri.order_item.order oi=ri.order_item %}
 
-        {% for num in page_obj.paginator.page_range %}
-          {% if page_obj.number == num %}
-            <span class="px-3 py-1.5 text-xs bg-[#141414] text-white rounded-sm font-semibold">{{ num }}</span>
-          {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
-            <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}"
-              class="px-3 py-1.5 text-xs border border-[#E8E5DF] text-[#6E6A63] rounded-sm hover:bg-[#F9F7F4] transition-colors">{{ num }}</a>
+    {# ── Approve Confirmation Modal ─────────────────────────────────────────── #}
+    <div id="approve-modal-{{ ri.pk }}" class="aura-modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onclick="closeApproveModal({{ ri.pk }})"></div>
+      <div class="relative bg-white rounded-lg shadow-[0_24px_80px_-20px_rgba(20,20,20,0.35)] border border-[#E8E5DF] w-full max-w-md">
+        <div class="flex items-center justify-between px-6 py-5 border-b border-[#E8E5DF]">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-[#F0FDF4] border border-[#1E7E4D]/30 flex items-center justify-center">
+              <i data-lucide="check-circle" class="w-4 h-4 text-[#1E7E4D]"></i>
+            </div>
+            <div>
+              <h3 class="font-serif text-xl text-[#141414] leading-tight">Confirm Approval</h3>
+              <p class="text-[10px] uppercase tracking-widest text-[#6E6A63] mt-0.5">Return #{{ ri.pk }}</p>
+            </div>
+          </div>
+          <button type="button" onclick="closeApproveModal({{ ri.pk }})" aria-label="Close approval confirmation"
+                  class="text-[#6E6A63] hover:text-[#141414] transition-colors w-9 h-9 rounded-full border border-[#E8E5DF] hover:border-[#141414]/20 flex items-center justify-center">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <form method="POST" action="{% url 'admin_returns:approve' ri.pk %}">
+          {% csrf_token %}
+          <div class="px-6 py-5 space-y-4">
+            <p class="text-sm text-[#141414]">
+              Approve return for <strong>{{ oi.product_name }}</strong>?
+            </p>
+            <p class="text-xs text-[#6E6A63] leading-relaxed">
+              <strong class="text-[#141414]">{{ ri.quantity }}</strong> unit(s) will be restored to inventory immediately.
+              This action cannot be undone.
+            </p>
+            <div>
+              <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-1.5">
+                Admin Note <span class="normal-case text-[#6E6A63] font-normal">(optional)</span>
+              </label>
+              <textarea
+                name="note"
+                rows="3"
+                placeholder="Add an internal note for this approval..."
+                class="w-full px-3 py-2 text-sm border border-[#E8E5DF] rounded-sm focus:outline-none focus:border-[#A8842C] text-[#141414] placeholder-[#A8A29A] resize-none"
+              ></textarea>
+            </div>
+          </div>
+          <div class="flex gap-3 px-6 py-5 border-t border-[#E8E5DF]">
+            <button type="submit"
+              class="flex-1 inline-flex items-center justify-center gap-2 py-2.5 bg-[#1E7E4D] text-white text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#166035] transition-colors">
+              <i data-lucide="check" class="w-3.5 h-3.5"></i>Confirm Approval
+            </button>
+            <button type="button" onclick="closeApproveModal({{ ri.pk }})"
+              class="flex-1 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#FAF8F4] transition-colors">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {# ── Reject Modal ───────────────────────────────────────────────────────── #}
+    <div id="reject-modal-{{ ri.pk }}" class="aura-modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onclick="closeRejectModal({{ ri.pk }})"></div>
+      <div class="relative bg-white rounded-lg shadow-[0_24px_80px_-20px_rgba(20,20,20,0.35)] border border-[#E8E5DF] w-full max-w-md">
+        <div class="flex items-center justify-between px-6 py-5 border-b border-[#E8E5DF]">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-[#FEF2F2] border border-[#B42318]/30 flex items-center justify-center">
+              <i data-lucide="x-circle" class="w-4 h-4 text-[#B42318]"></i>
+            </div>
+            <div>
+              <h3 class="font-serif text-xl text-[#141414] leading-tight">Reject Return</h3>
+              <p class="text-[10px] uppercase tracking-widest text-[#6E6A63] mt-0.5">Return #{{ ri.pk }}</p>
+            </div>
+          </div>
+          <button type="button" onclick="closeRejectModal({{ ri.pk }})" aria-label="Close rejection form"
+                  class="text-[#6E6A63] hover:text-[#141414] transition-colors w-9 h-9 rounded-full border border-[#E8E5DF] hover:border-[#141414]/20 flex items-center justify-center">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <form method="POST" action="{% url 'admin_returns:reject' ri.pk %}">
+          {% csrf_token %}
+          <div class="px-6 py-5 space-y-4">
+            <p class="text-sm text-[#141414]">
+              Reject return for <strong>{{ oi.product_name }}</strong>?
+            </p>
+            <div class="flex items-start gap-2 p-3 bg-[#FEF2F2] border border-[#B42318]/20 rounded-sm">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-[#B42318] flex-shrink-0 mt-0.5"></i>
+              <p class="text-xs text-[#B42318] leading-relaxed">
+                Rejecting is permanent. The customer will not be able to submit another return for this item.
+                No stock changes will occur.
+              </p>
+            </div>
+            <div>
+              <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-1.5">
+                Rejection Reason <span class="text-[#B42318]">*</span>
+              </label>
+              <textarea
+                name="note"
+                rows="4"
+                required
+                placeholder="Provide a clear reason for rejecting this return request..."
+                class="w-full px-3 py-2 text-sm border border-[#E8E5DF] rounded-sm focus:outline-none focus:border-[#B42318] text-[#141414] placeholder-[#A8A29A] resize-none"
+              ></textarea>
+              <p class="mt-1 text-[10px] text-[#6E6A63]">This note is mandatory and will be recorded.</p>
+            </div>
+          </div>
+          <div class="flex gap-3 px-6 py-5 border-t border-[#E8E5DF]">
+            <button type="submit"
+              class="flex-1 inline-flex items-center justify-center gap-2 py-2.5 bg-[#B42318] text-white text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#8e1b12] transition-colors">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>Confirm Rejection
+            </button>
+            <button type="button" onclick="closeRejectModal({{ ri.pk }})"
+              class="flex-1 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#FAF8F4] transition-colors">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {# ── Review Modal ───────────────────────────────────────────────────────── #}
+    <div id="review-modal-{{ ri.pk }}" class="aura-modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onclick="closeReviewModal({{ ri.pk }})"></div>
+      <div class="relative bg-white rounded-lg shadow-[0_24px_80px_-20px_rgba(20,20,20,0.4)] border border-[#E8E5DF] w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+
+        {# Header #}
+        <div class="flex items-center justify-between gap-4 px-7 py-5 border-b border-[#E8E5DF] sticky top-0 bg-white z-10">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-full bg-[#FAF8F5] border border-[#E8E5DF] flex items-center justify-center flex-shrink-0">
+              <i data-lucide="file-text" class="w-4 h-4 text-[#A8842C]"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="font-serif text-xl md:text-2xl text-[#141414] leading-tight">Return Review</h3>
+              <p class="text-[10px] font-mono uppercase tracking-widest text-[#6E6A63] mt-0.5 truncate">{{ ri.return_request.request_number }}</p>
+            </div>
+          </div>
+          <button type="button" onclick="closeReviewModal({{ ri.pk }})" aria-label="Close return review"
+                  class="text-[#6E6A63] hover:text-[#141414] transition-colors w-9 h-9 rounded-full border border-[#E8E5DF] hover:border-[#141414]/20 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <div class="px-7 py-6 space-y-5">
+
+          {# Status #}
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+              <span class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">Status</span>
+              {% if ri.status == ReturnItemStatus.REQUESTED %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-[#FAF3E3] text-[#A8842C] border border-[#A8842C]/30">
+                  <i data-lucide="clock" class="w-3 h-3"></i>Pending Review
+                </span>
+              {% elif ri.status == ReturnItemStatus.APPROVED %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-[#F0FDF4] text-[#1E7E4D] border border-[#1E7E4D]/30">
+                  <i data-lucide="check-circle" class="w-3 h-3"></i>Approved
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-[#FEF2F2] text-[#B42318] border border-[#B42318]/30">
+                  <i data-lucide="x-circle" class="w-3 h-3"></i>Rejected
+                </span>
+              {% endif %}
+            </div>
+            <span class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-medium whitespace-nowrap">Item #{{ ri.pk }}</span>
+          </div>
+
+          {# Product section #}
+          <div class="border border-[#E8E5DF] rounded-lg p-5 bg-[#FCFBF9]">
+            <h4 class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold mb-4">Product</h4>
+            <div class="flex items-start gap-4">
+              <div class="w-20 h-20 rounded-sm bg-white border border-[#E8E5DF] overflow-hidden flex-shrink-0 flex items-center justify-center">
+                {% with img=oi.variant.images.first %}
+                  {% if img %}
+                    <img src="{{ img.image.url }}" alt="{{ oi.product_name }}" class="w-full h-full object-cover">
+                  {% else %}
+                    <i data-lucide="sparkles" class="w-7 h-7 text-[#A8842C]/40"></i>
+                  {% endif %}
+                {% endwith %}
+              </div>
+              <div class="min-w-0">
+                {% if oi.brand_name %}
+                  <p class="text-[10px] text-[#A8842C] uppercase tracking-widest font-semibold">{{ oi.brand_name }}</p>
+                {% endif %}
+                <p class="font-serif text-lg text-[#141414] leading-tight">{{ oi.product_name }}</p>
+                <p class="text-[10px] text-[#6E6A63] font-mono uppercase tracking-wider mt-1">
+                  {% if oi.variant_size %}{{ oi.variant_size }} · {% endif %}SKU: {{ oi.sku }}
+                </p>
+                <div class="flex items-center gap-5 mt-2.5">
+                  <span class="text-xs text-[#6E6A63]">
+                    Unit Price:
+                    <strong style="font-family:'Playfair Display',serif;font-size:14px;" class="text-[#141414]">₹{{ oi.unit_price|floatformat:2 }}</strong>
+                  </span>
+                  <span class="text-xs text-[#6E6A63]">Qty: <strong class="text-[#141414]">{{ ri.quantity }}</strong></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {# Order + Customer #}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="border border-[#E8E5DF] rounded-lg p-5">
+              <h4 class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold mb-3">Order</h4>
+              <a href="{% url 'admin_orders:detail' order.order_number %}"
+                 class="text-xs font-mono text-[#A8842C] hover:underline">
+                #{{ order.order_number }}
+              </a>
+              <p class="text-xs text-[#6E6A63] mt-1.5">Placed {{ order.created_at|date:"M d, Y" }}</p>
+            </div>
+            <div class="border border-[#E8E5DF] rounded-lg p-5">
+              <h4 class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold mb-3">Customer</h4>
+              <p class="text-xs font-semibold text-[#141414]">{{ order.delivery_full_name }}</p>
+              {% if order.user %}<p class="text-[11px] text-[#6E6A63] mt-0.5">{{ order.user.email }}</p>{% endif %}
+            </div>
+          </div>
+
+          {# Return reason #}
+          <div class="border border-[#E8E5DF] rounded-lg p-5">
+            <h4 class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold mb-3">Return Reason</h4>
+            <p class="text-sm text-[#141414] leading-relaxed">{{ ri.reason }}</p>
+            <p class="flex items-center gap-1.5 text-[10px] text-[#6E6A63] mt-3">
+              <i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i>
+              Requested {{ ri.requested_at|date:"M d, Y – H:i" }}
+            </p>
+          </div>
+
+          {# Decision section — only for decided items #}
+          {% if ri.status != ReturnItemStatus.REQUESTED %}
+            <div class="border rounded-lg p-5 {% if ri.status == ReturnItemStatus.APPROVED %}border-[#1E7E4D]/20 bg-[#F0FDF4]{% else %}border-[#B42318]/20 bg-[#FEF2F2]{% endif %}">
+              <h4 class="text-[10px] uppercase tracking-[0.2em] font-semibold mb-2.5 {% if ri.status == ReturnItemStatus.APPROVED %}text-[#1E7E4D]{% else %}text-[#B42318]{% endif %}">
+                Decision
+              </h4>
+              <p class="text-xs {% if ri.status == ReturnItemStatus.APPROVED %}text-[#1E7E4D]{% else %}text-[#B42318]{% endif %}">
+                {{ ri.status|title }} on {{ ri.decided_at|date:"M d, Y – H:i" }}
+                {% if ri.decided_by %} by {{ ri.decided_by.get_full_name|default:ri.decided_by.email }}{% endif %}
+              </p>
+              {% if ri.decision_note %}
+                <p class="mt-2 text-xs text-[#141414] italic">"{{ ri.decision_note }}"</p>
+              {% endif %}
+              {% if ri.stock_restored_at %}
+                <p class="mt-1.5 text-[10px] text-[#1E7E4D]">Stock restored at {{ ri.stock_restored_at|date:"M d, Y – H:i" }}</p>
+              {% endif %}
+            </div>
           {% endif %}
-        {% endfor %}
+        </div>
 
-        {% if page_obj.has_next %}
-          <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}"
-            class="px-3 py-1.5 text-xs border border-[#E8E5DF] text-[#6E6A63] rounded-sm hover:bg-[#F9F7F4] transition-colors flex items-center gap-1">
-            Next<i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
-          </a>
+        {# Footer — only Approve / Reject for pending items. Close is the top-right ×. #}
+        {% if ri.status == ReturnItemStatus.REQUESTED %}
+          <div class="flex flex-col-reverse sm:flex-row gap-3 px-7 py-5 border-t border-[#E8E5DF] sticky bottom-0 bg-white">
+            <button type="button"
+              onclick="closeReviewModal({{ ri.pk }}); openApproveModal({{ ri.pk }}, '{{ oi.product_name|escapejs }}', {{ ri.quantity }})"
+              class="flex-1 inline-flex items-center justify-center gap-2 py-3 bg-[#1E7E4D] text-white text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#166035] transition-colors">
+              <i data-lucide="check" class="w-4 h-4"></i>Approve
+            </button>
+            <button type="button"
+              onclick="closeReviewModal({{ ri.pk }}); openRejectModal({{ ri.pk }}, '{{ oi.product_name|escapejs }}')"
+              class="flex-1 inline-flex items-center justify-center gap-2 py-3 bg-[#B42318] text-white text-xs uppercase tracking-widest font-semibold rounded-sm hover:bg-[#8e1b12] transition-colors">
+              <i data-lucide="x" class="w-4 h-4"></i>Reject
+            </button>
+          </div>
         {% endif %}
       </div>
     </div>
-  {% endif %}
+
+    {% endwith %}
+  {% endfor %}
 
 </div>
 
@@ -617,4 +648,3 @@
   });
 </script>
 {% endblock %}
-
