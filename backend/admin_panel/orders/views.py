@@ -43,12 +43,12 @@ def order_list(request):
         )
         .annotate(
             cancelled_val=Coalesce(
-                Sum("items__line_total", filter=Q(items__cancelled_at__isnull=False)),
+                Sum("items__paid_amount", filter=Q(items__cancelled_at__isnull=False)),
                 Value(Decimal("0.00")),
                 output_field=DecimalField(),
             ),
             approved_return_val=Coalesce(
-                Sum("items__line_total", filter=Q(items__return_item__status="APPROVED")),
+                Sum("items__paid_amount", filter=Q(items__return_item__status="APPROVED")),
                 Value(Decimal("0.00")),
                 output_field=DecimalField(),
             ),

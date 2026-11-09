@@ -11,9 +11,9 @@ class Order(models.Model):
     """A customer order.
 
     Order status tracks fulfilment progress independently from payment
-    status. The first release supports Cash on Delivery (COD) orders only:
-    orders start as pending and unpaid, with zero discount, shipping and
-    tax amounts. Coupons are not implemented.
+    status. Discounts, including product and category offers, are stored as
+    immutable order and line-item snapshots. Shipping and tax remain zero,
+    and coupons are represented by zero-valued compatibility fields.
 
     The delivery address is stored as a snapshot so later edits or deletion
     of the customer's saved Address never change the historical order.
@@ -108,6 +108,18 @@ class Order(models.Model):
         default=0.00,
     )
 
+    offer_discount_total = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0.00,
+    )
+
+    coupon_discount_total = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0.00,
+    )
+
     shipping_charge = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -155,6 +167,23 @@ class Order(models.Model):
             models.CheckConstraint(
                 condition=models.Q(discount_total__gte=0),
                 name="order_discount_total_gte_0",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(offer_discount_total__gte=0),
+                name="order_offer_discount_total_gte_0",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(coupon_discount_total__gte=0),
+                name="order_coupon_discount_total_gte_0",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    discount_total=(
+                        models.F("offer_discount_total")
+                        + models.F("coupon_discount_total")
+                    )
+                ),
+                name="order_discount_total_matches_components",
             ),
             models.CheckConstraint(
                 condition=models.Q(shipping_charge__gte=0),
@@ -206,6 +235,11 @@ class OrderItem(models.Model):
     rows in this project are soft-deleted rather than hard-deleted.
     """
 
+    class OfferSource(models.TextChoices):
+        NONE = "NONE", "No offer"
+        PRODUCT = "PRODUCT", "Product offer"
+        CATEGORY = "CATEGORY", "Category offer"
+
     order = models.ForeignKey(
         Order,
         on_delete=models.CASCADE,
@@ -233,6 +267,42 @@ class OrderItem(models.Model):
     line_total = models.DecimalField(
         max_digits=12,
         decimal_places=2,
+    )
+
+    offer_source = models.CharField(
+        max_length=20,
+        choices=OfferSource.choices,
+        default=OfferSource.NONE,
+    )
+
+    offer_percentage_applied = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.00,
+    )
+
+    offer_discount_allocated = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0.00,
+    )
+
+    coupon_discount_allocated = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0.00,
+    )
+
+    discount_allocated = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0.00,
+    )
+
+    paid_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0.00,
     )
 
     cancelled_at = models.DateTimeField(
@@ -267,6 +337,43 @@ class OrderItem(models.Model):
                 name="order_item_line_total_gte_0",
             ),
             models.CheckConstraint(
+                condition=models.Q(offer_percentage_applied__gte=0),
+                name="order_item_offer_percentage_gte_0",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(offer_discount_allocated__gte=0),
+                name="order_item_offer_discount_gte_0",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(coupon_discount_allocated__gte=0),
+                name="order_item_coupon_discount_gte_0",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(discount_allocated__gte=0),
+                name="order_item_discount_allocated_gte_0",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(paid_amount__gte=0),
+                name="order_item_paid_amount_gte_0",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(paid_amount__lte=models.F("line_total")),
+                name="order_item_paid_amount_lte_line_total",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(discount_allocated__lte=models.F("line_total")),
+                name="order_item_discount_lte_line_total",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    discount_allocated=(
+                        models.F("offer_discount_allocated")
+                        + models.F("coupon_discount_allocated")
+                    )
+                ),
+                name="order_item_discount_matches_components",
+            ),
+            models.CheckConstraint(
                 condition=(
                     models.Q(cancelled_at__isnull=False)
                     | models.Q(cancellation_reason="")
@@ -278,6 +385,17 @@ class OrderItem(models.Model):
     @property
     def is_cancelled(self):
         return self.cancelled_at is not None
+
+    def save(self, *args, **kwargs):
+        if (
+            self._state.adding
+            and self.paid_amount == 0
+            and self.discount_allocated == 0
+            and self.line_total is not None
+            and self.line_total > 0
+        ):
+            self.paid_amount = self.line_total
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.product_name} - {self.variant_size} x {self.quantity}"

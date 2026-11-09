@@ -722,7 +722,10 @@ class ReturnConcurrencyTests(TransactionTestCase):
         second_item = add_item(self.order, second_variant, quantity=1)
         self.item.quantity = 1
         self.item.line_total = self.item.unit_price
-        self.item.save(update_fields=["quantity", "line_total"])
+        self.item.paid_amount = self.item.unit_price
+        self.item.save(
+            update_fields=["quantity", "line_total", "paid_amount"]
+        )
         self.order.status = Order.OrderStatus.PENDING
         self.order.save(update_fields=["status", "updated_at"])
 
@@ -778,7 +781,7 @@ class ReturnConcurrencyTests(TransactionTestCase):
 class ReturnMigrationTests(TransactionTestCase):
     reset_sequences = True
     migrate_from = [("orders", "0003_phase6_1_order_management")]
-    migrate_to = [("orders", "0004_return_item_decision_architecture")]
+    migrate_to = [("orders", "0006_backfill_pricing_snapshots")]
 
     def setUp(self):
         self.executor = MigrationExecutor(connection)

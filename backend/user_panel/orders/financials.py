@@ -29,6 +29,27 @@ def _money(value):
     return Decimal(value).quantize(Decimal("0.01"))
 
 
+def _item_paid_amount(item):
+    """Return the historical amount paid for one line.
+
+    Items created before pricing snapshots existed (or by legacy code paths)
+    have no snapshot values. In that case the full line total was the paid
+    amount; this preserves the pre-Phase-1 financial outcome.
+    """
+    paid_amount = _money(item.paid_amount or ZERO)
+    discount_allocated = _money(item.discount_allocated or ZERO)
+    line_total = _money(item.line_total)
+
+    if (
+        paid_amount == ZERO
+        and discount_allocated == ZERO
+        and line_total > ZERO
+    ):
+        return line_total
+
+    return paid_amount
+
+
 def get_order_financials(order):
     """Return the current payable position for ``order``.
 
@@ -44,7 +65,7 @@ def get_order_financials(order):
 
     for item in items:
         if item.cancelled_at is not None:
-            cancelled_total += item.line_total
+            cancelled_total += _item_paid_amount(item)
             continue
 
         return_item = getattr(item, "return_item", None)
@@ -52,7 +73,7 @@ def get_order_financials(order):
             return_item is not None
             and return_item.status == ReturnItem.Status.APPROVED
         ):
-            approved_return_total += item.line_total
+            approved_return_total += _item_paid_amount(item)
 
     original_total = _money(order.total)
     cancelled_total = _money(cancelled_total)

@@ -408,6 +408,27 @@ ADMIN / <a href="{% url 'admin_orders:list' %}" class="hover:text-auraGold trans
                         </span>
                     </div>
 
+                    {% if order.offer_discount_total > 0 %}
+                    <div class="flex justify-between items-center">
+                        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:500;color:#1E7E4D;">Offer Discount</span>
+                        <span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:600;color:#1E7E4D;">-₹{{ order.offer_discount_total }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if order.coupon_discount_total > 0 %}
+                    <div class="flex justify-between items-center">
+                        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:500;color:#1E7E4D;">Coupon Discount</span>
+                        <span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:600;color:#1E7E4D;">-₹{{ order.coupon_discount_total }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if order.offer_discount_total == 0 and order.coupon_discount_total == 0 and order.discount_total > 0 %}
+                    <div class="flex justify-between items-center">
+                        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:500;color:#1E7E4D;">Discount</span>
+                        <span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:600;color:#1E7E4D;">-₹{{ order.discount_total }}</span>
+                    </div>
+                    {% endif %}
+
                     <!-- Original Order Total — 18px -->
                     <div class="flex justify-between items-center" style="padding-top:10px;border-top:1px solid #EFECE6;">
                         <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:500;color:#6E6A63;">Original Order Total</span>

@@ -96,6 +96,7 @@ def make_order(
     payment_collected_at=None,
     payment_collected_amount=None,
 ):
+    order_discount = Decimal(discount_total)
     return Order.objects.create(
         user=user,
         order_number=order_number,
@@ -105,7 +106,8 @@ def make_order(
         payment_collected_at=payment_collected_at,
         payment_collected_amount=payment_collected_amount,
         subtotal=Decimal(subtotal),
-        discount_total=Decimal(discount_total),
+        discount_total=order_discount,
+        offer_discount_total=order_discount,
         shipping_charge=Decimal(shipping_charge),
         tax_total=Decimal(tax_total),
         total=Decimal(total),

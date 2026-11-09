@@ -93,6 +93,8 @@ class InvoiceContext:
     payment_collected_at: datetime | None
     payment_collected_amount: Decimal | None
     payment_differs_from_total: bool
+    offer_discount_total: Decimal = Decimal("0.00")
+    coupon_discount_total: Decimal = Decimal("0.00")
 
 
 def is_invoice_available(order):
@@ -188,6 +190,8 @@ def build_invoice_context(order):
         payment_differs_from_total=(
             collected is not None and collected != total
         ),
+        offer_discount_total=_money(order.offer_discount_total),
+        coupon_discount_total=_money(order.coupon_discount_total),
     )
 
 
@@ -581,7 +585,30 @@ def _totals_block(context):
         ]
     ]
 
-    if context.discount_total > 0:
+    offer_discount = context.offer_discount_total or Decimal("0.00")
+    coupon_discount = context.coupon_discount_total or Decimal("0.00")
+
+    if offer_discount > 0:
+        rows.append(
+            [
+                Paragraph("Offer discount", label),
+                Paragraph(f"-{_format_money(offer_discount)}", value),
+            ]
+        )
+
+    if coupon_discount > 0:
+        rows.append(
+            [
+                Paragraph("Coupon discount", label),
+                Paragraph(f"-{_format_money(coupon_discount)}", value),
+            ]
+        )
+
+    if (
+        offer_discount == 0
+        and coupon_discount == 0
+        and context.discount_total > 0
+    ):
         rows.append(
             [
                 Paragraph("Discount", label),

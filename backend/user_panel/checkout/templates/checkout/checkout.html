@@ -366,6 +366,11 @@
                                 <p class="text-xs text-auraMuted mt-1">
                                     Qty: {{ line.quantity }}
                                 </p>
+                                {% if line.offer_discount > 0 %}
+                                <p class="text-[11px] text-emerald-700 mt-1">
+                                    Offer -₹{{ line.offer_discount }}
+                                </p>
+                                {% endif %}
                             </div>
                         </li>
                         {% endwith %}
@@ -405,6 +410,12 @@
                             <dt class="text-auraMuted font-light">Subtotal ({{ total_quantity }} item{{ total_quantity|pluralize }})</dt>
                             <dd class="text-auraBlack font-semibold">₹{{ review.subtotal }}</dd>
                         </div>
+                        {% if review.offer_discount_total > 0 %}
+                        <div class="flex items-center justify-between gap-4">
+                            <dt class="text-auraMuted font-light">Offer Discount</dt>
+                            <dd class="text-emerald-600 font-semibold">-₹{{ review.offer_discount_total }}</dd>
+                        </div>
+                        {% endif %}
                         <div class="flex items-center justify-between gap-4">
                             <dt class="text-auraMuted font-light">Shipping</dt>
                             <dd class="text-emerald-600 font-semibold uppercase tracking-wider text-xs">FREE</dd>

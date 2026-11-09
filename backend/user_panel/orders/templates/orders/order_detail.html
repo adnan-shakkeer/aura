@@ -428,8 +428,20 @@
                         </div>
                         {% endif %}
 
-                        <!-- Discount if applicable -->
-                        {% if order.discount_total > 0 %}
+                        <!-- Offer / coupon discount if applicable -->
+                        {% if order.offer_discount_total > 0 %}
+                        <div class="flex items-center justify-between text-[#247A4A]">
+                            <span>Offer Discount</span>
+                            <span class="font-medium">-₹{{ order.offer_discount_total|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+                        {% if order.coupon_discount_total > 0 %}
+                        <div class="flex items-center justify-between text-[#247A4A]">
+                            <span>Coupon Discount</span>
+                            <span class="font-medium">-₹{{ order.coupon_discount_total|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+                        {% if order.offer_discount_total == 0 and order.coupon_discount_total == 0 and order.discount_total > 0 %}
                         <div class="flex items-center justify-between text-[#247A4A]">
                             <span>Discount</span>
                             <span class="font-medium">-₹{{ order.discount_total|floatformat:2 }}</span>

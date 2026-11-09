@@ -1,4 +1,4 @@
-"""Checkout review and order-placement services.
+﻿"""Checkout review and order-placement services.
 
 Architecture
 ------------
@@ -46,6 +46,7 @@ from user_panel.cart.services import (
     _validate_quantity,
     _validate_stock,
 )
+from user_panel.pricing import services as pricing
 
 from .exceptions import (
     EmptyCartError,
@@ -66,8 +67,6 @@ DIRECT_REVIEW_TOKEN_SALT = "orders.checkout.direct"
 REVIEW_TOKEN_MAX_AGE = 30 * 60
 
 ORDER_NUMBER_MAX_ATTEMPTS = 5
-
-ZERO = Decimal("0.00")
 
 SOURCE_CART = "cart"
 SOURCE_DIRECT = "direct"
@@ -109,6 +108,10 @@ class CheckoutLine:
     quantity: int
     unit_price: Decimal
     line_total: Decimal
+    offer_source: str
+    offer_percentage: Decimal
+    offer_discount: Decimal
+    paid_amount: Decimal
 
 
 @dataclass(frozen=True)
@@ -118,6 +121,8 @@ class CheckoutReview:
     lines: tuple[CheckoutLine, ...]
     subtotal: Decimal
     discount_total: Decimal
+    offer_discount_total: Decimal
+    coupon_discount_total: Decimal
     shipping_charge: Decimal
     tax_total: Decimal
     total: Decimal
@@ -239,20 +244,29 @@ def _collect_cart_state(cart, *, lock=False):
 
 
 def _build_lines(state):
-    return [
-        CheckoutLine(
-            cart_item_id=item.pk if item is not None else None,
-            variant_id=variant.pk,
-            product_name=variant.product.name,
-            brand_name=variant.product.brand.name,
-            variant_size=variant.size,
-            sku=variant.sku,
-            quantity=quantity,
-            unit_price=variant.price,
-            line_total=variant.price * quantity,
+    lines = []
+
+    for item, variant, quantity in state:
+        line_pricing = pricing.price_variant(variant, quantity)
+        lines.append(
+            CheckoutLine(
+                cart_item_id=item.pk if item is not None else None,
+                variant_id=variant.pk,
+                product_name=variant.product.name,
+                brand_name=variant.product.brand.name,
+                variant_size=variant.size,
+                sku=variant.sku,
+                quantity=quantity,
+                unit_price=line_pricing.unit_price,
+                line_total=line_pricing.line_total,
+                offer_source=line_pricing.offer_source,
+                offer_percentage=line_pricing.offer_percentage,
+                offer_discount=line_pricing.offer_discount,
+                paid_amount=line_pricing.paid_amount,
+            )
         )
-        for item, variant, quantity in state
-    ]
+
+    return lines
 
 
 def _direct_state(variant_id, quantity, *, lock=False):
@@ -276,16 +290,7 @@ def _direct_state(variant_id, quantity, *, lock=False):
 
 
 def _calculate_totals(lines):
-    subtotal = sum((line.line_total for line in lines), ZERO)
-    subtotal = subtotal.quantize(Decimal("0.01"))
-
-    return {
-        "subtotal": subtotal,
-        "discount_total": ZERO,
-        "shipping_charge": ZERO,
-        "tax_total": ZERO,
-        "total": subtotal,
-    }
+    return pricing.summarize(lines)
 
 
 def _lines_payload(lines):
@@ -295,6 +300,10 @@ def _lines_payload(lines):
             line.variant_id,
             line.quantity,
             str(line.unit_price),
+            line.offer_source,
+            str(line.offer_percentage),
+            str(line.offer_discount),
+            str(line.paid_amount),
         ]
         for line in lines
     ]
@@ -347,6 +356,8 @@ def _build_review(user, address, cart, state, *, source=SOURCE_CART):
         lines=tuple(lines),
         subtotal=totals["subtotal"],
         discount_total=totals["discount_total"],
+        offer_discount_total=totals["offer_discount_total"],
+        coupon_discount_total=totals["coupon_discount_total"],
         shipping_charge=totals["shipping_charge"],
         tax_total=totals["tax_total"],
         total=totals["total"],
@@ -578,6 +589,8 @@ def _create_order_with_retry(*, user, submission_id, address, totals):
                     payment_status=Order.PaymentStatus.UNPAID,
                     subtotal=totals["subtotal"],
                     discount_total=totals["discount_total"],
+                    offer_discount_total=totals["offer_discount_total"],
+                    coupon_discount_total=totals["coupon_discount_total"],
                     shipping_charge=totals["shipping_charge"],
                     tax_total=totals["tax_total"],
                     total=totals["total"],
@@ -612,8 +625,35 @@ def _create_order_with_retry(*, user, submission_id, address, totals):
     ) from last_error
 
 
-def _create_order_items(order, state):
+def _create_order_items(order, state, lines):
+    """Persist line snapshots using the already reviewed prices.
+
+    Order items aggregate duplicate cart rows for the same variant, so their
+    monetary snapshots are summed from the reviewed checkout lines. This
+    guarantees the persisted order total always equals the sum of the item
+    paid amounts, even when per-line rounding differs.
+    """
+    lines_by_variant = {}
+    for line in lines:
+        lines_by_variant.setdefault(line.variant_id, []).append(line)
+
     for variant, quantity in _aggregate_state(state):
+        variant_lines = lines_by_variant[variant.pk]
+        first_line = variant_lines[0]
+        line_total = sum(
+            (line.line_total for line in variant_lines),
+            pricing.ZERO,
+        )
+        offer_discount = sum(
+            (line.offer_discount for line in variant_lines),
+            pricing.ZERO,
+        )
+        coupon_discount = pricing.ZERO
+        paid_amount = sum(
+            (line.paid_amount for line in variant_lines),
+            pricing.ZERO,
+        )
+
         OrderItem.objects.create(
             order=order,
             variant=variant,
@@ -621,9 +661,15 @@ def _create_order_items(order, state):
             brand_name=variant.product.brand.name,
             variant_size=variant.size,
             sku=variant.sku,
-            unit_price=variant.price,
+            unit_price=first_line.unit_price,
             quantity=quantity,
-            line_total=variant.price * quantity,
+            line_total=line_total,
+            offer_source=first_line.offer_source,
+            offer_percentage_applied=first_line.offer_percentage,
+            offer_discount_allocated=offer_discount,
+            coupon_discount_allocated=coupon_discount,
+            discount_allocated=offer_discount + coupon_discount,
+            paid_amount=paid_amount,
         )
 
 
@@ -700,7 +746,7 @@ def _place_order_atomic(user, address_id, review_token):
     if duplicate:
         return OrderPlacementResult(status=STATUS_DUPLICATE, order=order)
 
-    _create_order_items(order, state)
+    _create_order_items(order, state, lines)
     _deduct_stock(state)
     _clear_cart(cart)
 
@@ -809,7 +855,7 @@ def _place_direct_order_atomic(user, address_id, review_token):
     if duplicate:
         return OrderPlacementResult(status=STATUS_DUPLICATE, order=order)
 
-    _create_order_items(order, state)
+    _create_order_items(order, state, lines)
     _deduct_stock(state)
 
     return OrderPlacementResult(status=STATUS_CREATED, order=order)

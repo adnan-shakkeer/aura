@@ -246,6 +246,75 @@
                     </div>
                 </dl>
 
+                <div class="relative mx-auto mt-9 max-w-[700px] border-t border-[#EDE4D8] pt-7 sm:mt-11">
+                    <h2 class="font-serif text-xl text-auraBlack">Delivery Details</h2>
+                    <div class="mt-4 text-sm leading-6 text-auraMuted">
+                        <p class="font-medium text-auraBlack">{{ order.delivery_full_name }}</p>
+                        <p>{{ order.delivery_phone_number }}</p>
+                        <p>{{ order.delivery_address_line1 }}</p>
+                        {% if order.delivery_address_line2 %}<p>{{ order.delivery_address_line2 }}</p>{% endif %}
+                        {% if order.delivery_landmark %}<p>{{ order.delivery_landmark }}</p>{% endif %}
+                        <p>{{ order.delivery_city }}, {{ order.delivery_state }} {{ order.delivery_pincode }}</p>
+                    </div>
+                </div>
+
+                <div class="relative mx-auto mt-9 max-w-[700px] border-t border-[#EDE4D8] pt-7 sm:mt-11">
+                    <h2 class="font-serif text-xl text-auraBlack">Order Summary</h2>
+
+                    <div class="mt-5 space-y-4">
+                        {% for row in line_rows %}
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="min-w-0">
+                                <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-auraMuted">{{ row.item.brand_name }}</p>
+                                <p class="mt-1 font-serif text-base text-auraBlack">{{ row.item.product_name }}</p>
+                                <p class="mt-1 text-xs text-auraMuted">{{ row.item.variant_size }} &middot; {{ row.item.sku }}</p>
+                            </div>
+                            <div class="shrink-0 text-right">
+                                <p class="text-xs text-auraMuted">{{ row.item.quantity }} × ₹{{ row.item.unit_price|floatformat:2 }}</p>
+                                <p class="mt-1 text-sm font-semibold text-auraBlack">₹{{ row.item.line_total|floatformat:2 }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <dl class="mt-6 space-y-2.5 border-t border-[#EDE4D8] pt-5 text-sm">
+                        <div class="flex items-center justify-between gap-4">
+                            <dt class="text-auraMuted">Subtotal ({{ total_quantity }} item{{ total_quantity|pluralize }})</dt>
+                            <dd class="font-semibold text-auraBlack">₹{{ order.subtotal|floatformat:2 }}</dd>
+                        </div>
+                        {% if order.offer_discount_total > 0 %}
+                        <div class="flex items-center justify-between gap-4">
+                            <dt class="text-auraMuted">Offer Discount</dt>
+                            <dd class="font-semibold text-[#247A4A]">-₹{{ order.offer_discount_total|floatformat:2 }}</dd>
+                        </div>
+                        {% endif %}
+                        {% if order.coupon_discount_total > 0 %}
+                        <div class="flex items-center justify-between gap-4">
+                            <dt class="text-auraMuted">Coupon Discount</dt>
+                            <dd class="font-semibold text-[#247A4A]">-₹{{ order.coupon_discount_total|floatformat:2 }}</dd>
+                        </div>
+                        {% endif %}
+                        {% if order.offer_discount_total == 0 and order.coupon_discount_total == 0 %}
+                        <div class="flex items-center justify-between gap-4">
+                            <dt class="text-auraMuted">Discount</dt>
+                            <dd class="font-semibold text-auraBlack">-₹{{ order.discount_total|floatformat:2 }}</dd>
+                        </div>
+                        {% endif %}
+                        <div class="flex items-center justify-between gap-4">
+                            <dt class="text-auraMuted">Shipping</dt>
+                            <dd class="font-semibold text-[#247A4A]">FREE</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4">
+                            <dt class="text-auraMuted">Tax</dt>
+                            <dd class="font-semibold text-auraBlack">₹{{ order.tax_total|floatformat:2 }}</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4 border-t border-[#EDE4D8] pt-3">
+                            <dt class="font-serif text-lg text-auraBlack">Total</dt>
+                            <dd class="font-serif text-lg font-semibold text-auraBlack">₹{{ order.total|floatformat:2 }}</dd>
+                        </div>
+                    </dl>
+                </div>
+
                 <div class="relative mx-auto mt-9 flex max-w-[700px] flex-col gap-3 sm:mt-11 sm:flex-row sm:gap-4">
                     <a href="{% url 'shop:shop_list' %}" class="inline-flex h-14 flex-1 items-center justify-center rounded-md bg-auraBlack px-6 text-[10px] font-semibold uppercase tracking-[0.24em] text-white transition-colors duration-300 hover:bg-auraDark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-auraBlack">
                         Continue Shopping

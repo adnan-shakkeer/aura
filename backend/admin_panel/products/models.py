@@ -1,3 +1,4 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import slugify
 
@@ -49,6 +50,18 @@ class Product(models.Model):
 
     base_notes = models.TextField(
         blank=True,
+    )
+
+    offer_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.00,
+        db_default=0.00,
+        validators=[
+            MinValueValidator(0.00),
+            MaxValueValidator(99.00),
+        ],
+        help_text="Product-level discount percentage (0 to 99%).",
     )
 
     is_listed = models.BooleanField(default=True)
