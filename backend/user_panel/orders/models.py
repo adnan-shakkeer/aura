@@ -120,6 +120,12 @@ class Order(models.Model):
         default=0.00,
     )
 
+    coupon_code = models.CharField(
+        max_length=40,
+        default="",
+        blank=True,
+    )
+
     shipping_charge = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -626,3 +632,116 @@ class OrderStatusEvent(models.Model):
 
     def __str__(self):
         return f"{self.order.order_number}: {self.status}"
+
+
+class CouponUsage(models.Model):
+    """Historical record of a coupon's consumption on an order.
+
+    One coupon may be applied to at most one order; the OneToOneField on
+    ``order`` enforces this at the database level. The ``coupon`` foreign key
+    is protected so a coupon with usage history cannot be hard-deleted.
+    """
+
+    class Status(models.TextChoices):
+        RESERVED = "RESERVED", "Reserved"
+        CONSUMED = "CONSUMED", "Consumed"
+        RELEASED = "RELEASED", "Released"
+        EXPIRED = "EXPIRED", "Expired"
+
+    coupon = models.ForeignKey(
+        "coupons.Coupon",
+        on_delete=models.PROTECT,
+        related_name="usages",
+    )
+
+    order = models.OneToOneField(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="coupon_usage",
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="coupon_usages",
+    )
+
+    coupon_code = models.CharField(
+        max_length=40,
+        help_text="Historical snapshot of the coupon code at time of use.",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.RESERVED,
+    )
+
+    discount_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0.00,
+        help_text="Historical snapshot of the discount amount applied.",
+    )
+
+    reserved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    consumed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    released_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    release_reason = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        verbose_name = "Coupon usage"
+        verbose_name_plural = "Coupon usages"
+        indexes = [
+            models.Index(
+                fields=["coupon", "status"],
+                name="coupon_usage_coupon_status_idx",
+            ),
+            models.Index(
+                fields=["user", "status"],
+                name="coupon_usage_user_status_idx",
+            ),
+            models.Index(
+                fields=["order"],
+                name="orders_coupon_usage_order_idx",
+            ),
+            models.Index(
+                fields=["consumed_at"],
+                name="coupon_usage_consumed_at_idx",
+            ),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(coupon_code=""),
+                name="coupon_usage_code_not_empty",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(discount_amount__gte=0),
+                name="coupon_usage_discount_amount_gte_0",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.coupon_code} -> {self.order.order_number} ({self.status})"
+

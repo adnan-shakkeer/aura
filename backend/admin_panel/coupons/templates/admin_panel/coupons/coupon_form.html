@@ -1,0 +1,259 @@
+{% extends "dashboard/base_admin.html" %}
+{% load tz %}
+
+{% block breadcrumbs %}ADMIN / <a href="{% url 'coupons:list' %}" class="hover:text-[#141414] transition-colors">COUPONS</a> / <span class="text-auraGold">{% if mode == 'edit' %}EDIT COUPON{% else %}CREATE COUPON{% endif %}</span>{% endblock %}
+
+{% block admin_content %}
+{% comment %}Notifications use the shared Admin toast system (dashboard/partials/admin_toasts.html, included by base_admin.html).{% endcomment %}
+
+<!-- Page Header -->
+<div class="mb-10">
+    <div class="flex justify-between items-end border-b border-[#A8842C]/30 pb-4 mb-6 max-w-4xl">
+        <div>
+            <h2 class="font-serif text-4xl tracking-wide text-[#141414] mb-2">
+                {% if mode == 'edit' %}Edit Coupon{% else %}Create Coupon{% endif %}
+            </h2>
+            <p class="text-sm text-[#6E6A63]">
+                {% if mode == 'edit' %}
+                Modify an existing discount coupon. Historical orders are unaffected.
+                {% else %}
+                Create a new discount code for AURA customers.
+                {% endif %}
+            </p>
+        </div>
+        <a href="{% url 'coupons:list' %}" class="inline-flex items-center gap-2 px-6 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-[10px] uppercase tracking-widest font-semibold hover:text-[#141414] hover:border-[#141414]/30 hover:bg-[#F5F3EE] transition-colors rounded-sm">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Coupons
+        </a>
+    </div>
+</div>
+
+<!-- Coupon Form Card -->
+<div class="max-w-4xl bg-white border border-[#E8E5DF] rounded-xl shadow-2xl overflow-hidden mb-8">
+    <div class="p-8 sm:p-10">
+        <form method="POST" action="{% if mode == 'edit' %}{% url 'coupons:edit' coupon.pk %}{% else %}{% url 'coupons:create' %}{% endif %}" id="coupon-form" novalidate>
+            {% csrf_token %}
+            {% if mode == 'edit' %}
+            <input type="hidden" name="coupon_id" value="{{ coupon.pk }}">
+            {% endif %}
+
+            <div class="space-y-6">
+                <!-- Row 1: Coupon Code -->
+                <div class="w-full sm:w-7/12">
+                    <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">
+                        Coupon Code <span class="text-[#B42318]">*</span>
+                    </label>
+                    <input type="text" name="code" value="{{ values.code }}" class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] uppercase tracking-wider focus:outline-none focus:border-[#A8842C]/60 transition-colors {% if errors.code %}border-[#B42318]/50 focus:border-[#B42318]/50 focus:ring-[#B42318]/30 focus:ring-1{% endif %}" placeholder="e.g. AURA20">
+                    <p class="text-[10px] text-[#A8A29A] mt-1">Customers enter this code at checkout. Uppercase letters and numbers.</p>
+                    {% if errors.code %}
+                    <p class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium">{{ errors.code }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Row 2: Discount Type -->
+                <div>
+                    <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">
+                        Discount Type <span class="text-[#B42318]">*</span>
+                    </label>
+                    <div class="flex items-center gap-6 pt-1">
+                        <label class="flex items-center gap-2.5 cursor-pointer group">
+                            <input type="radio" name="discount_type" value="PERCENTAGE" class="peer sr-only coupon-type-radio" {% if values.discount_type == 'PERCENTAGE' %}checked{% endif %}>
+                            <span class="w-4 h-4 rounded-full border border-[#D8D4CC] peer-checked:border-[#A8842C] flex items-center justify-center transition-colors">
+                                <span class="w-2 h-2 rounded-full bg-[#A8842C] opacity-0 peer-checked:opacity-100 transition-opacity"></span>
+                            </span>
+                            <span class="text-xs uppercase tracking-widest text-[#6E6A63] peer-checked:text-[#141414] peer-checked:font-semibold group-hover:text-[#141414] transition-colors font-medium">Percentage</span>
+                        </label>
+                        <label class="flex items-center gap-2.5 cursor-pointer group">
+                            <input type="radio" name="discount_type" value="FIXED" class="peer sr-only coupon-type-radio" {% if values.discount_type == 'FIXED' %}checked{% endif %}>
+                            <span class="w-4 h-4 rounded-full border border-[#D8D4CC] peer-checked:border-[#A8842C] flex items-center justify-center transition-colors">
+                                <span class="w-2 h-2 rounded-full bg-[#A8842C] opacity-0 peer-checked:opacity-100 transition-opacity"></span>
+                            </span>
+                            <span class="text-xs uppercase tracking-widest text-[#6E6A63] peer-checked:text-[#141414] peer-checked:font-semibold group-hover:text-[#141414] transition-colors font-medium">Fixed Amount</span>
+                        </label>
+                    </div>
+                    {% if errors.discount_type %}
+                    <p class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium">{{ errors.discount_type }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Row 3: Discount Values (Adapts between 3 columns for Percentage and 2 columns for Fixed) -->
+                <div id="discount-grid" class="grid grid-cols-1 sm:grid-cols-2 {% if values.discount_type == 'PERCENTAGE' %}lg:grid-cols-3{% endif %} gap-6">
+                    <!-- Column 1: Discount Value (Percentage / Fixed) -->
+                    <div class="discount-field discount-type-percentage {% if values.discount_type != 'PERCENTAGE' %}hidden{% endif %}" data-coupon-section="percentage">
+                        <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">
+                            Discount Percentage <span class="text-[#B42318]">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" name="discount_value" value="{{ values.discount_value }}" min="0.01" max="100" step="0.01" {% if values.discount_type == 'PERCENTAGE' %}required{% else %}disabled{% endif %} class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 pl-4 pr-8 text-sm text-[#141414] focus:outline-none focus:border-[#A8842C]/60 transition-colors {% if errors.discount_value and values.discount_type == 'PERCENTAGE' %}border-[#B42318]/50 focus:border-[#B42318]/50 focus:ring-[#B42318]/30 focus:ring-1{% endif %}" placeholder="e.g. 10">
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-[#6E6A63] pointer-events-none text-xs">%</span>
+                        </div>
+                        {% if errors.discount_value and values.discount_type == 'PERCENTAGE' %}
+                        <p class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium">{{ errors.discount_value }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="discount-field discount-type-fixed {% if values.discount_type != 'FIXED' %}hidden{% endif %}" data-coupon-section="fixed">
+                        <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">
+                            Fixed Discount Amount <span class="text-[#B42318]">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" name="discount_value" value="{{ values.discount_value }}" min="0.01" step="0.01" {% if values.discount_type == 'FIXED' %}required{% else %}disabled{% endif %} class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 pl-4 pr-8 text-sm text-[#141414] focus:outline-none focus:border-[#A8842C]/60 transition-colors {% if errors.discount_value and values.discount_type == 'FIXED' %}border-[#B42318]/50 focus:border-[#B42318]/50 focus:ring-[#B42318]/30 focus:ring-1{% endif %}" placeholder="e.g. 500">
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-[#6E6A63] pointer-events-none text-xs">₹</span>
+                        </div>
+                        {% if errors.discount_value and values.discount_type == 'FIXED' %}
+                        <p class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium">{{ errors.discount_value }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Column 2: Minimum Order Amount -->
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">
+                            Minimum Order Amount <span class="text-[#B42318]">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" name="minimum_purchase" value="{{ values.minimum_purchase }}" min="0" step="0.01" class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 pl-4 pr-8 text-sm text-[#141414] focus:outline-none focus:border-[#A8842C]/60 transition-colors {% if errors.minimum_purchase %}border-[#B42318]/50 focus:border-[#B42318]/50 focus:ring-[#B42318]/30 focus:ring-1{% endif %}" placeholder="0.00">
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-[#6E6A63] pointer-events-none text-xs">₹</span>
+                        </div>
+                        {% if errors.minimum_purchase %}
+                        <p class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium">{{ errors.minimum_purchase }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Column 3: Maximum Discount Amount (Percentage only) -->
+                    <div class="max-discount-field {% if values.discount_type != 'PERCENTAGE' %}hidden{% endif %}" data-coupon-section="percentage">
+                        <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">
+                            Maximum Discount Amount <span class="text-[#B42318]">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" name="max_discount_amount" value="{{ values.max_discount_amount }}" min="0.01" step="0.01" {% if values.discount_type == 'PERCENTAGE' %}required{% else %}disabled{% endif %} class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 pl-4 pr-8 text-sm text-[#141414] focus:outline-none focus:border-[#A8842C]/60 transition-colors {% if errors.max_discount_amount %}border-[#B42318]/50 focus:border-[#B42318]/50 focus:ring-[#B42318]/30 focus:ring-1{% endif %}" placeholder="e.g. 1000">
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-[#6E6A63] pointer-events-none text-xs">₹</span>
+                        </div>
+                        <p class="text-[10px] text-[#A8A29A] mt-1">Caps the maximum discount in rupees.</p>
+                        {% if errors.max_discount_amount %}
+                        <p class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium">{{ errors.max_discount_amount }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Hidden input for Fixed coupons to maintain submission structure cleanly -->
+                    <div class="hidden" data-coupon-section="fixed">
+                        <input type="hidden" name="max_discount_amount" value="" {% if values.discount_type != 'FIXED' %}disabled{% endif %}>
+                    </div>
+                </div>
+
+                <!-- Row 4: Validity Period (Side-by-side) -->
+                {% timezone coupon_timezone %}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">
+                            Valid From <span class="text-[#B42318]">*</span>
+                            <span class="text-[9px] normal-case tracking-normal text-[#A8A29A] font-medium">({{ coupon_timezone_label }})</span>
+                        </label>
+                        <input type="datetime-local" name="valid_from" value="{% if values.valid_from %}{{ values.valid_from|date:'Y-m-d\TH:i' }}{% endif %}" class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] focus:outline-none focus:border-[#A8842C]/60 transition-colors {% if errors.valid_from %}border-[#B42318]/50 focus:border-[#B42318]/50 focus:ring-[#B42318]/30 focus:ring-1{% endif %}">
+                        {% if errors.valid_from %}
+                        <p class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium">{{ errors.valid_from }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">
+                            Valid Until <span class="text-[#B42318]">*</span>
+                            <span class="text-[9px] normal-case tracking-normal text-[#A8A29A] font-medium">({{ coupon_timezone_label }})</span>
+                        </label>
+                        <input type="datetime-local" name="valid_until" value="{% if values.valid_until %}{{ values.valid_until|date:'Y-m-d\TH:i' }}{% endif %}" class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] focus:outline-none focus:border-[#A8842C]/60 transition-colors {% if errors.valid_until %}border-[#B42318]/50 focus:border-[#B42318]/50 focus:ring-[#B42318]/30 focus:ring-1{% endif %}">
+                        {% if errors.valid_until %}
+                        <p class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium">{{ errors.valid_until }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endtimezone %}
+
+                <!-- Row 5: Usage Limits (Side-by-side) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">
+                            Total Usage Limit
+                        </label>
+                        <input type="number" name="total_usage_limit" value="{{ values.total_usage_limit }}" min="1" class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] focus:outline-none focus:border-[#A8842C]/60 transition-colors {% if errors.total_usage_limit %}border-[#B42318]/50 focus:border-[#B42318]/50 focus:ring-[#B42318]/30 focus:ring-1{% endif %}" placeholder="Unlimited">
+                        <p class="text-[10px] text-[#A8A29A] mt-1">Leave blank for unlimited total uses.</p>
+                        {% if errors.total_usage_limit %}
+                        <p class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium">{{ errors.total_usage_limit }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">
+                            Per Customer Limit
+                        </label>
+                        <input type="number" name="per_user_limit" value="{{ values.per_user_limit }}" min="1" class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 px-4 text-sm text-[#141414] focus:outline-none focus:border-[#A8842C]/60 transition-colors {% if errors.per_user_limit %}border-[#B42318]/50 focus:border-[#B42318]/50 focus:ring-[#B42318]/30 focus:ring-1{% endif %}" placeholder="Unlimited">
+                        <p class="text-[10px] text-[#A8A29A] mt-1">Leave blank for unlimited uses per customer.</p>
+                        {% if errors.per_user_limit %}
+                        <p class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium">{{ errors.per_user_limit }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Row 6: Active Status -->
+                <div class="pt-2">
+                    <label class="inline-flex items-center gap-3 cursor-pointer group">
+                        <div class="relative flex items-center">
+                            <input type="checkbox" name="is_active" class="peer sr-only" {% if values.is_active %}checked{% endif %}>
+                            <div class="w-10 h-5 bg-[#E3DFD7] rounded-full peer peer-checked:bg-[#A8842C]/20 transition-colors border border-[#D8D4CC] peer-checked:border-[#A8842C]/50"></div>
+                            <div class="absolute left-1 top-1 w-3 h-3 bg-[#A8A29A] rounded-full peer-checked:translate-x-5 peer-checked:bg-[#A8842C] transition-all duration-300"></div>
+                        </div>
+                        <div>
+                            <span class="block text-xs uppercase tracking-widest text-[#6E6A63] group-hover:text-[#141414] transition-colors font-medium">Active Status</span>
+                            <span class="block text-[10px] text-[#A8A29A]">Enable or disable this coupon immediately</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="mt-10 pt-6 border-t border-[#E8E5DF] flex justify-end items-center gap-4">
+                <a href="{% url 'coupons:list' %}" class="px-6 py-2.5 border border-[#E8E5DF] text-[#6E6A63] text-[10px] uppercase tracking-widest font-semibold hover:bg-[#F5F3EE] hover:text-[#141414] transition-colors rounded-sm">
+                    Cancel
+                </a>
+                <button type="submit" class="px-6 py-2.5 bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold hover:bg-black transition-colors rounded-sm shadow-[0_0_15px_rgba(0,0,0,0.15)] flex items-center gap-2">
+                    {% if mode == 'edit' %}Update Coupon{% else %}Save Coupon{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.lucide && typeof lucide.createIcons === 'function') {
+            lucide.createIcons();
+        }
+
+        const typeRadios = document.querySelectorAll('input[name="discount_type"]');
+        const couponSections = document.querySelectorAll('[data-coupon-section]');
+        const discountGrid = document.getElementById('discount-grid');
+
+        const toggleFields = () => {
+            const selectedType = document.querySelector('input[name="discount_type"]:checked');
+            if (!selectedType) return;
+
+            const isPercentage = selectedType.value === 'PERCENTAGE';
+
+            // Adapt the grid layout: 3 columns for Percentage, 2 columns for Fixed
+            if (discountGrid) {
+                discountGrid.classList.toggle('lg:grid-cols-3', isPercentage);
+            }
+
+            couponSections.forEach(section => {
+                const visible = (section.dataset.couponSection === 'percentage') === isPercentage;
+                section.classList.toggle('hidden', !visible);
+
+                section.querySelectorAll('input, select, textarea').forEach(control => {
+                    control.disabled = !visible;
+                    if (control.type !== 'hidden') {
+                        control.required = visible;
+                    }
+                });
+            });
+        };
+
+        typeRadios.forEach(r => r.addEventListener('change', toggleFields));
+        toggleFields();
+    });
+</script>
+{% endblock %}

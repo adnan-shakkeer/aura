@@ -6,7 +6,9 @@ category must all be active and not soft-deleted. The larger offer wins; a
 product offer wins an equal non-zero tie with a category offer.
 
 All monetary values are ``Decimal`` and quantized to two decimal places using
-``ROUND_HALF_UP``. Coupons are not implemented in Phase 1 and remain zero.
+``ROUND_HALF_UP``. Coupons are integrated in Phase 2: coupon discounts are
+calculated against eligible post-offer merchandise and allocated deterministically
+across order lines.
 """
 
 from dataclasses import dataclass
@@ -19,6 +21,9 @@ PERCENT_DIVISOR = Decimal("100")
 OFFER_SOURCE_NONE = "NONE"
 OFFER_SOURCE_PRODUCT = "PRODUCT"
 OFFER_SOURCE_CATEGORY = "CATEGORY"
+
+COUPON_TYPE_PERCENTAGE = "PERCENTAGE"
+COUPON_TYPE_FIXED = "FIXED"
 
 
 @dataclass(frozen=True)
@@ -163,3 +168,123 @@ def summarize(line_pricings):
         "tax_total": tax_total,
         "total": total,
     }
+
+
+def eligible_merchandise_after_offers(line_pricings):
+    """Return the total eligible merchandise value after offers.
+
+    This is the sum of ``line_total - offer_discount`` across all lines,
+    representing the merchandise subtotal that a coupon's minimum purchase
+    and discount are evaluated against.
+    """
+    total = ZERO
+    for line in line_pricings:
+        eligible = _money(line.line_total) - _money(line.offer_discount)
+        if eligible > ZERO:
+            total += eligible
+    return _money(total)
+
+
+def calculate_coupon_discount(discount_type, discount_value, max_discount_amount, eligible_merchandise):
+    """Calculate the final coupon discount amount.
+
+    Rules:
+    - Never allows the final discount to exceed the eligible merchandise subtotal.
+    - Never allows the final payable amount to become negative.
+
+    Percentage: final_discount = min(eligible * percentage / 100, max_discount_amount, eligible)
+    Fixed:      final_discount = min(fixed_amount, eligible)
+    """
+    if eligible_merchandise <= ZERO:
+        return ZERO
+
+    discount_value = _money(discount_value)
+    eligible = _money(eligible_merchandise)
+
+    if discount_type == COUPON_TYPE_PERCENTAGE:
+        max_cap = _money(max_discount_amount) if max_discount_amount is not None else ZERO
+        percentage_discount = _money(eligible * discount_value / PERCENT_DIVISOR)
+        final_discount = min(percentage_discount, max_cap, eligible)
+    elif discount_type == COUPON_TYPE_FIXED:
+        final_discount = min(discount_value, eligible)
+    else:
+        return ZERO
+
+    if final_discount < ZERO:
+        final_discount = ZERO
+    if final_discount > eligible:
+        final_discount = eligible
+
+    return _money(final_discount)
+
+
+def allocate_coupon_discount(coupon_discount_total, line_pricings):
+    """Allocate a coupon discount across order lines deterministically.
+
+    Uses post-offer line values (line_total - offer_discount) as the basis
+    for proportional allocation. Never allocates more than a line's eligible
+    post-offer amount. Distributes rounding remainders deterministically so
+    the sum of allocations exactly equals the order-level coupon discount.
+
+    Returns a list of Decimal coupon allocations, one per line, in the same
+    order as ``line_pricings``.
+    """
+    coupon_discount_total = _money(coupon_discount_total)
+
+    if coupon_discount_total <= ZERO:
+        return [ZERO for _ in line_pricings]
+
+    # Calculate each line's eligible post-offer value
+    line_eligibles = []
+    total_eligible = ZERO
+    for line in line_pricings:
+        eligible = _money(line.line_total) - _money(line.offer_discount)
+        if eligible < ZERO:
+            eligible = ZERO
+        line_eligibles.append(eligible)
+        total_eligible += eligible
+
+    if total_eligible <= ZERO:
+        return [ZERO for _ in line_pricings]
+
+    # Proportional allocation with remainder distribution
+    allocations = []
+    remaining = coupon_discount_total
+
+    for index, (line, eligible) in enumerate(zip(line_pricings, line_eligibles)):
+        if remaining <= ZERO:
+            allocations.append(ZERO)
+            continue
+
+        if eligible <= ZERO:
+            allocations.append(ZERO)
+            continue
+
+        # Last line takes the remainder (deterministic)
+        if index == len(line_pricings) - 1:
+            allocation = min(remaining, eligible)
+        else:
+            share = _money(remaining * eligible / total_eligible)
+            allocation = min(share, eligible)
+
+        allocation = _money(allocation)
+        if allocation > remaining:
+            allocation = remaining
+
+        allocations.append(allocation)
+        remaining = _money(remaining - allocation)
+
+    # Ensure exact sum: if any remainder remains due to rounding, add it to
+    # the last line that has capacity.
+    if remaining > ZERO:
+        for index in range(len(allocations) - 1, -1, -1):
+            if remaining <= ZERO:
+                break
+            headroom = line_eligibles[index] - allocations[index]
+            if headroom > ZERO:
+                add_amount = min(remaining, headroom)
+                allocations[index] = _money(allocations[index] + add_amount)
+                remaining = _money(remaining - add_amount)
+
+    return allocations
+

@@ -249,7 +249,11 @@ class CheckoutReviewContentTests(CheckoutReviewViewTestBase):
             response = self.client.get(CHECKOUT_URL)
 
         self.assertEqual(response.status_code, 200)
-        mocked.assert_called_once_with(self.user, self.address.pk)
+        mocked.assert_called_once_with(
+            self.user,
+            self.address.pk,
+            coupon_code="",
+        )
         self.assertEqual(response.context["review"].subtotal, Decimal("2400.00"))
         self.assertEqual(response.context["review"].total, Decimal("2400.00"))
         self.assertContains(response, "Noir")
@@ -362,12 +366,12 @@ class CheckoutRedesignLayoutTests(CheckoutReviewViewTestBase):
         self.assertNotContains(response, "update_cart_item")
         self.assertNotContains(response, "remove_cart_item")
 
-    def test_order_summary_has_no_coupon_or_tax_inputs(self):
+    def test_order_summary_has_coupon_ui_but_no_tax_or_referral_inputs(self):
         response = self.client.get(CHECKOUT_URL)
 
-        # Must not display coupon, discount row, or tax input
-        self.assertNotContains(response, "Apply Coupon")
-        self.assertNotContains(response, "coupon_code")
+        self.assertContains(response, "Enter coupon code")
+        self.assertContains(response, 'name="coupon_code"')
+        self.assertContains(response, "View all available coupons")
         self.assertNotContains(response, "Referral")
         self.assertNotContains(response, "Estimated Tax")
         self.assertContains(response, "Subtotal (2 items)")

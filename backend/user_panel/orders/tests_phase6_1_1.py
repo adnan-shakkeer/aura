@@ -781,7 +781,7 @@ class ReturnConcurrencyTests(TransactionTestCase):
 class ReturnMigrationTests(TransactionTestCase):
     reset_sequences = True
     migrate_from = [("orders", "0003_phase6_1_order_management")]
-    migrate_to = [("orders", "0006_backfill_pricing_snapshots")]
+    migrate_to = [("orders", "0007_coupon_usage_and_order_coupon_code")]
 
     def setUp(self):
         self.executor = MigrationExecutor(connection)

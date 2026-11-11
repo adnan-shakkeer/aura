@@ -46,9 +46,16 @@ from user_panel.cart.services import (
     _validate_quantity,
     _validate_stock,
 )
+from user_panel.orders.coupons import (
+    consume_coupon,
+    get_coupon_by_code,
+    normalize_coupon_code,
+    validate_coupon,
+)
 from user_panel.pricing import services as pricing
 
 from .exceptions import (
+    CouponError,
     EmptyCartError,
     ExpiredReviewTokenError,
     InsufficientStockError,
@@ -79,6 +86,9 @@ REASON_PRICE_CHANGED = "price_changed"
 REASON_CART_CHANGED = "cart_changed"
 REASON_ADDRESS_CHANGED = "address_changed"
 REASON_SELECTION_CHANGED = "selection_changed"
+REASON_COUPON_INVALID = "coupon_invalid"
+
+ZERO = pricing.ZERO
 
 _DIRECT_INVALID_TOKEN_MESSAGE = (
     "This Buy Now review is not valid. Please review your selection again."
@@ -111,6 +121,7 @@ class CheckoutLine:
     offer_source: str
     offer_percentage: Decimal
     offer_discount: Decimal
+    coupon_discount: Decimal
     paid_amount: Decimal
 
 
@@ -128,6 +139,7 @@ class CheckoutReview:
     total: Decimal
     token: str
     source: str = SOURCE_CART
+    coupon_code: str = ""
 
 
 @dataclass(frozen=True)
@@ -243,11 +255,60 @@ def _collect_cart_state(cart, *, lock=False):
     return state
 
 
-def _build_lines(state):
+def _state_eligible_merchandise(state):
+    """Return the eligible post-offer merchandise value for checkout state."""
+    line_pricings = [
+        pricing.price_variant(variant, quantity)
+        for _item, variant, quantity in state
+    ]
+    return pricing.eligible_merchandise_after_offers(line_pricings)
+
+
+def _build_lines(state, coupon=None, eligible_merchandise=None):
+    """Build checkout lines from state, with optional coupon allocation.
+
+    When a coupon is provided, the coupon discount is calculated against the
+    eligible post-offer merchandise and allocated deterministically across
+    lines. Each line's paid_amount reflects both offer and coupon discounts.
+    """
     lines = []
 
+    line_pricings = []
     for item, variant, quantity in state:
         line_pricing = pricing.price_variant(variant, quantity)
+        line_pricings.append(line_pricing)
+
+    # Calculate per-line coupon allocations
+    coupon_discount_total = ZERO
+    coupon_allocations = []
+    if coupon is not None:
+        if eligible_merchandise is None:
+            eligible_merchandise = pricing.eligible_merchandise_after_offers(
+                line_pricings
+            )
+        coupon_discount_total = pricing.calculate_coupon_discount(
+            discount_type=coupon.discount_type,
+            discount_value=coupon.discount_value,
+            max_discount_amount=coupon.max_discount_amount,
+            eligible_merchandise=eligible_merchandise,
+        )
+        coupon_allocations = pricing.allocate_coupon_discount(
+            coupon_discount_total, line_pricings
+        )
+
+    for index, (item, variant, quantity) in enumerate(state):
+        line_pricing = line_pricings[index]
+        coupon_allocation = (
+            coupon_allocations[index] if index < len(coupon_allocations) else ZERO
+        )
+        paid_amount = pricing._money(
+            line_pricing.line_total
+            - line_pricing.offer_discount
+            - coupon_allocation
+        )
+        if paid_amount < ZERO:
+            paid_amount = ZERO
+
         lines.append(
             CheckoutLine(
                 cart_item_id=item.pk if item is not None else None,
@@ -262,11 +323,12 @@ def _build_lines(state):
                 offer_source=line_pricing.offer_source,
                 offer_percentage=line_pricing.offer_percentage,
                 offer_discount=line_pricing.offer_discount,
-                paid_amount=line_pricing.paid_amount,
+                coupon_discount=coupon_allocation,
+                paid_amount=paid_amount,
             )
         )
 
-    return lines
+    return lines, coupon_discount_total
 
 
 def _direct_state(variant_id, quantity, *, lock=False):
@@ -303,6 +365,7 @@ def _lines_payload(lines):
             line.offer_source,
             str(line.offer_percentage),
             str(line.offer_discount),
+            str(line.coupon_discount),
             str(line.paid_amount),
         ]
         for line in lines
@@ -317,12 +380,58 @@ def _totals_payload(totals):
     return {key: str(value) for key, value in totals.items()}
 
 
-def _build_review(user, address, cart, state, *, source=SOURCE_CART):
-    lines = _build_lines(state)
+def _coupon_state_expected(coupon, lines, totals):
+    """Build the current authoritative coupon state for token comparison."""
+    if coupon is None:
+        return {
+            "ccode": "",
+            "ccid": None,
+            "ctype": "",
+            "cvalue": "",
+            "cmax": "",
+            "cmin": "0.00",
+            "cdiscount": str(totals["coupon_discount_total"]),
+            "callocs": [str(line.coupon_discount) for line in lines],
+        }
+
+    return {
+        "ccode": coupon.code,
+        "ccid": coupon.pk,
+        "ctype": coupon.discount_type,
+        "cvalue": str(coupon.discount_value),
+        "cmax": (
+            ""
+            if coupon.max_discount_amount is None
+            else str(coupon.max_discount_amount)
+        ),
+        "cmin": str(coupon.minimum_purchase),
+        "cdiscount": str(totals["coupon_discount_total"]),
+        "callocs": [str(line.coupon_discount) for line in lines],
+    }
+
+
+def _coupon_allocations_match(current, expected):
+    if current is None:
+        # Legacy tokens carry no allocations: tolerate an all-zero snapshot.
+        return all(part == "0.00" for part in expected)
+    if not isinstance(current, list):
+        return False
+    return list(current) == list(expected)
+
+
+def _build_review(user, address, cart, state, *, source=SOURCE_CART, coupon=None):
+    """Build a checkout review with optional coupon applied.
+
+    ``coupon`` is a validated ``admin_panel.coupons.Coupon`` or ``None``.
+    """
+    lines, coupon_discount_total = _build_lines(state, coupon=coupon)
+
     totals = _calculate_totals(lines)
 
     submission_id = uuid.uuid4().hex
     issued_at = int(timezone.now().timestamp())
+
+    coupon_expectations = _coupon_state_expected(coupon, lines, totals)
 
     payload = {
         "sid": submission_id,
@@ -334,6 +443,15 @@ def _build_review(user, address, cart, state, *, source=SOURCE_CART):
         "totals": _totals_payload(totals),
         "iat": issued_at,
         "exp": issued_at + REVIEW_TOKEN_MAX_AGE,
+        # Coupon fields for change detection at placement
+        "ccode": coupon_expectations["ccode"],
+        "ccid": coupon_expectations["ccid"],
+        "ctype": coupon_expectations["ctype"],
+        "cvalue": coupon_expectations["cvalue"],
+        "cmax": coupon_expectations["cmax"],
+        "cmin": coupon_expectations["cmin"],
+        "cdiscount": coupon_expectations["cdiscount"],
+        "callocs": coupon_expectations["callocs"],
     }
 
     if source == SOURCE_DIRECT:
@@ -363,10 +481,36 @@ def _build_review(user, address, cart, state, *, source=SOURCE_CART):
         total=totals["total"],
         token=token,
         source=source,
+        coupon_code=coupon.code if coupon is not None else "",
     )
 
 
-def review_checkout(user, address_id):
+def _resolve_checkout_coupon(user, coupon_code, state):
+    """Resolve and validate the coupon code for a review, or return None.
+
+    An invalid coupon is silently ignored during review (it was already
+    validated when the customer applied it); placement revalidation still
+    guards the authoritative outcome. No browser-supplied value is trusted.
+    """
+    normalized = normalize_coupon_code(coupon_code or "")
+    if not normalized:
+        return None
+
+    coupon = get_coupon_by_code(normalized)
+    if coupon is None:
+        return None
+
+    eligible_merchandise = _state_eligible_merchandise(state)
+
+    try:
+        validate_coupon(coupon, user, eligible_merchandise)
+    except CouponError:
+        return None
+
+    return coupon
+
+
+def review_checkout(user, address_id, coupon_code=None):
     """Validate the cart/address and return prices plus a signed review token."""
     _assert_active_user(user)
 
@@ -378,7 +522,27 @@ def review_checkout(user, address_id):
 
     state = _collect_cart_state(cart)
 
-    return _build_review(user, address, cart, state)
+    coupon = _resolve_checkout_coupon(user, coupon_code, state)
+
+    return _build_review(user, address, cart, state, coupon=coupon)
+
+
+def eligible_merchandise_for_cart(user):
+    """Return the eligible post-offer merchandise value for a customer's cart."""
+    _assert_active_user(user)
+
+    cart = Cart.objects.filter(user=user).first()
+    if cart is None:
+        raise EmptyCartError("Your cart is empty.")
+
+    state = _collect_cart_state(cart)
+    return _state_eligible_merchandise(state)
+
+
+def eligible_merchandise_for_purchase(variant_id, quantity):
+    """Return the eligible post-offer merchandise value for a direct purchase."""
+    state, _variant = _direct_state(variant_id, quantity)
+    return _state_eligible_merchandise(state)
 
 
 def validate_direct_purchase(variant_id, quantity=1):
@@ -387,12 +551,14 @@ def validate_direct_purchase(variant_id, quantity=1):
     return variant
 
 
-def review_direct_checkout(user, variant_id, quantity, address_id):
+def review_direct_checkout(user, variant_id, quantity, address_id, coupon_code=None):
     """Validate one selected variant and return a direct checkout review."""
     _assert_active_user(user)
 
     address = _get_valid_address(user, address_id)
     state, _variant = _direct_state(variant_id, quantity)
+
+    coupon = _resolve_checkout_coupon(user, coupon_code, state)
 
     return _build_review(
         user,
@@ -400,6 +566,7 @@ def review_direct_checkout(user, variant_id, quantity, address_id):
         None,
         state,
         source=SOURCE_DIRECT,
+        coupon=coupon,
     )
 
 
@@ -480,7 +647,37 @@ def _find_existing_order(submission_id, user):
     return order
 
 
-def _detect_change(payload, cart, address, lines, totals):
+def _coupon_values_agree(payload, expected):
+    """Compare the signed coupon snapshot against the current coupon state.
+
+    One of the two arguments must be ``None``. Keys absent from the signed
+    payload fall back to coupon-less defaults so pre-coupon tokens stay
+    compatible and require at most one re-review.
+    """
+    defaults = {
+        "ccode": "",
+        "ccid": None,
+        "ctype": "",
+        "cvalue": "",
+        "cmax": "",
+        "cmin": "0.00",
+        "cdiscount": "0.00",
+    }
+
+    for key, value in expected.items():
+        current = payload.get(key)
+        if key == "callocs":
+            if not _coupon_allocations_match(current, value):
+                return False
+            continue
+        if current is None:
+            current = defaults[key]
+        if current != value:
+            return False
+    return True
+
+
+def _detect_change(payload, cart, address, lines, totals, coupon):
     """Return the reason a previously reviewed checkout no longer matches."""
     if payload.get("cid") != cart.pk:
         return REASON_CART_CHANGED
@@ -503,10 +700,14 @@ def _detect_change(payload, cart, address, lines, totals):
     if payload.get("totals") != _totals_payload(totals):
         return REASON_PRICE_CHANGED
 
+    expected_coupon = _coupon_state_expected(coupon, lines, totals)
+    if not _coupon_values_agree(payload, expected_coupon):
+        return REASON_PRICE_CHANGED
+
     return None
 
 
-def _detect_direct_change(payload, address, variant, quantity, lines, totals):
+def _detect_direct_change(payload, address, variant, quantity, lines, totals, coupon):
     """Return the reason a previously reviewed Buy Now selection changed."""
     if (
         payload.get("vid") != variant.pk
@@ -530,6 +731,10 @@ def _detect_direct_change(payload, address, variant, quantity, lines, totals):
         return REASON_PRICE_CHANGED
 
     if payload.get("totals") != _totals_payload(totals):
+        return REASON_PRICE_CHANGED
+
+    expected_coupon = _coupon_state_expected(coupon, lines, totals)
+    if not _coupon_values_agree(payload, expected_coupon):
         return REASON_PRICE_CHANGED
 
     return None
@@ -570,7 +775,7 @@ def _is_order_number_conflict(constraint):
     return bool(constraint) and "order_number" in constraint
 
 
-def _create_order_with_retry(*, user, submission_id, address, totals):
+def _create_order_with_retry(*, user, submission_id, address, totals, coupon_code=""):
     """Create the order, retrying a bounded number of times on number clash.
 
     Returns ``(order, is_duplicate)``. Each attempt runs inside a savepoint
@@ -594,6 +799,7 @@ def _create_order_with_retry(*, user, submission_id, address, totals):
                     shipping_charge=totals["shipping_charge"],
                     tax_total=totals["tax_total"],
                     total=totals["total"],
+                    coupon_code=coupon_code,
                     delivery_full_name=address.full_name,
                     delivery_phone_number=address.phone_number,
                     delivery_address_line1=address.address_line1,
@@ -648,7 +854,10 @@ def _create_order_items(order, state, lines):
             (line.offer_discount for line in variant_lines),
             pricing.ZERO,
         )
-        coupon_discount = pricing.ZERO
+        coupon_discount = sum(
+            (line.coupon_discount for line in variant_lines),
+            pricing.ZERO,
+        )
         paid_amount = sum(
             (line.paid_amount for line in variant_lines),
             pricing.ZERO,
@@ -724,12 +933,35 @@ def _place_order_atomic(user, address_id, review_token):
         raise EmptyCartError("Your cart is empty.")
 
     state = _collect_cart_state(cart, lock=True)
-    lines = _build_lines(state)
+
+    # Extract coupon from the signed token for revalidation.
+    token_coupon_code = payload.get("ccode", "")
+    coupon = None
+    if token_coupon_code:
+        coupon = get_coupon_by_code(token_coupon_code)
+
+    if coupon is not None:
+        # Revalidate the coupon against current state.
+        eligible_merchandise = _state_eligible_merchandise(state)
+        try:
+            validate_coupon(coupon, user, eligible_merchandise)
+        except CouponError:
+            # The coupon became invalid: require a fresh review without it.
+            review = _build_review(user, address, cart, state)
+            return OrderPlacementResult(
+                status=STATUS_REVIEW_REQUIRED,
+                review=review,
+                reason=REASON_COUPON_INVALID,
+            )
+
+    lines, _coupon_discount_total = _build_lines(state, coupon=coupon)
     totals = _calculate_totals(lines)
 
-    reason = _detect_change(payload, cart, address, lines, totals)
+    reason = _detect_change(payload, cart, address, lines, totals, coupon)
     if reason is not None:
-        review = _build_review(user, address, cart, state)
+        review = _build_review(
+            user, address, cart, state, coupon=coupon
+        )
         return OrderPlacementResult(
             status=STATUS_REVIEW_REQUIRED,
             review=review,
@@ -741,6 +973,7 @@ def _place_order_atomic(user, address_id, review_token):
         submission_id=submission_id,
         address=address,
         totals=totals,
+        coupon_code=coupon.code if coupon is not None else "",
     )
 
     if duplicate:
@@ -749,6 +982,15 @@ def _place_order_atomic(user, address_id, review_token):
     _create_order_items(order, state, lines)
     _deduct_stock(state)
     _clear_cart(cart)
+
+    # Consume the coupon for COD placement.
+    if coupon is not None:
+        consume_coupon(
+            coupon=coupon,
+            order=order,
+            user=user,
+            discount_amount=totals["coupon_discount_total"],
+        )
 
     return OrderPlacementResult(status=STATUS_CREATED, order=order)
 
@@ -820,7 +1062,34 @@ def _place_direct_order_atomic(user, address_id, review_token):
         quantity,
         lock=True,
     )
-    lines = _build_lines(state)
+
+    # Extract coupon from the signed token for revalidation.
+    token_coupon_code = payload.get("ccode", "")
+    coupon = None
+    if token_coupon_code:
+        coupon = get_coupon_by_code(token_coupon_code)
+
+    if coupon is not None:
+        # Revalidate the coupon against current state.
+        eligible_merchandise = _state_eligible_merchandise(state)
+        try:
+            validate_coupon(coupon, user, eligible_merchandise)
+        except CouponError:
+            # The coupon became invalid: require a fresh review without it.
+            review = _build_review(
+                user,
+                address,
+                None,
+                state,
+                source=SOURCE_DIRECT,
+            )
+            return OrderPlacementResult(
+                status=STATUS_REVIEW_REQUIRED,
+                review=review,
+                reason=REASON_COUPON_INVALID,
+            )
+
+    lines, _coupon_discount_total = _build_lines(state, coupon=coupon)
     totals = _calculate_totals(lines)
 
     reason = _detect_direct_change(
@@ -830,6 +1099,7 @@ def _place_direct_order_atomic(user, address_id, review_token):
         quantity,
         lines,
         totals,
+        coupon,
     )
     if reason is not None:
         review = _build_review(
@@ -838,6 +1108,7 @@ def _place_direct_order_atomic(user, address_id, review_token):
             None,
             state,
             source=SOURCE_DIRECT,
+            coupon=coupon,
         )
         return OrderPlacementResult(
             status=STATUS_REVIEW_REQUIRED,
@@ -850,6 +1121,7 @@ def _place_direct_order_atomic(user, address_id, review_token):
         submission_id=submission_id,
         address=address,
         totals=totals,
+        coupon_code=coupon.code if coupon is not None else "",
     )
 
     if duplicate:
@@ -857,6 +1129,15 @@ def _place_direct_order_atomic(user, address_id, review_token):
 
     _create_order_items(order, state, lines)
     _deduct_stock(state)
+
+    # Consume the coupon for COD placement.
+    if coupon is not None:
+        consume_coupon(
+            coupon=coupon,
+            order=order,
+            user=user,
+            discount_amount=totals["coupon_discount_total"],
+        )
 
     return OrderPlacementResult(status=STATUS_CREATED, order=order)
 

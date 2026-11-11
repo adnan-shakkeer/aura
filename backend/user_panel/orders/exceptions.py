@@ -105,4 +105,46 @@ class ReturnQuantityMismatchError(OrderServiceError):
 
 
 class ReturnIntegrityError(OrderServiceError):
-    code = "return_integrity_error"
+    code = "return_integrity"
+
+
+class CouponError(OrderServiceError):
+    """Raised when a coupon operation violates a business rule."""
+
+    code = "coupon_error"
+
+
+class CouponNotFoundError(CouponError):
+    code = "coupon_not_found"
+
+
+class CouponInactiveError(CouponError):
+    code = "coupon_inactive"
+
+
+class CouponDeletedError(CouponError):
+    code = "coupon_deleted"
+
+
+class CouponNotYetValidError(CouponError):
+    code = "coupon_not_yet_valid"
+
+
+class CouponExpiredError(CouponError):
+    code = "coupon_expired"
+
+
+class CouponMinimumPurchaseError(CouponError):
+    code = "coupon_minimum_purchase"
+
+
+class CouponUsageLimitExceededError(CouponError):
+    code = "coupon_usage_limit_exceeded"
+
+
+class CouponPerUserLimitExceededError(CouponError):
+    code = "coupon_per_user_limit_exceeded"
+
+
+class CouponAlreadyAppliedError(CouponError):
+    code = "coupon_already_applied"

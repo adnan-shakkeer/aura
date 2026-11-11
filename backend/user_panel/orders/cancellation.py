@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from admin_panel.products.models import ProductVariant
 
+from .coupons import release_coupon_usage_for_order
 from .exceptions import (
     ItemAlreadyCancelledError,
     ItemNotCancellableError,
@@ -13,6 +14,9 @@ from .exceptions import (
     OrderServiceError,
 )
 from .models import Order, OrderItem, OrderStatusEvent
+
+
+COUPON_RELEASE_NOTE = "Order cancelled by customer."
 
 
 def _assert_customer(user):
@@ -111,6 +115,13 @@ def cancel_order_item(user, order_item_id, *, reason=""):
             note="All items were cancelled by the customer.",
         )
 
+        # The whole order is cancelled: its consumed coupon usage is
+        # released exactly once (idempotent).
+        release_coupon_usage_for_order(
+            order,
+            reason=COUPON_RELEASE_NOTE,
+        )
+
     return item
 
 
@@ -176,6 +187,13 @@ def cancel_order(user, order_id, *, reason=""):
         previous_status=previous_status,
         changed_by=user,
         note=event_note,
+    )
+
+    # The whole order is cancelled: its consumed coupon usage is released
+    # exactly once (idempotent).
+    release_coupon_usage_for_order(
+        order,
+        reason=COUPON_RELEASE_NOTE,
     )
 
     return order

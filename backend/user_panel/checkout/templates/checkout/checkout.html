@@ -6,33 +6,175 @@
 {% block extra_css %}
 <style>
     /* =========================================================
+       AURA TOAST NOTIFICATION
+       Fixed top-right toast with entrance/exit animations.
+       Maintains the premium AURA notification identity.
+       ========================================================= */
+
+    #aura-toast-container {
+        position: fixed;
+        top: 88px;
+        right: 24px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 360px;
+        width: calc(100vw - 48px);
+        pointer-events: none;
+    }
+
+    @media (max-width: 640px) {
+        #aura-toast-container {
+            top: 80px;
+            right: 16px;
+            max-width: calc(100vw - 32px);
+            width: 100%;
+        }
+    }
+
+    @keyframes aura-toast-in {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes aura-toast-out {
+        from {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+    }
+
+    .aura-toast {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 13px 16px;
+        border-radius: 6px;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 11px;
+        font-weight: 300;
+        letter-spacing: 0.08em;
+        line-height: 1.6;
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25),
+                    0 1px 6px -1px rgba(0, 0, 0, 0.15);
+        pointer-events: auto;
+        animation: aura-toast-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .aura-toast--dismissing {
+        animation: aura-toast-out 0.32s cubic-bezier(0.4, 0, 0.8, 0.6) both;
+    }
+
+    /* SUCCESS — Soft charcoal background with warm gold accent */
+    .aura-toast--success {
+        background-color: #0F172A;
+        border: 1px solid #1E293B;
+        border-left: 2px solid #FBBF24;
+        color: #F1F5F9;
+    }
+    .aura-toast--success .aura-toast__icon {
+        color: #FBBF24;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+
+    /* ERROR — Muted rose/charcoal background with soft rose border/accent */
+    .aura-toast--error {
+        background-color: #1a0f12;
+        border: 1px solid #4c1d24;
+        border-left: 2px solid #9f1239;
+        color: #fecdd3;
+    }
+    .aura-toast--error .aura-toast__icon {
+        color: #fb7185;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+
+    /* WARNING — Warm espresso with amber accent */
+    .aura-toast--warning {
+        background-color: #1c140a;
+        border: 1px solid #422a14;
+        border-left: 2px solid #b45309;
+        color: #fde68a;
+    }
+    .aura-toast--warning .aura-toast__icon {
+        color: #f59e0b;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+
+    /* INFO — Cool dark slate with muted steel accent */
+    .aura-toast--info {
+        background-color: #0f172a;
+        border: 1px solid #1e293b;
+        border-left: 2px solid #64748b;
+        color: #e2e8f0;
+    }
+    .aura-toast--info .aura-toast__icon {
+        color: #94a3b8;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+
+    .aura-toast__text { flex: 1; }
+
+    /* =========================================================
        AURA CHECKOUT — Styles
        ========================================================= */
 
     /* Modal transitions */
-    #add-address-modal, #edit-address-modal {
+    #add-address-modal, #edit-address-modal, #coupons-modal {
         transition: opacity 0.25s ease;
     }
-    #add-address-modal.modal-hidden, #edit-address-modal.modal-hidden {
+    #add-address-modal.modal-hidden, #edit-address-modal.modal-hidden, #coupons-modal.modal-hidden {
         opacity: 0;
         pointer-events: none;
     }
-    #add-address-modal.modal-visible, #edit-address-modal.modal-visible {
+    #add-address-modal.modal-visible, #edit-address-modal.modal-visible, #coupons-modal.modal-visible {
         opacity: 1;
         pointer-events: auto;
     }
-    #add-address-panel, #edit-address-panel {
+    #add-address-panel, #edit-address-panel, #coupons-panel {
         transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
     }
     #add-address-modal.modal-hidden #add-address-panel,
-    #edit-address-modal.modal-hidden #edit-address-panel {
+    #edit-address-modal.modal-hidden #edit-address-panel,
+    #coupons-modal.modal-hidden #coupons-panel {
         transform: scale(0.97) translateY(10px);
         opacity: 0;
     }
     #add-address-modal.modal-visible #add-address-panel,
-    #edit-address-modal.modal-visible #edit-address-panel {
+    #edit-address-modal.modal-visible #edit-address-panel,
+    #coupons-modal.modal-visible #coupons-panel {
         transform: scale(1) translateY(0);
         opacity: 1;
+    }
+
+    /* Coupon modal cards */
+    @keyframes couponSpin {
+        to { transform: rotate(360deg); }
+    }
+    .coupon-spinner {
+        animation: couponSpin 0.7s linear infinite;
+    }
+    .coupon-card {
+        transition: border-color 0.18s ease, background-color 0.18s ease;
+    }
+    .coupon-card:hover {
+        border-color: #E5D7C5;
+        background-color: #FDFBF7;
     }
 
     /* Address card interaction */
@@ -61,6 +203,47 @@
 {% endblock %}
 
 {% block content %}
+<!-- AURA Toast Container -->
+<div id="aura-toast-container" role="alert" aria-live="polite">
+    {% if messages %}
+    {% for message in messages %}
+        {% if 'admin' not in message.tags %}
+        {% if message.tags == 'error' %}
+            <div class="aura-toast aura-toast--error">
+                <svg class="aura-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path stroke-linecap="round" d="M15 9l-6 6M9 9l6 6"/>
+                </svg>
+                <span class="aura-toast__text">{{ message }}</span>
+            </div>
+        {% elif message.tags == 'warning' %}
+            <div class="aura-toast aura-toast--warning">
+                <svg class="aura-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 3.5h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
+                </svg>
+                <span class="aura-toast__text">{{ message }}</span>
+            </div>
+        {% elif message.tags == 'info' %}
+            <div class="aura-toast aura-toast--info">
+                <svg class="aura-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path stroke-linecap="round" d="M12 11v5m0-8.5h.01"/>
+                </svg>
+                <span class="aura-toast__text">{{ message }}</span>
+            </div>
+        {% else %}
+            <div class="aura-toast aura-toast--success">
+                <svg class="aura-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4"/>
+                </svg>
+                <span class="aura-toast__text">{{ message }}</span>
+            </div>
+        {% endif %}
+        {% endif %}
+    {% endfor %}
+    {% endif %}
+</div>
+
 <div class="min-h-[calc(100vh-80px)] bg-auraIvory py-8 sm:py-12">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
@@ -78,16 +261,6 @@
                 <li class="text-auraBlack" aria-current="page">Checkout</li>
             </ol>
         </nav>
-
-        {% if messages %}
-        <div class="mb-6 space-y-3" role="status" aria-live="polite">
-            {% for message in messages %}
-            <div class="border px-4 py-3 text-xs sm:text-sm rounded-lg {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-700{% elif message.tags == 'warning' %}border-[#E3C9A8] bg-[#FDF6EA] text-[#8A5A22]{% else %}border-auraBorder bg-auraCream text-auraBlack{% endif %}">
-                {{ message }}
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
 
         <!-- Page Heading -->
         <header class="mb-8 sm:mb-10">
@@ -416,11 +589,71 @@
                             <dd class="text-emerald-600 font-semibold">-₹{{ review.offer_discount_total }}</dd>
                         </div>
                         {% endif %}
+                        {% if review.coupon_discount_total > 0 %}
+                        <div class="flex items-center justify-between gap-4">
+                            <dt class="text-auraMuted font-light">
+                                Coupon <span class="text-[11px] uppercase tracking-[0.12em] text-auraChampagneDark">{{ review.coupon_code }}</span>
+                            </dt>
+                            <dd class="text-emerald-600 font-semibold">-₹{{ review.coupon_discount_total }}</dd>
+                        </div>
+                        {% endif %}
                         <div class="flex items-center justify-between gap-4">
                             <dt class="text-auraMuted font-light">Shipping</dt>
                             <dd class="text-emerald-600 font-semibold uppercase tracking-wider text-xs">FREE</dd>
                         </div>
                     </dl>
+
+                    <!-- Coupon -->
+                    <div class="mt-6 pt-5 border-t border-[#F0F0F0]">
+                        {% if review.coupon_code %}
+                        <!-- Applied Coupon -->
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-[10px] uppercase tracking-[0.16em] text-auraMuted mb-1.5">Coupon Applied</p>
+                                <span class="inline-flex items-center px-3 py-1 bg-[#FDFBF7] border border-[#E5D7C5] rounded-full text-[11px] font-semibold tracking-[0.12em] text-auraBlack truncate max-w-full">
+                                    {{ review.coupon_code }}
+                                </span>
+                            </div>
+                            <form method="post" action="{% url 'checkout:remove_coupon' %}" id="remove-coupon-form" class="flex-shrink-0">
+                                {% csrf_token %}
+                                <input type="hidden" name="source" value="{% if checkout_mode == 'direct' %}direct{% else %}cart{% endif %}">
+                                <input type="hidden" name="address_id" value="{{ selected_address.pk|default:'' }}">
+                                <button type="submit" id="remove-coupon-btn"
+                                        class="text-[10px] font-semibold uppercase tracking-[0.16em] text-auraMuted hover:text-red-700 border border-auraBorder rounded-full px-4 py-1.5 hover:border-red-300 transition-colors">
+                                    Remove
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <!-- Coupon Input -->
+                        <form method="post" action="{% url 'checkout:apply_coupon' %}" id="apply-coupon-form" class="flex items-stretch gap-2 mb-3">
+                            {% csrf_token %}
+                            <input type="hidden" name="source" value="{% if checkout_mode == 'direct' %}direct{% else %}cart{% endif %}">
+                            <input type="hidden" name="address_id" value="{{ selected_address.pk|default:'' }}">
+                            <input
+                                type="text"
+                                id="coupon-input"
+                                name="coupon_code"
+                                placeholder="Enter coupon code"
+                                autocomplete="off"
+                                aria-label="Coupon code"
+                                maxlength="40"
+                                class="addr-input flex-1 min-w-0 border border-auraBorder bg-white px-3.5 py-2.5 text-xs text-auraBlack placeholder-auraMuted/50 rounded-lg transition-all duration-150 uppercase"
+                            >
+                            <button type="submit" id="apply-coupon-btn"
+                                    class="flex-shrink-0 bg-auraBlack px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white hover:bg-auraDark transition-colors rounded-lg disabled:cursor-not-allowed disabled:opacity-75">
+                                Apply
+                            </button>
+                        </form>
+
+                        <!-- Available Coupons Link -->
+                        <button type="button" id="open-coupons-btn"
+                                class="text-[11px] font-medium uppercase tracking-[0.14em] text-auraChampagneDark hover:text-auraBlack underline underline-offset-4 transition-colors"
+                                aria-haspopup="dialog" aria-controls="coupons-modal">
+                            View all available coupons
+                        </button>
+                        {% endif %}
+                    </div>
 
                     <!-- Divider -->
                     <div class="border-t border-[#F0F0F0] my-6"></div>
@@ -818,6 +1051,58 @@
         </form>
     </div>
 </div>
+
+
+<!-- ========================================================= -->
+<!-- AVAILABLE COUPONS MODAL                                    -->
+<!-- ========================================================= -->
+<div
+    id="coupons-modal"
+    class="modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="coupons-title"
+>
+    <!-- Backdrop with blur -->
+    <div id="coupons-backdrop" class="absolute inset-0 bg-auraBlack/30 backdrop-blur-[2px]"></div>
+
+    <!-- Modal Panel -->
+    <div
+        id="coupons-panel"
+        class="relative w-full max-w-xl bg-white rounded-2xl shadow-aura-card p-7 sm:p-9 max-h-[85vh] overflow-y-auto"
+    >
+        <!-- Close Button -->
+        <button
+            type="button"
+            id="close-coupons-btn"
+            class="absolute top-5 right-5 w-8 h-8 flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors duration-150 rounded-full hover:bg-[#F3F3F3]"
+            aria-label="Close modal"
+        >
+            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+
+        <!-- Header -->
+        <div class="mb-7">
+            <h2 id="coupons-title" class="font-serif text-2xl sm:text-3xl text-auraBlack font-normal tracking-tight mb-2 uppercase">Available Coupons</h2>
+            <div class="w-8 h-px bg-auraChampagneDark"></div>
+        </div>
+
+        <!-- Error Banner -->
+        <div id="coupons-error" class="hidden mb-5 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 leading-relaxed"></div>
+
+        <!-- Loading State -->
+        <div id="coupons-loading" class="hidden py-10 flex justify-center items-center gap-3 text-auraMuted">
+            <svg class="coupon-spinner w-5 h-5" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
+            <span class="text-xs uppercase tracking-[0.18em]">Loading coupons…</span>
+        </div>
+
+        <!-- Cards -->
+        <div id="coupons-list" class="space-y-4"></div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -831,6 +1116,63 @@
         return match ? decodeURIComponent(match.split('=')[1]) : null;
     }
     var CSRF = getCookie('csrftoken');
+
+    // ─── AURA Toast Notifications ─────────────────────────────────────────────
+    var TOAST_VISIBLE_MS = 3200;
+    var TOAST_EXIT_MS = 320;
+
+    function dismissToast(toast) {
+        if (!toast || toast.classList.contains('aura-toast--dismissing')) return;
+        toast.classList.add('aura-toast--dismissing');
+        setTimeout(function () {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, TOAST_EXIT_MS);
+    }
+
+    function showToast(msg, type) {
+        type = type || 'success';
+        var container = document.getElementById('aura-toast-container');
+        if (!container) return;
+
+        var el = document.createElement('div');
+        el.className = 'aura-toast aura-toast--' + type;
+
+        var icon = '';
+        if (type === 'error') {
+            icon = '<svg class="aura-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M15 9l-6 6M9 9l6 6"/></svg>';
+        } else if (type === 'warning') {
+            icon = '<svg class="aura-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 3.5h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>';
+        } else if (type === 'info') {
+            icon = '<svg class="aura-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 11v5m0-8.5h.01"/></svg>';
+        } else {
+            icon = '<svg class="aura-toast__icon w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4"/></svg>';
+        }
+
+        el.innerHTML = icon + '<span class="aura-toast__text"></span>';
+        el.querySelector('.aura-toast__text').textContent = msg;
+        container.appendChild(el);
+
+        setTimeout(function () {
+            dismissToast(el);
+        }, TOAST_VISIBLE_MS);
+    }
+
+    // Auto-dismiss server-rendered toasts on page load
+    function initServerToasts() {
+        document.querySelectorAll('#aura-toast-container .aura-toast').forEach(function (toast, index) {
+            var stagger = index * 120;
+            setTimeout(function () {
+                dismissToast(toast);
+            }, TOAST_VISIBLE_MS + stagger);
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initServerToasts);
+    } else {
+        initServerToasts();
+    }
 
     // ─── Modal Open / Close Helpers ───────────────────────────────────────────
     function openModal(modalId) {
@@ -850,12 +1192,13 @@
     }
 
     // Close on backdrop click
-    ['add-address-backdrop', 'edit-address-backdrop'].forEach(function (id) {
+    ['add-address-backdrop', 'edit-address-backdrop', 'coupons-backdrop'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) {
             el.addEventListener('click', function () {
                 closeModal('add-address-modal');
                 closeModal('edit-address-modal');
+                closeModal('coupons-modal');
             });
         }
     });
@@ -865,6 +1208,7 @@
         if (e.key === 'Escape') {
             closeModal('add-address-modal');
             closeModal('edit-address-modal');
+            closeModal('coupons-modal');
         }
     });
 
@@ -906,6 +1250,177 @@
                 errorTag.classList.add('hidden');
             }
         });
+    });
+
+    // ─── Available Coupons Modal ──────────────────────────────────────────────
+    // Coupon cards are rendered from backend data only. Selection always goes
+    // through the existing server-side apply-coupon form so authoritative
+    // eligibility and discount amounts are decided by the server.
+    var CHECKOUT_SOURCE = '{% if checkout_mode == "direct" %}direct{% else %}cart{% endif %}';
+    var AVAILABLE_COUPONS_URL = '{% url "checkout:available_coupons" %}' + '?source=' + CHECKOUT_SOURCE;
+    var couponInput = document.getElementById('coupon-input');
+    var applyCouponForm = document.getElementById('apply-coupon-form');
+
+    function renderCouponCards(results) {
+        var list = document.getElementById('coupons-list');
+        list.innerHTML = '';
+
+        if (!results.length) {
+            var emptyNote = document.createElement('p');
+            emptyNote.className = 'py-8 text-center text-xs text-auraMuted uppercase tracking-[0.16em]';
+            emptyNote.textContent = 'No coupons are available right now.';
+            list.appendChild(emptyNote);
+            return;
+        }
+
+        results.forEach(function (coupon) {
+            var card = document.createElement('div');
+            card.className = 'coupon-card border border-auraBorder rounded-xl p-5 bg-white';
+
+            // Badge row (BEST DEAL / MIN ORDER NOT MET / APPLICABLE)
+            var badgeRow = document.createElement('div');
+            badgeRow.className = 'flex items-center justify-between gap-3 mb-2';
+            var codeEl = document.createElement('span');
+            codeEl.className = 'font-serif text-lg sm:text-xl font-semibold text-auraBlack tracking-wide break-all';
+            codeEl.textContent = coupon.code;
+            badgeRow.appendChild(codeEl);
+
+            if (coupon.best_deal) {
+                var bestBadge = document.createElement('span');
+                bestBadge.className = 'flex-shrink-0 inline-flex items-center px-2.5 py-0.5 rounded bg-[#0D0D0E] text-[9px] font-semibold uppercase tracking-[0.16em] text-white';
+                bestBadge.textContent = coupon.state_label;
+                badgeRow.appendChild(bestBadge);
+            } else if (coupon.applicable) {
+                var okBadge = document.createElement('span');
+                okBadge.className = 'flex-shrink-0 inline-flex items-center px-2.5 py-0.5 rounded bg-[#1E7E4D]/10 text-[9px] font-semibold uppercase tracking-[0.16em] text-[#1E7E4D] border border-[#1E7E4D]/25';
+                okBadge.textContent = coupon.state_label;
+                badgeRow.appendChild(okBadge);
+            } else {
+                var minBadge = document.createElement('span');
+                minBadge.className = 'flex-shrink-0 inline-flex items-center px-2.5 py-0.5 rounded bg-[#FDF6EA] text-[9px] font-semibold uppercase tracking-[0.16em] text-[#8A5A22] border border-[#E3C9A8]';
+                minBadge.textContent = coupon.state_label;
+                badgeRow.appendChild(minBadge);
+            }
+            card.appendChild(badgeRow);
+
+            // Discount line
+            var discountLine = document.createElement('p');
+            discountLine.className = 'text-sm font-semibold text-auraBlack';
+            discountLine.textContent = coupon.discount_label;
+            if (coupon.max_discount_label) {
+                var maxNote = document.createElement('span');
+                maxNote.className = 'text-xs text-auraMuted font-normal';
+                maxNote.textContent = '  \u00b7  ' + coupon.max_discount_label;
+                discountLine.appendChild(maxNote);
+            }
+            card.appendChild(discountLine);
+
+            // Minimum purchase line
+            var minLine = document.createElement('p');
+            minLine.className = 'text-xs text-auraMuted mt-1';
+            minLine.textContent = coupon.minimum_purchase_label;
+            card.appendChild(minLine);
+
+            // Apply action
+            var actionRow = document.createElement('div');
+            actionRow.className = 'mt-4';
+            var applyBtn = document.createElement('button');
+            applyBtn.type = 'button';
+            if (coupon.applicable) {
+                applyBtn.className = 'w-full py-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] bg-auraBlack text-white hover:bg-auraDark transition-colors rounded-lg cursor-pointer';
+                applyBtn.textContent = 'Apply coupon';
+                applyBtn.addEventListener('click', function () {
+                    if (!applyCouponForm || !couponInput) return;
+                    couponInput.value = coupon.code;
+                    closeModal('coupons-modal');
+                    showToast('Applying coupon ' + coupon.code + '…', 'info');
+                    if (applyCouponForm.requestSubmit) {
+                        applyCouponForm.requestSubmit();
+                    } else {
+                        applyCouponForm.submit();
+                    }
+                });
+            } else {
+                applyBtn.className = 'w-full py-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] bg-[#F5F3EE] text-[#8A5A22] border border-[#E3C9A8]/50 rounded-lg hover:bg-[#FDF6EA] transition-colors cursor-pointer';
+                applyBtn.textContent = 'Minimum order not met';
+                applyBtn.addEventListener('click', function () {
+                    var reqMsg = coupon.minimum_purchase_label ? coupon.minimum_purchase_label + ' required for coupon ' + coupon.code + '.' : 'Minimum purchase requirement not met for coupon ' + coupon.code + '.';
+                    showToast(reqMsg, 'warning');
+                });
+            }
+            actionRow.appendChild(applyBtn);
+            card.appendChild(actionRow);
+
+            list.appendChild(card);
+        });
+    }
+
+    function loadAvailableCoupons() {
+        var loading = document.getElementById('coupons-loading');
+        var errorBanner = document.getElementById('coupons-error');
+        var list = document.getElementById('coupons-list');
+
+        errorBanner.classList.add('hidden');
+        list.innerHTML = '';
+        if (loading) loading.classList.remove('hidden');
+
+        fetch(AVAILABLE_COUPONS_URL, {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        })
+        .then(function (response) {
+            if (!response.ok) throw new Error('Request failed');
+            return response.json();
+        })
+        .then(function (data) {
+            renderCouponCards((data && data.results) || []);
+        })
+        .catch(function () {
+            var failMsg = 'We could not load coupons right now. Please try again.';
+            errorBanner.textContent = failMsg;
+            errorBanner.classList.remove('hidden');
+            showToast(failMsg, 'error');
+        })
+        .finally(function () {
+            if (loading) loading.classList.add('hidden');
+        });
+    }
+
+    // ─── Coupon Form Submissions with Toast Feedback ──────────────────────────
+    if (applyCouponForm) {
+        applyCouponForm.addEventListener('submit', function (e) {
+            var code = (couponInput ? couponInput.value : '').trim();
+            if (!code) {
+                e.preventDefault();
+                showToast('Please enter a coupon code.', 'error');
+                if (couponInput) couponInput.focus();
+                return;
+            }
+            var applyBtn = document.getElementById('apply-coupon-btn');
+            if (applyBtn) {
+                applyBtn.disabled = true;
+                applyBtn.textContent = 'Applying…';
+            }
+        });
+    }
+
+    var removeCouponForm = document.getElementById('remove-coupon-form');
+    if (removeCouponForm) {
+        removeCouponForm.addEventListener('submit', function () {
+            var removeBtn = document.getElementById('remove-coupon-btn');
+            if (removeBtn) {
+                removeBtn.disabled = true;
+                removeBtn.textContent = 'Removing…';
+            }
+        });
+    }
+
+    document.getElementById('open-coupons-btn')?.addEventListener('click', function () {
+        loadAvailableCoupons();
+        openModal('coupons-modal');
+    });
+    document.getElementById('close-coupons-btn')?.addEventListener('click', function () {
+        closeModal('coupons-modal');
     });
 
     // ─── Place Order Submission Guard ─────────────────────────────────────────

@@ -6,23 +6,38 @@ checkout never reads, locks or clears the customer's cart.
 
 The signed review token is kept in the server-side session only. It is never
 placed in a URL, rendered into the page, or written to client-side storage.
+
+Applied coupon codes are held in separate per-flow session keys
+(``checkout_coupon_code`` for cart checkout and ``checkout_direct_coupon_code``
+for Buy Now) so the two flows never share coupon state.
 """
+
+from decimal import Decimal
 
 from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from admin_panel.products.models import ProductVariant
 from user_panel.address.models import Address
+from user_panel.orders.coupons import (
+    discover_available_coupons,
+    get_coupon_by_code,
+    normalize_coupon_code,
+    validate_coupon,
+)
+from user_panel.orders.exceptions import CouponError
 from user_panel.orders.services import (
     REASON_ADDRESS_CHANGED,
     REASON_CART_CHANGED,
+    REASON_COUPON_INVALID,
     REASON_PRICE_CHANGED,
     REASON_SELECTION_CHANGED,
     REVIEW_TOKEN_MAX_AGE,
@@ -36,6 +51,8 @@ from user_panel.orders.services import (
     InvalidReviewTokenError,
     OrderServiceError,
     VariantUnavailableError,
+    eligible_merchandise_for_cart,
+    eligible_merchandise_for_purchase,
     place_direct_order,
     place_order,
     review_checkout,
@@ -47,6 +64,7 @@ from user_panel.orders.services import (
 REVIEW_SESSION_KEY = "checkout_review_token"
 REVIEW_ADDRESS_SESSION_KEY = "checkout_review_address_id"
 REVIEW_SUBMISSION_SESSION_KEY = "checkout_review_submission_id"
+COUPON_SESSION_KEY = "checkout_coupon_code"
 
 DIRECT_INTENT_SESSION_KEY = "checkout_direct_intent"
 DIRECT_REVIEW_SESSION_KEY = "checkout_direct_review_token"
@@ -54,6 +72,7 @@ DIRECT_REVIEW_ADDRESS_SESSION_KEY = "checkout_direct_review_address_id"
 DIRECT_REVIEW_SUBMISSION_SESSION_KEY = (
     "checkout_direct_review_submission_id"
 )
+DIRECT_COUPON_SESSION_KEY = "checkout_direct_coupon_code"
 
 _REVIEW_SESSION_KEYS = (
     REVIEW_SESSION_KEY,
@@ -77,6 +96,10 @@ _REVIEW_REQUIRED_MESSAGES = {
     REASON_ADDRESS_CHANGED: (
         "Your delivery address has changed. Please review your order again."
     ),
+    REASON_COUPON_INVALID: (
+        "This coupon is no longer available. It has been removed and "
+        "your order review was updated."
+    ),
 }
 
 _DIRECT_REVIEW_REQUIRED_MESSAGES = {
@@ -90,6 +113,10 @@ _DIRECT_REVIEW_REQUIRED_MESSAGES = {
     REASON_ADDRESS_CHANGED: (
         "Your delivery address has changed. "
         "Please review your Buy Now selection again."
+    ),
+    REASON_COUPON_INVALID: (
+        "This coupon is no longer available. It has been removed and "
+        "your Buy Now review was updated."
     ),
 }
 
@@ -167,6 +194,7 @@ def _clear_direct_review_session(request):
 
 def _clear_direct_intent(request):
     request.session.pop(DIRECT_INTENT_SESSION_KEY, None)
+    request.session.pop(DIRECT_COUPON_SESSION_KEY, None)
 
 
 def _clear_direct_session(request):
@@ -305,7 +333,11 @@ def _base_checkout_context(
 @require_http_methods(["GET", "POST"])
 def checkout_review(request):
     user = request.user
-    _clear_direct_session(request)
+    # Entering Cart Checkout resets the direct review/intent so the two
+    # flows stay independent, but the BUY NOW coupon session key belongs to
+    # the direct flow and must not be modified here.
+    _clear_direct_review_session(request)
+    request.session.pop(DIRECT_INTENT_SESSION_KEY, None)
 
     addresses, selected_address, address_issue, redirect_url = (
         _select_checkout_address(
@@ -337,7 +369,11 @@ def checkout_review(request):
         return render(request, "checkout/checkout.html", context)
 
     try:
-        review = review_checkout(user, selected_address.pk)
+        review = review_checkout(
+            user,
+            selected_address.pk,
+            coupon_code=request.session.get(COUPON_SESSION_KEY, ""),
+        )
     except EmptyCartError:
         _clear_review_session(request)
         context["empty_cart"] = True
@@ -357,6 +393,9 @@ def checkout_review(request):
             "We could not review your bag right now. Please try again."
         )
         return render(request, "checkout/checkout.html", context)
+
+    if request.session.get(COUPON_SESSION_KEY) and not review.coupon_code:
+        request.session.pop(COUPON_SESSION_KEY, None)
 
     request.session[REVIEW_SESSION_KEY] = review.token
     request.session[REVIEW_ADDRESS_SESSION_KEY] = selected_address.pk
@@ -471,6 +510,7 @@ def buy_now_review(request):
             intent["variant_id"],
             intent["quantity"],
             selected_address.pk,
+            coupon_code=request.session.get(DIRECT_COUPON_SESSION_KEY, ""),
         )
     except (VariantUnavailableError, InsufficientStockError, InvalidQuantityError) as exc:
         _clear_direct_review_session(request)
@@ -488,6 +528,12 @@ def buy_now_review(request):
             "Please try again."
         )
         return render(request, "checkout/checkout.html", context)
+
+    if (
+        request.session.get(DIRECT_COUPON_SESSION_KEY)
+        and not review.coupon_code
+    ):
+        request.session.pop(DIRECT_COUPON_SESSION_KEY, None)
 
     request.session[DIRECT_REVIEW_SESSION_KEY] = review.token
     request.session[DIRECT_REVIEW_ADDRESS_SESSION_KEY] = selected_address.pk
@@ -576,6 +622,9 @@ def buy_now_place_order(request):
             request.session[DIRECT_REVIEW_SUBMISSION_SESSION_KEY] = (
                 review.submission_id
             )
+
+        if result.reason == REASON_COUPON_INVALID:
+            request.session.pop(DIRECT_COUPON_SESSION_KEY, None)
 
         messages.warning(
             request,
@@ -693,6 +742,9 @@ def place_order_submit(request):
                 review.submission_id
             )
 
+        if result.reason == REASON_COUPON_INVALID:
+            request.session.pop(COUPON_SESSION_KEY, None)
+
         messages.warning(
             request,
             _REVIEW_REQUIRED_MESSAGES.get(
@@ -728,7 +780,233 @@ def place_order_submit(request):
                 "This order has already been placed.",
             )
 
+    request.session.pop(COUPON_SESSION_KEY, None)
+
     return redirect(
         "orders:order_confirmation",
         order_number=order.order_number,
+    )
+
+
+# ─── Coupon Application ──────────────────────────────────────────────────────
+# The applied coupon code lives in a per-flow server-side session key. Browser
+# submitted discount values are never trusted: the coupon is always resolved
+# and revalidated server-side before it is stored in the session.
+
+
+def _trim_decimal(value):
+    text = format(Decimal(value), "f")
+    trimmed = text.rstrip("0").rstrip(".")
+    return trimmed or "0"
+
+
+def _money_label(value):
+    value = Decimal(value)
+    if value == value.to_integral_value():
+        return f"\u20b9{int(value):,}"
+    return f"\u20b9{value:,.2f}"
+
+
+def _checkout_review_url_by_source(source, *, address_id=None):
+    if source == "direct":
+        url = reverse("checkout:buy_now_review")
+    else:
+        url = reverse("checkout:checkout_review")
+
+    if address_id:
+        return f"{url}?address={address_id}"
+    return url
+
+
+def _coupon_session_key(source):
+    if source == "direct":
+        return DIRECT_COUPON_SESSION_KEY
+    return COUPON_SESSION_KEY
+
+
+def _resolve_applied_coupon(request, source):
+    """Validate and return the requested coupon for the current checkout.
+
+    Resolves the eligible merchandise amount for the active checkout source
+    internally. Raises ``CouponError`` for any validation failure.
+    """
+    normalized = normalize_coupon_code(request.POST.get("coupon_code", ""))
+    if not normalized:
+        raise CouponError("Please enter a coupon code.")
+
+    coupon = get_coupon_by_code(normalized)
+    if coupon is None:
+        raise CouponError("This coupon code is not valid.")
+
+    eligible_merchandise = _coupon_eligible_merchandise(request, source)
+    validate_coupon(coupon, request.user, eligible_merchandise)
+    return coupon
+
+
+def _coupon_eligible_merchandise(request, source):
+    """Return eligible post-offer merchandise for the requested flow."""
+    if source == "direct":
+        intent = _get_direct_intent(request)
+        if intent is None:
+            raise EmptyCartError(
+                "Your Buy Now selection has expired. "
+                "Please choose a product again."
+            )
+        return eligible_merchandise_for_purchase(
+            intent["variant_id"],
+            intent["quantity"],
+        )
+
+    return eligible_merchandise_for_cart(request.user)
+
+
+@login_required
+@never_cache
+@require_POST
+def apply_coupon(request):
+    """Apply a coupon to the active checkout after server-side validation."""
+    source = request.POST.get("source", "").strip().lower()
+    if source not in ("cart", "direct"):
+        source = "cart"
+
+    address = _owned_address(request.user, request.POST.get("address_id"))
+    review_url = _checkout_review_url_by_source(
+        source,
+        address_id=address.pk if address else None,
+    )
+
+    try:
+        coupon = _resolve_applied_coupon(request, source)
+    except CouponError as exc:
+        messages.error(request, str(exc))
+        return redirect(review_url)
+    except (
+        EmptyCartError,
+        VariantUnavailableError,
+        InsufficientStockError,
+        InvalidQuantityError,
+    ) as exc:
+        messages.error(request, str(exc))
+        return redirect(review_url)
+    except OrderServiceError:
+        messages.error(
+            request,
+            "We could not apply this coupon right now. Please try again.",
+        )
+        return redirect(review_url)
+
+    session_key = _coupon_session_key(source)
+
+    previous_code = request.session.get(session_key, "")
+    if previous_code and previous_code != coupon.code:
+        request.session[session_key] = coupon.code
+        messages.success(
+            request,
+            f"Your coupon was changed to {coupon.code}.",
+        )
+        return redirect(review_url)
+
+    if previous_code == coupon.code:
+        messages.info(
+            request,
+            f"Coupon {coupon.code} is already applied.",
+        )
+        return redirect(review_url)
+
+    request.session[session_key] = coupon.code
+    messages.success(request, f"Coupon {coupon.code} applied.")
+    return redirect(review_url)
+
+
+@login_required
+@never_cache
+@require_POST
+def remove_coupon(request):
+    """Remove the coupon applied to the active checkout."""
+    source = request.POST.get("source", "").strip().lower()
+    if source not in ("cart", "direct"):
+        source = "cart"
+
+    address = _owned_address(request.user, request.POST.get("address_id"))
+    review_url = _checkout_review_url_by_source(
+        source,
+        address_id=address.pk if address else None,
+    )
+
+    session_key = _coupon_session_key(source)
+    removed_code = request.session.pop(session_key, None)
+
+    if removed_code:
+        messages.success(request, "Coupon removed.")
+    return redirect(review_url)
+
+
+@login_required
+@never_cache
+@require_GET
+def available_coupons(request):
+    """Return coupons the customer can discover for the current checkout.
+
+    The response contains only coupon display data and applicability state
+    for the current checkout source. It never exposes customer-level or
+    order-level usage history. Coupons whose minimum purchase is not yet
+    met remain discoverable with their own applicability state.
+    """
+    source = request.GET.get("source", "").strip().lower()
+    if source not in ("cart", "direct"):
+        source = "cart"
+
+    try:
+        eligible_merchandise = _coupon_eligible_merchandise(request, source)
+    except OrderServiceError:
+        return JsonResponse(
+            {"results": [], "eligible_amount": "0.00"},
+        )
+
+    discovered = discover_available_coupons(
+        request.user,
+        eligible_merchandise,
+    )
+
+    results = []
+    for coupon_data in discovered:
+        discount_value = coupon_data["discount_value"]
+        max_discount_amount = coupon_data["max_discount_amount"]
+        minimum_purchase = coupon_data["minimum_purchase"]
+
+        if coupon_data["discount_type"] == "PERCENTAGE":
+            discount_label = f"{_trim_decimal(discount_value)}% OFF"
+            max_discount_label = (
+                f"Maximum discount {_money_label(max_discount_amount)}"
+            )
+        else:
+            discount_label = f"{_money_label(discount_value)} OFF"
+            max_discount_label = None
+
+        if coupon_data["best_deal"]:
+            state_label = "BEST DEAL"
+        elif coupon_data["applicable"]:
+            state_label = "APPLICABLE"
+        else:
+            state_label = "MIN ORDER NOT MET"
+
+        results.append(
+            {
+                "code": coupon_data["code"],
+                "discount_label": discount_label,
+                "max_discount_label": max_discount_label,
+                "minimum_purchase_label": (
+                    f"Min order {_money_label(minimum_purchase)}"
+                ),
+                "applicable": coupon_data["applicable"],
+                "best_deal": coupon_data["best_deal"],
+                "state_label": state_label,
+            }
+        )
+
+    return JsonResponse(
+        {
+            "results": results,
+            "eligible_amount": str(eligible_merchandise),
+        }
     )

@@ -437,7 +437,7 @@
                         {% endif %}
                         {% if order.coupon_discount_total > 0 %}
                         <div class="flex items-center justify-between text-[#247A4A]">
-                            <span>Coupon Discount</span>
+                            <span>Coupon Discount{% if order.coupon_code %} ({{ order.coupon_code }}){% endif %}</span>
                             <span class="font-medium">-₹{{ order.coupon_discount_total|floatformat:2 }}</span>
                         </div>
                         {% endif %}
