@@ -6,12 +6,16 @@ It performs User-side visibility filtering only.
 
 from decimal import Decimal, InvalidOperation
 
-from django.db.models import Exists, Min, OuterRef, Q, Subquery
+from django.db.models import Exists, F, Min, OuterRef, Q, Subquery
 from django.db.models.functions import Lower
 
 from admin_panel.brands.models import Brand
 from admin_panel.categories.models import Category
 from admin_panel.products.models import Product, ProductVariant, VariantImage
+from user_panel.pricing.services import (
+    apply_offer_expression,
+    winning_offer_percentage_expression,
+)
 
 # Supported ``?sort=`` values for the Shop listing page.
 SORT_NAME_ASC = "name_asc"
@@ -261,11 +265,21 @@ def get_shop_products(
 
     ``min_price``/``max_price`` are validated ``Decimal`` bounds (or None).
     A product matches when at least one eligible (listed, non-deleted)
-    variant is priced within the inclusive range. Either boundary may be
-    supplied independently; the ``starting_price`` annotation is never used
-    for filtering and keeps representing the minimum eligible variant price.
+    variant's offer-adjusted price is within the inclusive range. Either
+    boundary may be supplied independently. The ``starting_price``
+    annotation keeps representing the raw minimum eligible variant price;
+    ``effective_starting_price`` carries the offer-adjusted minimum used by
+    price sorting and display.
     """
-    queryset = get_available_products()
+    queryset = get_available_products().annotate(
+        effective_starting_price=apply_offer_expression(
+            F("starting_price"),
+            winning_offer_percentage_expression(
+                product_ref=OuterRef("pk"),
+                category_ref=OuterRef("brand__category_id"),
+            ),
+        )
+    )
 
     search = (q or "").strip()
     if search:
@@ -289,27 +303,44 @@ def get_shop_products(
         queryset = queryset.filter(fragrance_concentration__in=concentrations)
 
     if min_price is not None or max_price is not None:
-        # Correlated Exists(): no joins, so no duplicate Product rows and
-        # no distinct() is needed. Concentration stays a Product-level
-        # filter, so a match inherently means the same product satisfies
-        # both constraints via an eligible in-range variant.
+        # Correlated Exists(): no outer joins, so no duplicate Product rows
+        # and no distinct() is needed. Offer resolution stays in the pricing
+        # engine expression, and both price bounds apply to the same eligible
+        # variant.
         price_match = ProductVariant.objects.filter(
             product=OuterRef("pk"),
             is_deleted=False,
             is_listed=True,
+        ).annotate(
+            effective_price=apply_offer_expression(
+                F("price"),
+                winning_offer_percentage_expression(
+                    product_ref=OuterRef("product_id"),
+                    category_ref=OuterRef(
+                        "product__brand__category_id"
+                    ),
+                ),
+            )
         )
         if min_price is not None:
-            price_match = price_match.filter(price__gte=min_price)
+            price_match = price_match.filter(
+                effective_price__gte=min_price
+            )
         if max_price is not None:
-            price_match = price_match.filter(price__lte=max_price)
+            price_match = price_match.filter(
+                effective_price__lte=max_price
+            )
         queryset = queryset.filter(Exists(price_match))
 
     if sort == SORT_NAME_ASC:
         queryset = queryset.order_by(Lower("name"), "id")
     elif sort == SORT_PRICE_LOW:
-        queryset = queryset.order_by("starting_price", "id")
+        queryset = queryset.order_by("effective_starting_price", "id")
     elif sort == SORT_PRICE_HIGH:
-        queryset = queryset.order_by("-starting_price", "-id")
+        queryset = queryset.order_by(
+            "-effective_starting_price",
+            "-id",
+        )
     elif sort == SORT_NEWEST:
         queryset = queryset.order_by("-created_at", "-id")
     else:

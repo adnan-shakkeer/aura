@@ -14,6 +14,17 @@ across order lines.
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
 
+from django.db.models import (
+    DecimalField,
+    ExpressionWrapper,
+    Q,
+    Subquery,
+    Value,
+)
+from django.db.models.functions import Coalesce, Greatest, Round
+
+from admin_panel.offers.models import Offer, offer_today
+
 MONEY_QUANTUM = Decimal("0.01")
 ZERO = Decimal("0.00")
 PERCENT_DIVISOR = Decimal("100")
@@ -24,6 +35,9 @@ OFFER_SOURCE_CATEGORY = "CATEGORY"
 
 COUPON_TYPE_PERCENTAGE = "PERCENTAGE"
 COUPON_TYPE_FIXED = "FIXED"
+
+_OFFER_PERCENTAGE_FIELD = DecimalField(max_digits=5, decimal_places=2)
+_EFFECTIVE_PRICE_FIELD = DecimalField(max_digits=14, decimal_places=2)
 
 
 @dataclass(frozen=True)
@@ -72,25 +86,194 @@ def is_variant_offer_eligible(variant):
     )
 
 
+def resolve_product_offer(product):
+    """Return ``(source, percentage)`` for a product's winning offer.
+
+    Product/brand/category eligibility is enforced here. Only active,
+    non-deleted offers whose inclusive IST validity window contains today are
+    considered. The highest percentage wins; a product offer wins an equal
+    tie against a category offer.
+
+    Callers that price a variant must still use ``resolve_offer()`` so variant
+    listing eligibility is included as well.
+    """
+    brand = product.brand
+    category = brand.category
+
+    if (
+        product.is_deleted
+        or not product.is_listed
+        or brand.is_deleted
+        or not brand.is_listed
+        or category.is_deleted
+        or not category.is_listed
+    ):
+        return OFFER_SOURCE_NONE, ZERO
+
+    today = offer_today()
+    offers = list(
+        Offer.objects.filter(
+            is_deleted=False,
+            is_active=True,
+            percentage__gt=ZERO,
+            valid_from__lte=today,
+            valid_until__gte=today,
+        )
+        .filter(
+            Q(
+                target_type=Offer.TargetType.PRODUCT,
+                product=product,
+            )
+            | Q(
+                target_type=Offer.TargetType.CATEGORY,
+                category=category,
+            )
+        )
+        .values_list("target_type", "percentage")
+    )
+
+    product_percentage = max(
+        (
+            percentage
+            for target_type, percentage in offers
+            if target_type == Offer.TargetType.PRODUCT
+        ),
+        default=None,
+    )
+    category_percentage = max(
+        (
+            percentage
+            for target_type, percentage in offers
+            if target_type == Offer.TargetType.CATEGORY
+        ),
+        default=None,
+    )
+
+    if product_percentage is not None and (
+        category_percentage is None
+        or product_percentage >= category_percentage
+    ):
+        return OFFER_SOURCE_PRODUCT, _decimal(product_percentage)
+
+    if category_percentage is not None:
+        return OFFER_SOURCE_CATEGORY, _decimal(category_percentage)
+
+    return OFFER_SOURCE_NONE, ZERO
+
+
+def _active_offer_percentage_subquery(
+    *,
+    target_type,
+    target_field,
+    outer_ref,
+):
+    today = offer_today()
+    return Subquery(
+        Offer.objects.filter(
+            is_deleted=False,
+            is_active=True,
+            percentage__gt=ZERO,
+            target_type=target_type,
+            valid_from__lte=today,
+            valid_until__gte=today,
+            **{target_field: outer_ref},
+        )
+        .order_by("-percentage", "id")
+        .values("percentage")[:1],
+        output_field=_OFFER_PERCENTAGE_FIELD,
+    )
+
+
+def winning_offer_percentage_expression(*, product_ref, category_ref):
+    """Return the winning offer percentage as a database expression.
+
+    This mirrors ``resolve_product_offer()`` for database-side listing
+    operations. Both subqueries exclude soft-deleted, inactive, and
+    out-of-window offers. The larger product/category offer wins; equal
+    percentages have the same monetary result, while the Python resolver
+    retains the product-source tie-break for snapshots.
+    """
+    product_offer = _active_offer_percentage_subquery(
+        target_type=Offer.TargetType.PRODUCT,
+        target_field="product_id",
+        outer_ref=product_ref,
+    )
+    category_offer = _active_offer_percentage_subquery(
+        target_type=Offer.TargetType.CATEGORY,
+        target_field="category_id",
+        outer_ref=category_ref,
+    )
+
+    return Greatest(
+        Coalesce(
+            product_offer,
+            Value(ZERO, output_field=_OFFER_PERCENTAGE_FIELD),
+        ),
+        Coalesce(
+            category_offer,
+            Value(ZERO, output_field=_OFFER_PERCENTAGE_FIELD),
+        ),
+        output_field=_OFFER_PERCENTAGE_FIELD,
+    )
+
+
+def apply_offer_expression(price_expression, percentage_expression):
+    """Return a database expression for an offer-adjusted price.
+
+    Mirrors ``apply_offer()`` and keeps listing sorting/filtering aligned with
+    the Python pricing path. The discount is rounded before subtraction,
+    matching ``calculate_offer_discount()`` / ``apply_offer()`` exactly.
+    Prices are non-negative, so PostgreSQL ``ROUND`` on numeric values
+    matches ``ROUND_HALF_UP`` for that domain.
+    """
+    discount = Round(
+        price_expression
+        * percentage_expression
+        / Value(PERCENT_DIVISOR, output_field=_OFFER_PERCENTAGE_FIELD),
+        2,
+    )
+
+    return ExpressionWrapper(
+        price_expression - discount,
+        output_field=_EFFECTIVE_PRICE_FIELD,
+    )
+
+
 def resolve_offer(variant):
     """Return ``(source, percentage)`` for the winning offer."""
     if not is_variant_offer_eligible(variant):
         return OFFER_SOURCE_NONE, ZERO
 
-    product_percentage = _decimal(
-        getattr(variant.product, "offer_percentage", ZERO)
-    )
-    category_percentage = _decimal(
-        variant.product.brand.category.offer_percentage
-    )
+    return resolve_product_offer(variant.product)
 
-    if product_percentage > 0 and product_percentage >= category_percentage:
-        return OFFER_SOURCE_PRODUCT, product_percentage
 
-    if category_percentage > 0:
-        return OFFER_SOURCE_CATEGORY, category_percentage
+def calculate_offer_discount(amount, percentage):
+    """Return the capped offer discount for ``amount``."""
+    amount = _money(amount)
+    percentage = _decimal(percentage)
 
-    return OFFER_SOURCE_NONE, ZERO
+    if percentage <= 0:
+        return ZERO
+
+    discount = _money(amount * percentage / PERCENT_DIVISOR)
+
+    if discount > amount:
+        discount = amount
+
+    return discount
+
+
+def apply_offer(amount, percentage):
+    """Return ``amount`` after the percentage offer is applied."""
+    amount = _money(amount)
+    return _money(amount - calculate_offer_discount(amount, percentage))
+
+
+def unit_price_after_offer(variant):
+    """Return one variant's effective unit price after its winning offer."""
+    unit_price = _money(variant.price)
+    _source, percentage = resolve_offer(variant)
+    return apply_offer(unit_price, percentage)
 
 
 def price_variant(variant, quantity):
@@ -100,15 +283,10 @@ def price_variant(variant, quantity):
     line_total = _money(unit_price * quantity)
 
     offer_source, offer_percentage = resolve_offer(variant)
-    if offer_percentage > 0:
-        offer_discount = _money(
-            line_total * offer_percentage / PERCENT_DIVISOR
-        )
-    else:
-        offer_discount = ZERO
-
-    if offer_discount > line_total:
-        offer_discount = line_total
+    offer_discount = calculate_offer_discount(
+        line_total,
+        offer_percentage,
+    )
 
     coupon_discount = ZERO
     paid_amount = _money(line_total - offer_discount - coupon_discount)

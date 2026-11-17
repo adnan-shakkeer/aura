@@ -8,6 +8,7 @@ from django.db import IntegrityError, transaction
 
 from admin_panel.products.models import ProductVariant
 
+from user_panel.pricing.services import unit_price_after_offer
 from user_panel.shop.services import get_eligible_variants
 
 from .models import WishlistItem
@@ -207,6 +208,11 @@ def get_wishlist_items(user):
         item.is_available = is_catalogue_eligible and is_in_stock
         item.is_out_of_stock = is_catalogue_eligible and not is_in_stock
         item.is_unavailable = not is_catalogue_eligible
+        item.effective_price = (
+            unit_price_after_offer(variant)
+            if variant is not None
+            else None
+        )
 
     return items
 

@@ -169,8 +169,20 @@
             {% endif %}
 
             {% if selected_variant %}
-                <div class="text-2xl font-light text-auraBlack mb-10 tracking-wide">
-                    ₹{{ selected_variant.price }}
+                <div class="mb-10">
+                    {% if selected_variant_pricing.offer_percentage > 0 %}
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="text-2xl font-light text-auraBlack tracking-wide">₹{{ selected_variant_pricing.paid_amount }}</span>
+                        <span class="text-sm font-light text-auraMuted line-through">₹{{ selected_variant_pricing.unit_price }}</span>
+                        <span class="inline-flex items-center px-3 py-1 border border-auraChampagneDark/30 bg-auraIvory text-[10px] font-semibold uppercase tracking-[0.18em] text-auraChampagneDark">
+                            {{ selected_variant_pricing.offer_percentage|floatformat:"-2" }}% Off
+                        </span>
+                    </div>
+                    {% else %}
+                    <div class="text-2xl font-light text-auraBlack tracking-wide">
+                        ₹{{ selected_variant.price }}
+                    </div>
+                    {% endif %}
                 </div>
 
                 {% if is_unavailable %}

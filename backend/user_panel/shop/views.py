@@ -14,6 +14,7 @@ from django.http import Http404, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 
+from user_panel.pricing.services import price_variant
 from user_panel.wishlist.services import get_wishlisted_variant_ids
 
 from .services import (
@@ -178,6 +179,12 @@ def product_details(request, slug):
     # never grants purchasability.
     is_unavailable = not product.is_listed
 
+    selected_variant_pricing = (
+        price_variant(selected_variant, 1)
+        if selected_variant
+        else None
+    )
+
     # Images belong exclusively to the selected variant.
     if selected_variant:
         images = selected_variant.images.all().order_by("display_order", "created_at")
@@ -201,6 +208,7 @@ def product_details(request, slug):
         "product": product,
         "variants": variants,
         "selected_variant": selected_variant,
+        "selected_variant_pricing": selected_variant_pricing,
         "images": images,
         "related_products": related_products,
         "is_unavailable": is_unavailable,
@@ -251,8 +259,8 @@ def search_suggest(request):
         )
 
     # Products: reuse Shop eligibility + name/brand/category matching.
-    # Slicing keeps the query cheap; annotations (starting_price,
-    # primary_image) already come from get_available_products().
+    # Slicing keeps the query cheap; offer-aware price and image annotations
+    # already come from get_shop_products().
     products = get_shop_products(q=query)[
         :SEARCH_SUGGEST_PRODUCT_LIMIT
     ]
@@ -270,7 +278,9 @@ def search_suggest(request):
         image_url = None
         if getattr(product, "primary_image", None):
             image_url = f"/media/{product.primary_image}"
-        price = getattr(product, "starting_price", None)
+        price = getattr(product, "effective_starting_price", None)
+        if price is None:
+            price = getattr(product, "starting_price", None)
         product_results.append(
             {
                 "name": product.name,

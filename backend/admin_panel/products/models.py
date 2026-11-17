@@ -89,6 +89,37 @@ class Product(models.Model):
 
         super().save(*args, **kwargs)
 
+    @property
+    def offer_display_percentage(self):
+        from user_panel.pricing.services import resolve_product_offer
+
+        return resolve_product_offer(self)[1]
+
+    @property
+    def starting_price_after_offer(self):
+        annotated_price = getattr(
+            self,
+            "effective_starting_price",
+            None,
+        )
+        if annotated_price is not None:
+            return annotated_price
+
+        from user_panel.pricing.services import (
+            apply_offer,
+            resolve_product_offer,
+        )
+
+        starting_price = getattr(self, "starting_price", None)
+
+        if starting_price is None:
+            return None
+
+        return apply_offer(
+            starting_price,
+            resolve_product_offer(self)[1],
+        )
+
     def __str__(self):
         return self.name
 

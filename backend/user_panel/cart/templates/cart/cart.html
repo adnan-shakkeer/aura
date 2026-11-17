@@ -115,7 +115,15 @@
                             <h2 class="font-serif text-xl sm:text-2xl font-medium text-auraBlack tracking-wide leading-snug mt-0.5">{{ product.name }}</h2>
                             <p class="text-xs text-auraMuted font-light italic mt-0.5">{{ product.get_fragrance_concentration_display }}</p>
                             <p class="text-xs text-auraMuted font-light mt-0.5">{{ variant.size }}</p>
+                            {% if item.offer_percentage > 0 %}
+                            <div class="mt-2 flex flex-wrap items-center gap-2">
+                                <span class="text-sm font-semibold text-auraBlack">₹{{ item.effective_unit_price }}</span>
+                                <span class="text-xs font-light text-auraMuted line-through">₹{{ item.unit_price }}</span>
+                                <span class="text-[9px] font-semibold uppercase tracking-[0.16em] text-auraChampagneDark">{{ item.offer_percentage|floatformat:"-2" }}% Off</span>
+                            </div>
+                            {% else %}
                             <p class="text-sm font-medium text-auraBlack mt-2">₹{{ variant.price }}</p>
+                            {% endif %}
 
                             {# Stock badge — display only. Unavailable (any hierarchy unlisted/deleted) takes priority; then stock levels. Threshold: low stock ≤ 3. #}
                             {% if not variant.is_listed or variant.is_deleted or not product.is_listed or product.is_deleted or not product.brand.is_listed or product.brand.is_deleted or not product.brand.category.is_listed or product.brand.category.is_deleted %}
@@ -143,7 +151,7 @@
                                     <span data-qty-value aria-live="polite" class="w-9 text-center text-sm font-medium text-auraBlack">{{ item.quantity }}</span>
                                     <button type="button" data-qty-inc aria-label="Increase quantity" {% if not item.is_available %}disabled{% endif %} class="qty-btn w-10 h-full flex items-center justify-center text-auraMuted hover:text-auraBlack transition-colors text-base font-light">+</button>
                                 </div>
-                                <p data-line-total class="text-base font-semibold text-auraBlack">₹{{ item.line_total }}</p>
+                                <p data-line-total class="text-base font-semibold text-auraBlack">₹{{ item.payable_total }}</p>
                             </div>
                             <!-- Mobile remove -->
                             <div class="sm:hidden mt-3">
@@ -165,7 +173,7 @@
 
                         <!-- Desktop subtotal + remove -->
                         <div class="hidden sm:flex flex-col items-end justify-start gap-3 pt-1">
-                            <p data-line-total class="text-lg font-medium text-auraBlack">₹{{ item.line_total }}</p>
+                            <p data-line-total class="text-lg font-medium text-auraBlack">₹{{ item.payable_total }}</p>
                             <button type="button" data-remove aria-label="Remove {{ product.name }} from bag" class="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-medium text-auraMuted hover:text-red-600 transition-colors mt-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
                                 Remove
@@ -197,14 +205,17 @@
                         <span class="text-sm text-auraMuted font-light">Subtotal (<span data-units-count>{{ total_quantity }}</span> item<span data-units-plural>{{ total_quantity|pluralize }}</span>)</span>
                         <span data-summary-subtotal class="text-base font-semibold text-auraBlack">₹{{ subtotal }}</span>
                     </div>
+                    <div data-offer-summary class="{% if offer_discount_total %}flex{% else %}hidden{% endif %} items-center justify-between gap-4">
+                        <span class="text-sm text-auraMuted font-light">Offer Savings</span>
+                        <span data-summary-offer class="text-sm font-semibold text-green-600">-₹{{ offer_discount_total }}</span>
+                    </div>
                     <div class="flex items-center justify-between gap-4">
                         <span class="text-sm text-auraMuted font-light">Shipping &amp; Handling</span>
                         <span class="text-sm font-semibold text-green-600">Free</span>
                     </div>
                     <div class="border-t border-auraBorder pt-4 flex items-center justify-between gap-4">
                         <span class="text-sm font-semibold text-auraBlack">Estimated Total</span>
-                        {# Shipping is always free, so estimated total equals subtotal. Backend does not currently supply shipping_charge/estimated_total. #}
-                        <span data-summary-total class="font-serif text-2xl font-medium text-auraBlack">₹{{ subtotal }}</span>
+                        <span data-summary-total class="font-serif text-2xl font-medium text-auraBlack">₹{{ estimated_total }}</span>
                     </div>
                 </div>
 
@@ -331,6 +342,12 @@
         }
     }
 
+    function formatDiscount(value) {
+        var n = Number(value);
+        if (!isFinite(n)) return '-₹' + value;
+        return '-₹' + Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+
     function updateSummary(data) {
         if (data.total_quantity !== undefined && data.total_quantity !== null) {
             document.querySelectorAll('[data-units-count]').forEach(function (el) { el.textContent = data.total_quantity; });
@@ -344,8 +361,19 @@
         }
         if (data.subtotal !== undefined && data.subtotal !== null) {
             document.querySelectorAll('[data-summary-subtotal]').forEach(function (el) { el.textContent = formatINR(data.subtotal); });
-            // Shipping is always free, so estimated total equals subtotal.
-            document.querySelectorAll('[data-summary-total]').forEach(function (el) { el.textContent = formatINR(data.subtotal); });
+        }
+        if (data.offer_discount_total !== undefined && data.offer_discount_total !== null) {
+            var offerRow = document.querySelector('[data-offer-summary]');
+            var offerValue = document.querySelector('[data-summary-offer]');
+            if (offerRow && offerValue) {
+                var offerAmount = Number(data.offer_discount_total);
+                offerValue.textContent = formatDiscount(offerAmount);
+                offerRow.classList.toggle('hidden', !(offerAmount > 0));
+                offerRow.classList.toggle('flex', offerAmount > 0);
+            }
+        }
+        if (data.total !== undefined && data.total !== null) {
+            document.querySelectorAll('[data-summary-total]').forEach(function (el) { el.textContent = formatINR(data.total); });
         }
     }
 
@@ -372,7 +400,9 @@
         .then(function (res) {
             if (res.ok && res.data && res.data.success) {
                 qtyValueEls.forEach(function (el) { el.textContent = res.data.quantity; });
-                if (res.data.line_total !== undefined) {
+                if (res.data.payable_total !== undefined) {
+                    lineTotalEls.forEach(function (el) { el.textContent = formatINR(res.data.payable_total); });
+                } else if (res.data.line_total !== undefined) {
                     lineTotalEls.forEach(function (el) { el.textContent = formatINR(res.data.line_total); });
                 }
                 updateSummary(res.data);

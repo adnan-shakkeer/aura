@@ -156,7 +156,7 @@
                             </p>
                             {% if item.variant %}
                                 <p class="text-sm font-semibold text-auraBlack pt-1">
-                                    ₹{{ item.variant.price }}
+                                    ₹{% if item.effective_price is not None %}{{ item.effective_price }}{% else %}{{ item.variant.price }}{% endif %}
                                 </p>
                             {% else %}
                                 <p class="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] text-auraMuted font-light pt-1">

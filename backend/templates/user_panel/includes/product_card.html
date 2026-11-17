@@ -1,4 +1,5 @@
 {% load static %}
+{% with offer=product.offer_display_percentage %}
 <article class="group relative flex flex-col">
     <a
         href="{% url 'shop:product_details' slug=product.slug %}"
@@ -15,6 +16,12 @@
             {% else %}
                 <span class="flex h-full w-full select-none items-center justify-center text-[10px] font-medium uppercase tracking-[0.26em] text-auraMuted/70">
                     AURA
+                </span>
+            {% endif %}
+
+            {% if offer > 0 %}
+                <span class="pointer-events-none absolute bottom-3 left-3 border border-auraChampagneDark/30 bg-auraIvory/95 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-auraChampagneDark sm:text-[10px]">
+                    {{ offer|floatformat:"-2" }}% Off
                 </span>
             {% endif %}
 
@@ -35,8 +42,13 @@
             <p class="text-[9px] font-light uppercase tracking-[0.18em] text-auraMuted sm:text-[10px]">
                 {{ product.get_fragrance_concentration_display }}{% if product.representative_size %} &bull; {{ product.representative_size }}{% endif %}
             </p>
-            <p class="pt-2 text-sm font-semibold text-auraBlack">
-                From &#8377;{{ product.starting_price }}
+            <p class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 pt-2 text-sm font-semibold text-auraBlack">
+                {% if offer > 0 %}
+                    <span>From &#8377;{{ product.starting_price_after_offer }}</span>
+                    <span class="text-xs font-light text-auraMuted line-through">&#8377;{{ product.starting_price }}</span>
+                {% else %}
+                    <span>From &#8377;{{ product.starting_price }}</span>
+                {% endif %}
             </p>
             {% if show_stock and product.representative_stock == 0 %}
                 <p class="pt-1 text-[10px] font-medium uppercase tracking-[0.2em] text-auraMuted sm:text-[11px]">
@@ -72,3 +84,4 @@
         </button>
     {% endif %}
 </article>
+{% endwith %}

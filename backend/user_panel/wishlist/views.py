@@ -32,7 +32,11 @@ def _serialize_item(item):
         product_name = product.name
         brand_name = brand.name
         variant_size = variant.size
-        price = str(variant.price)
+        price = str(
+            item.effective_price
+            if item.effective_price is not None
+            else variant.price
+        )
         product_slug = product.slug
     else:
         product_name = item.product_name

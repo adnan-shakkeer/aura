@@ -73,7 +73,6 @@ class CategoryListView(View):
 class CategoryCreateView(View):
     def post(self, request):
         name = request.POST.get("name", "").strip()
-        offer_input = request.POST.get("offer_percentage", "0").strip()
         is_listed_input = request.POST.get("is_listed")
 
         field_errors = {}
@@ -83,16 +82,6 @@ class CategoryCreateView(View):
             field_errors["name"] = "Category name is required."
         elif Category.objects.filter(name__iexact=name, is_deleted=False).exists():
             field_errors["name"] = f"Category '{name}' already exists."
-
-        # 2. Validate Offer Percentage
-        offer_percentage = 0
-        if offer_input:
-            try:
-                offer_percentage = int(offer_input)
-                if offer_percentage < 0 or offer_percentage > 99:
-                    field_errors["offer_percentage"] = "Offer must be between 0% and 99%."
-            except ValueError:
-                field_errors["offer_percentage"] = "Please enter a valid whole number."
 
         # Validation failed: Return 400 Bad Request
         if field_errors:
@@ -116,7 +105,6 @@ class CategoryCreateView(View):
         Category.objects.create(
             name=name,
             slug=slug,
-            offer_percentage=offer_percentage,
             is_listed=is_listed,
         )
 
@@ -140,7 +128,6 @@ class CategoryUpdateView(View):
         category = get_object_or_404(Category, id=category_id, is_deleted=False)
 
         name = request.POST.get("name", "").strip()
-        offer_input = request.POST.get("offer_percentage", "0").strip()
         is_listed_input = request.POST.get("is_listed")
 
         field_errors = {}
@@ -155,16 +142,6 @@ class CategoryUpdateView(View):
         ):
             # Exclude current category ID so editing without changing name doesn't trigger duplicate error
             field_errors["name"] = f"Another category with the name '{name}' already exists."
-
-        # 3. Validate Offer Percentage
-        offer_percentage = 0
-        if offer_input:
-            try:
-                offer_percentage = int(offer_input)
-                if offer_percentage < 0 or offer_percentage > 99:
-                    field_errors["offer_percentage"] = "Offer must be between 0% and 99%."
-            except ValueError:
-                field_errors["offer_percentage"] = "Please enter a valid whole number."
 
         # Return HTTP 400 Bad Request if validation fails (Modal stays open)
         if field_errors:
@@ -188,7 +165,6 @@ class CategoryUpdateView(View):
 
         # 6. Update Category Instance
         category.name = name
-        category.offer_percentage = offer_percentage
         category.is_listed = is_listed
         category.save()
 

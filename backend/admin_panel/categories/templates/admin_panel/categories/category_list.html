@@ -78,10 +78,9 @@
         <table class="w-full text-left border-collapse whitespace-nowrap">
             <thead>
                 <tr class="border-b border-[#E8E5DF] bg-[#F7F5F0]">
-                    <th class="py-5 px-8 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-[38%]">Category</th>
-                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-[14%]">Products</th>
-                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-[16%]">Offer</th>
-                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-[16%]">Status</th>
+                    <th class="py-5 px-8 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-[46%]">Category</th>
+                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-[18%]">Products</th>
+                    <th class="py-5 px-6 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-[18%]">Status</th>
                     <th class="py-5 px-8 text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold text-right">Actions</th>
                 </tr>
             </thead>
@@ -98,15 +97,6 @@
                         <span class="text-[10px] text-[#6E6A63] ml-1.5 uppercase tracking-wider">Items</span>
                     </td>
                     <td class="py-7 px-6 align-middle">
-                        {% if category.offer_percentage > 0 %}
-                            <span class="inline-flex items-center justify-center min-w-[76px] px-3 py-[5px] text-[10px] tracking-[0.18em] font-semibold text-[#A8842C] bg-[#FAF3E3] border border-[#A8842C]/40 rounded-[2px]">
-                                {{ category.offer_percentage|floatformat:0 }}% OFF
-                            </span>
-                        {% else %}
-                            <span class="text-sm text-[#C9C4BB] pl-1">—</span>
-                        {% endif %}
-                    </td>
-                    <td class="py-7 px-6 align-middle">
                         {% if category.is_listed %}
                             <span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest bg-[#1E7E4D]/10 text-[#1E7E4D] border border-[#1E7E4D]/25 rounded-sm w-24 justify-center">Active</span>
                         {% else %}
@@ -115,7 +105,7 @@
                     </td>
                     <td class="py-7 px-8 align-middle text-right">
                         <div class="flex items-center justify-end gap-2.5">
-                            <button type="button" onclick="openEditModal('{{ category.id }}', '{{ category.name|escapejs }}', '{{ category.offer_percentage|floatformat:0 }}', '{{ category.is_listed|yesno:'true,false' }}')" class="w-8 h-8 rounded-sm bg-white border border-[#E8E5DF] flex items-center justify-center text-[#6E6A63] hover:text-[#141414] hover:border-[#141414]/30 transition-colors">
+                            <button type="button" onclick="openEditModal('{{ category.id }}', '{{ category.name|escapejs }}', '{{ category.is_listed|yesno:'true,false' }}')" class="w-8 h-8 rounded-sm bg-white border border-[#E8E5DF] flex items-center justify-center text-[#6E6A63] hover:text-[#141414] hover:border-[#141414]/30 transition-colors">
                                 <i data-lucide="pencil" class="w-4 h-4"></i>
                             </button>
                             <button type="button" onclick="openDeleteModal('{{ category.id }}', '{{ category.name|escapejs }}')" class="w-8 h-8 rounded-sm bg-white border border-[#E8E5DF] flex items-center justify-center text-[#6E6A63] hover:text-[#B42318] hover:border-[#B42318]/50 hover:bg-[#B42318]/5 transition-colors">
@@ -126,7 +116,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="py-20 px-6 text-center">
+                    <td colspan="4" class="py-20 px-6 text-center">
                         <div class="flex flex-col items-center justify-center">
                             <div class="w-16 h-16 rounded-full bg-[#F5F3EE] border border-[#E8E5DF] flex items-center justify-center mb-4">
                                 <i data-lucide="layers" class="w-6 h-6 text-[#6E6A63]"></i>
@@ -201,28 +191,16 @@
                 
                 <!-- Description field removed per requirements -->
                 
-                <div class="flex gap-4">
-                    <!-- Offer -->
-                    <div class="flex-1">
-                        <label class="block text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Offer Percentage</label>
-                        <div class="relative">
-                            <input type="number" id="offer_percentage" name="offer_percentage" min="0" max="99" value="0" class="w-full bg-white border border-[#E8E5DF] rounded-sm py-2.5 pl-4 pr-8 text-sm text-[#141414] focus:outline-none focus:border-[#A8842C]/60 transition-colors">
-                            <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-[#6E6A63] pointer-events-none">%</span>
+                <!-- Listed Status -->
+                <div>
+                    <label class="flex items-center gap-3 cursor-pointer group mb-2.5">
+                        <div class="relative flex items-center">
+                            <input type="checkbox" id="is_listed" name="is_listed" class="peer sr-only" checked>
+                            <div class="w-10 h-5 bg-[#E3DFD7] rounded-full peer peer-checked:bg-[#A8842C]/20 transition-colors border border-[#D8D4CC] peer-checked:border-[#A8842C]/50"></div>
+                            <div class="absolute left-1 top-1 w-3 h-3 bg-[#A8A29A] rounded-full peer-checked:translate-x-5 peer-checked:bg-[#A8842C] transition-all duration-300"></div>
                         </div>
-                        <p id="error_offer_percentage" class="mt-1.5 text-[#B42318] text-[11px] tracking-wide font-medium hidden"></p>
-                    </div>
-                    
-                    <!-- Listed Status -->
-                    <div class="flex-1 flex flex-col justify-end">
-                        <label class="flex items-center gap-3 cursor-pointer group mb-2.5">
-                            <div class="relative flex items-center">
-                                <input type="checkbox" id="is_listed" name="is_listed" class="peer sr-only" checked>
-                                <div class="w-10 h-5 bg-[#E3DFD7] rounded-full peer peer-checked:bg-[#A8842C]/20 transition-colors border border-[#D8D4CC] peer-checked:border-[#A8842C]/50"></div>
-                                <div class="absolute left-1 top-1 w-3 h-3 bg-[#A8A29A] rounded-full peer-checked:translate-x-5 peer-checked:bg-[#A8842C] transition-all duration-300"></div>
-                            </div>
-                            <span class="text-xs uppercase tracking-widest text-[#6E6A63] group-hover:text-[#141414] transition-colors font-medium">Active Status</span>
-                        </label>
-                    </div>
+                        <span class="text-xs uppercase tracking-widest text-[#6E6A63] group-hover:text-[#141414] transition-colors font-medium">Active Status</span>
+                    </label>
                 </div>
             </div>
 
@@ -293,7 +271,6 @@
         // Form elements
         const idInput = document.getElementById('category_id');
         const nameInput = document.getElementById('name');
-        const offerInput = document.getElementById('offer_percentage');
         const statusInput = document.getElementById('is_listed');
         const modalTitle = document.getElementById('modal-title');
         
@@ -338,13 +315,12 @@
         };
 
         // Open Edit Modal
-        window.openEditModal = (id, name, offer, isListed) => {
+        window.openEditModal = (id, name, isListed) => {
             form.reset();
             clearErrors();
             
             idInput.value = id;
             nameInput.value = name;
-            offerInput.value = offer;
             statusInput.checked = (isListed === 'true');
             
             modalTitle.textContent = 'Edit Category';

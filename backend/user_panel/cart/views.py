@@ -7,14 +7,19 @@ updating quantities, removing items, and validating checkout eligibility.
 Business rules and database mutations are delegated to cart.services.
 """
 
-from decimal import Decimal
 from http import HTTPStatus
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import DecimalField, ExpressionWrapper, F, Sum
+from django.db.models import Sum
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
+
+from user_panel.pricing.services import (
+    price_variant,
+    summarize,
+    unit_price_after_offer,
+)
 
 from .services import (
     CartServiceError,
@@ -34,25 +39,10 @@ def cart_view(request):
     items = list(
         cart.items.select_related(
             "variant__product__brand__category"
-        )
-        .annotate(
-            line_total=ExpressionWrapper(
-                F("quantity") * F("variant__price"),
-                output_field=DecimalField(
-                    max_digits=12,
-                    decimal_places=2,
-                ),
-            )
-        )
-        .order_by("added_at", "id")
+        ).order_by("added_at", "id")
     )
 
-    subtotal = sum(
-        (item.line_total for item in items),
-        Decimal("0.00"),
-    )
-
-    total_quantity = sum(item.quantity for item in items)
+    line_pricings = []
 
     # Display flags only. The service layer rechecks eligibility
     # before allowing a cart mutation.
@@ -61,6 +51,16 @@ def cart_view(request):
         product = variant.product
         brand = product.brand
         category = brand.category
+
+        line_pricing = price_variant(variant, item.quantity)
+        line_pricings.append(line_pricing)
+
+        item.line_total = line_pricing.line_total
+        item.unit_price = line_pricing.unit_price
+        item.offer_percentage = line_pricing.offer_percentage
+        item.offer_discount = line_pricing.offer_discount
+        item.payable_total = line_pricing.paid_amount
+        item.effective_unit_price = unit_price_after_offer(variant)
 
         item.is_available = (
             not variant.is_deleted
@@ -76,10 +76,15 @@ def cart_view(request):
 
         item.is_out_of_stock = variant.stock <= 0
 
+    totals = summarize(line_pricings)
+    total_quantity = sum(item.quantity for item in items)
+
     context = {
         "cart": cart,
         "items": items,
-        "subtotal": subtotal,
+        "subtotal": totals["subtotal"],
+        "offer_discount_total": totals["offer_discount_total"],
+        "estimated_total": totals["total"],
         "total_quantity": total_quantity,
     }
 
@@ -167,13 +172,25 @@ def update_cart_item_view(request, item_id):
 
     cart = item.cart
 
-    subtotal = sum(
-        (
-            cart_item.quantity * cart_item.variant.price
-            for cart_item in cart.items.select_related("variant")
-        ),
-        Decimal("0.00"),
+    cart_items = list(
+        cart.items.select_related(
+            "variant__product__brand__category"
+        )
     )
+    line_pricings = []
+    updated_pricing = None
+
+    for cart_item in cart_items:
+        line_pricing = price_variant(
+            cart_item.variant,
+            cart_item.quantity,
+        )
+        line_pricings.append(line_pricing)
+
+        if cart_item.id == item.id:
+            updated_pricing = line_pricing
+
+    totals = summarize(line_pricings)
 
     return JsonResponse(
         {
@@ -181,8 +198,15 @@ def update_cart_item_view(request, item_id):
             "message": "Cart quantity updated.",
             "item_id": item.id,
             "quantity": item.quantity,
-            "line_total": str(item.quantity * item.variant.price),
-            "subtotal": str(subtotal),
+            "line_total": str(updated_pricing.line_total),
+            "payable_total": str(updated_pricing.paid_amount),
+            "offer_percentage": str(updated_pricing.offer_percentage),
+            "offer_discount": str(updated_pricing.offer_discount),
+            "subtotal": str(totals["subtotal"]),
+            "offer_discount_total": str(
+                totals["offer_discount_total"]
+            ),
+            "total": str(totals["total"]),
             "total_quantity": (
                 cart.items.aggregate(total=Sum("quantity"))["total"] or 0
             ),

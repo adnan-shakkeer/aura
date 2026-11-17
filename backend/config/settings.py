@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "admin_panel.dashboard",
     "admin_panel.users",
     "admin_panel.categories",
+    "admin_panel.offers",
     "admin_panel.products",
     "admin_panel.brands",
     "admin_panel.coupons",
