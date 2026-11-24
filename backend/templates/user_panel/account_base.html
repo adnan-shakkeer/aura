@@ -81,7 +81,7 @@
                 <a href="#addresses" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'addresses' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
                     <span>Address Book</span>
                 </a>
-                <a href="#wallet" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'wallet' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
+                <a href="{% url 'wallet:wallet' %}" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'wallet' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">
                     <span>Wallet</span>
                 </a>
                 <a href="#rewards" class="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs tracking-wider uppercase transition-colors {% if active_nav == 'rewards' %}bg-auraBlack text-white font-medium{% else %}bg-white border border-auraBorder text-auraMuted hover:text-auraBlack{% endif %}">

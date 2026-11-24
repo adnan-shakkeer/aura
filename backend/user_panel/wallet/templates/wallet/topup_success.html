@@ -1,0 +1,87 @@
+{% extends "user_panel/base.html" %}
+{% load static %}
+
+{% block title %}Wallet Top-Up Successful | AURA{% endblock %}
+
+{% block content %}
+<main class="relative isolate overflow-hidden bg-auraIvory py-12 sm:py-16 lg:py-20">
+    <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+        <div class="absolute -left-40 top-8 h-96 w-96 rounded-full bg-[#DCEBDD]/50 blur-3xl"></div>
+        <div class="absolute -right-32 bottom-0 h-[28rem] w-[28rem] rounded-full bg-[#EFE6D8]/50 blur-3xl"></div>
+        <div class="absolute left-1/3 top-0 h-64 w-64 rounded-full bg-white/70 blur-3xl"></div>
+    </div>
+
+    <div class="mx-auto max-w-2xl px-4 sm:px-6">
+        <article class="relative overflow-hidden rounded-[26px] border border-white/90 bg-[#FEFCF8] px-5 py-10 shadow-[0_32px_90px_-38px_rgba(66,51,32,0.42)] sm:rounded-[32px] sm:px-10 sm:py-12">
+            <div class="flex flex-col items-center text-center">
+                <span class="flex h-16 w-16 items-center justify-center rounded-full border border-[#CFE0D0] bg-[#F0F6F0] text-[#3F6B4A]" aria-hidden="true">
+                    <svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                </span>
+
+                <p class="mt-6 text-[10px] font-semibold uppercase tracking-[0.28em] text-auraChampagneDark sm:text-[11px]">
+                    AURA Wallet
+                </p>
+                <h1 class="mt-3 font-serif text-[1.9rem] font-normal uppercase leading-[1.12] tracking-[0.06em] text-auraBlack sm:text-4xl">
+                    Top-Up Successful
+                </h1>
+                <p class="mx-auto mt-4 max-w-md text-[13px] leading-7 text-auraMuted sm:text-sm">
+                    Money successfully added to your AURA Wallet.
+                </p>
+            </div>
+
+            <dl class="mx-auto mt-8 grid max-w-md grid-cols-1 gap-px overflow-hidden rounded-2xl border border-[#EDE4D8] bg-[#E9E0D3] sm:grid-cols-2">
+                <div class="min-w-0 bg-[#FBF8F2] px-5 py-4">
+                    <dt class="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#9A948A]">Amount Added</dt>
+                    <dd class="mt-1.5 text-[15px] font-semibold text-auraBlack">₹{{ amount|floatformat:2 }}</dd>
+                </div>
+                <div class="min-w-0 bg-[#FBF8F2] px-5 py-4">
+                    <dt class="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#9A948A]">Reference</dt>
+                    <dd class="mt-1.5 max-w-full whitespace-normal break-words text-[13px] font-semibold tracking-[0.015em] text-auraBlack [overflow-wrap:anywhere]">{{ reference }}</dd>
+                </div>
+                {% if payment_reference %}
+                <div class="min-w-0 bg-[#FBF8F2] px-5 py-4">
+                    <dt class="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#9A948A]">Payment Reference</dt>
+                    <dd class="mt-1.5 max-w-full whitespace-normal break-words text-[13px] font-medium text-auraBlack [overflow-wrap:anywhere]">{{ payment_reference }}</dd>
+                </div>
+                {% endif %}
+                {% if captured_at %}
+                <div class="min-w-0 bg-[#FBF8F2] px-5 py-4">
+                    <dt class="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#9A948A]">Confirmed On</dt>
+                    <dd class="mt-1.5 text-[13px] font-medium text-auraBlack">{{ captured_at|date:"d M Y, g:i A" }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+
+            <div class="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row sm:flex-nowrap">
+                {% if return_url %}
+                <a
+                    href="{{ return_url }}"
+                    class="inline-flex h-14 flex-1 items-center justify-center rounded-md bg-auraBlack px-6 text-[10px] font-semibold uppercase tracking-[0.24em] text-white transition-colors duration-300 hover:bg-auraDark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-auraBlack"
+                >
+                    Return to Checkout
+                </a>
+                {% else %}
+                <a
+                    href="{% url 'wallet:wallet' %}"
+                    class="inline-flex h-14 flex-1 items-center justify-center rounded-md bg-auraBlack px-6 text-[10px] font-semibold uppercase tracking-[0.24em] text-white transition-colors duration-300 hover:bg-auraDark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-auraBlack"
+                >
+                    Go to Wallet
+                </a>
+                {% endif %}
+                <a
+                    href="{% url 'shop:shop_list' %}"
+                    class="inline-flex h-14 flex-1 items-center justify-center rounded-md border border-auraBlack/25 bg-transparent px-6 text-[10px] font-semibold uppercase tracking-[0.24em] text-auraBlack transition-colors duration-300 hover:border-auraBlack/50 hover:bg-auraBlack/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-auraBlack"
+                >
+                    Continue Shopping
+                </a>
+            </div>
+
+            <p class="mx-auto mt-6 max-w-md text-center text-[11px] leading-relaxed text-auraMuted">
+                Keep your reference above for your records. Need help? Contact AURA support and never share your card, UPI PIN, OTP, or payment credentials.
+            </p>
+        </article>
+    </div>
+</main>
+{% endblock %}

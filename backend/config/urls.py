@@ -70,6 +70,8 @@ urlpatterns = [
     path("checkout/", include("user_panel.checkout.urls")),
 
     path("payments/", include("user_panel.payments.urls")),
+
+    path("wallet/", include("user_panel.wallet.urls")),
     
 ]
 

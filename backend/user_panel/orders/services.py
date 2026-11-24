@@ -68,6 +68,10 @@ from .exceptions import (
 )
 from .models import Order, OrderItem
 
+from user_panel.wallet.exceptions import WalletInsufficientBalanceError
+from user_panel.wallet.models import WalletTransaction
+from user_panel.wallet.services import debit_wallet, get_wallet
+
 
 REVIEW_TOKEN_SALT = "orders.checkout.review"
 DIRECT_REVIEW_TOKEN_SALT = "orders.checkout.direct"
@@ -904,6 +908,28 @@ def _clear_cart(cart):
     cart.save(update_fields=["updated_at"])
 
 
+def _debit_wallet_for_order(user, order, amount):
+    """Debit the customer's wallet for a full-wallet order inside the
+    placement transaction. Locks the wallet row and rechecks the balance
+    under the lock; raises ``WalletInsufficientBalanceError`` when there is
+    not enough balance so the whole order placement rolls back.
+    """
+    wallet = get_wallet(user)
+    if wallet is None:
+        raise WalletInsufficientBalanceError(
+            "Your wallet balance is not enough for this payment."
+        )
+
+    debit_wallet(
+        wallet=wallet,
+        amount=amount,
+        kind=WalletTransaction.Kind.PURCHASE,
+        dedupe_key=f"wallet-purchase:order:{order.pk}",
+        description=f"AURA Wallet payment for order {order.order_number}",
+        order=order,
+    )
+
+
 @transaction.atomic
 def _place_order_atomic(
     user,
@@ -1000,6 +1026,21 @@ def _place_order_atomic(
 
     if duplicate:
         return OrderPlacementResult(status=STATUS_DUPLICATE, order=order)
+
+    if payment_method == Order.PaymentMethod.WALLET:
+        if totals["total"] > 0:
+            _debit_wallet_for_order(user, order, totals["total"])
+        order.payment_collected_amount = totals["total"]
+        order.payment_collected_at = timezone.now()
+        order.payment_collected_by = user
+        order.save(
+            update_fields=[
+                "payment_collected_amount",
+                "payment_collected_at",
+                "payment_collected_by",
+                "updated_at",
+            ]
+        )
 
     _create_order_items(order, state, lines)
     _deduct_stock(state)
@@ -1175,6 +1216,21 @@ def _place_direct_order_atomic(
 
     if duplicate:
         return OrderPlacementResult(status=STATUS_DUPLICATE, order=order)
+
+    if payment_method == Order.PaymentMethod.WALLET:
+        if totals["total"] > 0:
+            _debit_wallet_for_order(user, order, totals["total"])
+        order.payment_collected_amount = totals["total"]
+        order.payment_collected_at = timezone.now()
+        order.payment_collected_by = user
+        order.save(
+            update_fields=[
+                "payment_collected_amount",
+                "payment_collected_at",
+                "payment_collected_by",
+                "updated_at",
+            ]
+        )
 
     _create_order_items(order, state, lines)
     _deduct_stock(state)

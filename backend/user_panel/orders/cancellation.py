@@ -19,32 +19,25 @@ from .models import Order, OrderItem, OrderStatusEvent
 COUPON_RELEASE_NOTE = "Order cancelled by customer."
 
 
-def _record_razorpay_refund(
+def _record_wallet_refund(
     order,
     amount,
     *,
-    kind,
     dedupe_key,
     reason,
+    order_item=None,
 ):
-    if (
-        order.payment_method != Order.PaymentMethod.RAZORPAY
-        or order.payment_status != Order.PaymentStatus.PAID
-    ):
-        return
-
-    from user_panel.payments.services import (  # noqa: PLC0415
-        captured_attempt_for_order,
-        record_refund_obligation,
+    """Credit an eligible paid cancellation refund to the customer's wallet."""
+    from user_panel.wallet.refunds import (  # noqa: PLC0415
+        credit_cancellation_refund,
     )
 
-    record_refund_obligation(
+    credit_cancellation_refund(
         order,
         amount,
-        kind=kind,
         dedupe_key=dedupe_key,
-        reason=reason,
-        payment_attempt=captured_attempt_for_order(order),
+        description=reason,
+        order_item=order_item,
     )
 
 
@@ -130,12 +123,12 @@ def cancel_order_item(user, order_item_id, *, reason=""):
         refund_amount_for_order_item,
     )
 
-    _record_razorpay_refund(
+    _record_wallet_refund(
         order,
         refund_amount_for_order_item(item),
-        kind="CANCELLATION",
         dedupe_key=f"order:{order.pk}:cancel-item:{item.pk}",
         reason=f"Order item cancelled. {item.cancellation_reason}".strip(),
+        order_item=item,
     )
 
     has_active_items = (
@@ -249,10 +242,9 @@ def cancel_order(user, order_id, *, reason=""):
         reason=COUPON_RELEASE_NOTE,
     )
 
-    _record_razorpay_refund(
+    _record_wallet_refund(
         order,
         refund_total,
-        kind="CANCELLATION",
         dedupe_key=f"order:{order.pk}:cancel",
         reason=(
             f"Order cancelled. {clean_reason}"

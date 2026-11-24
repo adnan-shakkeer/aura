@@ -29,6 +29,7 @@ class Order(models.Model):
     class PaymentMethod(models.TextChoices):
         COD = "COD", "Cash on Delivery"
         RAZORPAY = "RAZORPAY", "Razorpay"
+        WALLET = "WALLET", "AURA Wallet"
 
     class PaymentStatus(models.TextChoices):
         UNPAID = "UNPAID", "Unpaid"

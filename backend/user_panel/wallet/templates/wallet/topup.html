@@ -1,0 +1,350 @@
+{% extends "user_panel/base.html" %}
+{% load static %}
+
+{% block title %}Add Money to Your Wallet | AURA{% endblock %}
+
+{% block content %}
+<main class="relative isolate overflow-hidden bg-auraIvory py-12 sm:py-16 lg:py-20">
+    <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+        <div class="absolute -left-40 top-8 h-96 w-96 rounded-full bg-[#E7DBC9]/40 blur-3xl"></div>
+        <div class="absolute -right-32 bottom-0 h-[28rem] w-[28rem] rounded-full bg-[#EFE6D8]/50 blur-3xl"></div>
+        <div class="absolute left-1/3 top-0 h-64 w-64 rounded-full bg-white/70 blur-3xl"></div>
+    </div>
+
+    <div class="mx-auto max-w-2xl px-4 sm:px-6">
+        <article class="relative overflow-hidden rounded-[26px] border border-white/90 bg-[#FEFCF8] px-5 py-10 shadow-[0_32px_90px_-38px_rgba(66,51,32,0.42)] sm:rounded-[32px] sm:px-10 sm:py-12">
+            <div class="flex flex-col items-center text-center">
+                <span class="flex h-16 w-16 items-center justify-center rounded-full border border-[#E3D6C2] bg-[#FBF6EE] text-auraChampagneDark" aria-hidden="true">
+                    <svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9v3m18 0h-4.5a2.25 2.25 0 0 0 0 4.5H21" />
+                    </svg>
+                </span>
+
+                <p class="mt-6 text-[10px] font-semibold uppercase tracking-[0.28em] text-auraChampagneDark sm:text-[11px]">
+                    AURA Wallet
+                </p>
+                <h1 class="mt-3 font-serif text-[1.9rem] font-normal uppercase leading-[1.12] tracking-[0.06em] text-auraBlack sm:text-4xl">
+                    Add Money
+                </h1>
+                <p class="mx-auto mt-4 max-w-md text-[13px] leading-7 text-auraMuted sm:text-sm">
+                    Add a credit balance to your AURA Wallet securely through Razorpay. The amount is credited only after the payment is verified.
+                </p>
+            </div>
+
+            {% if not razorpay_enabled %}
+            <div class="mx-auto mt-8 max-w-md rounded-xl border border-[#E3C9A8] bg-[#FDF6EA] p-4 text-center text-xs leading-relaxed text-[#8A5A22]" role="alert">
+                Online wallet top-ups are temporarily unavailable. Please try again later.
+            </div>
+            {% endif %}
+
+            <form id="topup-form" class="mx-auto mt-8 max-w-md" novalidate>
+                <label for="topup-amount" class="block text-[10px] font-semibold uppercase tracking-[0.22em] text-auraMuted">
+                    Amount
+                </label>
+                <div class="mt-2 flex items-center overflow-hidden rounded-md border border-auraBorder bg-white focus-within:border-auraBlack/50">
+                    <span class="pl-4 text-lg text-auraMuted" aria-hidden="true">₹</span>
+                    <input
+                        id="topup-amount"
+                        name="amount"
+                        type="number"
+                        inputmode="decimal"
+                        step="0.01"
+                        min="{{ topup_min_amount }}"
+                        max="{{ topup_max_amount }}"
+                        placeholder="0.00"
+                        autocomplete="off"
+                        class="h-14 w-full bg-transparent px-3 text-lg font-medium text-auraBlack placeholder:text-auraMuted/60 focus:outline-none"
+                        {% if not razorpay_enabled %}disabled{% endif %}
+                    >
+                </div>
+                <p class="mt-2 text-[11px] leading-relaxed text-auraMuted">
+                    Minimum ₹{{ topup_min_amount }} and maximum ₹1,00,000 per transaction.
+                </p>
+
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <button type="button" class="topup-chip rounded-full border border-auraBorder bg-white px-4 py-2 text-[11px] font-medium tracking-[0.08em] text-auraBlack transition-colors hover:border-auraBlack/40" data-amount="500" {% if not razorpay_enabled %}disabled{% endif %}>₹500</button>
+                    <button type="button" class="topup-chip rounded-full border border-auraBorder bg-white px-4 py-2 text-[11px] font-medium tracking-[0.08em] text-auraBlack transition-colors hover:border-auraBlack/40" data-amount="1000" {% if not razorpay_enabled %}disabled{% endif %}>₹1,000</button>
+                    <button type="button" class="topup-chip rounded-full border border-auraBorder bg-white px-4 py-2 text-[11px] font-medium tracking-[0.08em] text-auraBlack transition-colors hover:border-auraBlack/40" data-amount="2500" {% if not razorpay_enabled %}disabled{% endif %}>₹2,500</button>
+                    <button type="button" class="topup-chip rounded-full border border-auraBorder bg-white px-4 py-2 text-[11px] font-medium tracking-[0.08em] text-auraBlack transition-colors hover:border-auraBlack/40" data-amount="5000" {% if not razorpay_enabled %}disabled{% endif %}>₹5,000</button>
+                </div>
+
+                <button
+                    type="submit"
+                    id="topup-submit"
+                    class="mt-8 inline-flex h-14 w-full items-center justify-center rounded-md bg-auraBlack px-6 text-[10px] font-semibold uppercase tracking-[0.24em] text-white transition-colors duration-300 hover:bg-auraDark disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-auraBlack"
+                    {% if not razorpay_enabled %}disabled{% endif %}
+                >
+                    Pay Securely
+                </button>
+
+                <p
+                    id="topup-error"
+                    class="mt-4 hidden text-center text-xs leading-relaxed text-[#B04A3F]"
+                    role="alert"
+                ></p>
+                <p
+                    id="topup-notice"
+                    class="mt-4 hidden text-center text-xs leading-relaxed text-auraMuted"
+                    role="status"
+                ></p>
+            </form>
+
+            <p class="mx-auto mt-8 max-w-md text-center text-[11px] leading-relaxed text-auraMuted">
+                Payments are processed securely by Razorpay. AURA never stores your card, UPI PIN, or OTP.
+            </p>
+        </article>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+{% if razorpay_enabled %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    var CREATE_URL = '{% url "wallet:topup_create" %}';
+    var VERIFY_URL = '{% url "wallet:topup_verify" %}';
+    var DISMISS_URL = '{% url "wallet:topup_dismiss" pk=0 %}';
+    var WALLET_URL = '{% url "wallet:wallet" %}';
+    var MIN_AMOUNT = {{ topup_min_amount }};
+    var MAX_AMOUNT = {{ topup_max_amount }};
+
+    var form = document.getElementById('topup-form');
+    var input = document.getElementById('topup-amount');
+    var button = document.getElementById('topup-submit');
+    var errorBox = document.getElementById('topup-error');
+    var noticeBox = document.getElementById('topup-notice');
+    var chips = document.querySelectorAll('.topup-chip');
+
+    var isSubmitting = false;
+    var paymentCompleted = false;
+    var currentTopupId = null;
+    var currentStatusUrl = null;
+
+    function getCookie(name) {
+        var match = document.cookie.split(';').map(function (c) { return c.trim(); }).find(function (c) { return c.startsWith(name + '='); });
+        return match ? decodeURIComponent(match.split('=')[1]) : null;
+    }
+    var CSRF = getCookie('csrftoken');
+
+    function parseJsonResponse(response) {
+        return response.json().catch(function () { return {}; }).then(function (data) {
+            return { ok: response.ok, data: data };
+        });
+    }
+
+    function clearError() {
+        if (!errorBox) return;
+        errorBox.textContent = '';
+        errorBox.classList.add('hidden');
+    }
+
+    function showError(message) {
+        if (!errorBox) {
+            window.alert(message);
+            return;
+        }
+        errorBox.textContent = message;
+        errorBox.classList.remove('hidden');
+    }
+
+    function clearNotice() {
+        if (!noticeBox) return;
+        noticeBox.textContent = '';
+        noticeBox.classList.add('hidden');
+    }
+
+    function showNotice(message) {
+        if (!noticeBox) return;
+        noticeBox.textContent = message;
+        noticeBox.classList.remove('hidden');
+    }
+
+    function setLoading(loading) {
+        if (!button) return;
+        button.disabled = Boolean(loading);
+        button.textContent = loading ? 'STARTING PAYMENT…' : 'Pay Securely';
+    }
+
+    function verifyPayment(response) {
+        paymentCompleted = true;
+        setLoading(true);
+        clearError();
+        clearNotice();
+
+        fetch(VERIFY_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                topup_id: currentTopupId,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+            })
+        })
+            .then(parseJsonResponse)
+            .then(function (result) {
+                if (result.data && result.data.redirect_url) {
+                    window.location.assign(result.data.redirect_url);
+                    return;
+                }
+                throw new Error(result.data.message || 'We could not verify this payment.');
+            })
+            .catch(function (error) {
+                if (currentStatusUrl) {
+                    window.location.assign(currentStatusUrl);
+                    return;
+                }
+                paymentCompleted = false;
+                isSubmitting = false;
+                setLoading(false);
+                showError(error.message || 'We could not verify this payment. Please try again.');
+            });
+    }
+
+    function openCheckout(data) {
+        if (typeof window.Razorpay !== 'function') {
+            isSubmitting = false;
+            setLoading(false);
+            showError('The payment window could not load. Please check your connection and try again.');
+            return;
+        }
+
+        var checkout = data.checkout || {};
+        var rzp = new window.Razorpay({
+            key: checkout.key,
+            amount: checkout.amount,
+            currency: checkout.currency || 'INR',
+            name: checkout.name || 'AURA',
+            description: checkout.description || 'AURA Wallet top-up',
+            order_id: checkout.order_id,
+            prefill: checkout.prefill || {},
+            notes: checkout.notes || {},
+            theme: checkout.theme || { color: '#1A1A1A' },
+            handler: verifyPayment,
+            modal: {
+                ondismiss: function () {
+                    if (paymentCompleted) return;
+                    isSubmitting = false;
+                    setLoading(false);
+                    var dismissUrl = DISMISS_URL.replace("/0/", "/" + currentTopupId + "/");
+                    fetch(dismissUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({ topup_id: currentTopupId })
+                    })
+                        .then(parseJsonResponse)
+                        .then(function (result) {
+                            if (result.data && result.data.redirect_url) {
+                                window.location.assign(result.data.redirect_url);
+                                return;
+                            }
+                            window.location.assign(WALLET_URL);
+                        })
+                        .catch(function () {
+                            window.location.assign(WALLET_URL);
+                        });
+                }
+            }
+        });
+
+        if (rzp.on) {
+            rzp.on('payment.failed', function () {
+                if (paymentCompleted) return;
+                paymentCompleted = true;
+                if (currentStatusUrl) {
+                    window.location.assign(currentStatusUrl);
+                }
+            });
+        }
+
+        rzp.open();
+    }
+
+    chips.forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            input.value = chip.dataset.amount;
+            clearError();
+            clearNotice();
+        });
+    });
+
+    if (form) {
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            if (isSubmitting) return;
+
+            var raw = (input.value || '').trim();
+            var value = Number(raw);
+
+            if (!raw || !isFinite(value)) {
+                showError('Please enter a valid top-up amount.');
+                return;
+            }
+            if (value < MIN_AMOUNT) {
+                showError('The minimum top-up is ₹' + MIN_AMOUNT + '.');
+                return;
+            }
+            if (value > MAX_AMOUNT) {
+                showError('The maximum top-up per transaction is ₹1,00,000.');
+                return;
+            }
+            var decimalPart = raw.indexOf('.') === -1 ? '' : raw.split('.')[1];
+            if (decimalPart.length > 2) {
+                showError('The top-up amount cannot have more than two decimal places.');
+                return;
+            }
+
+            isSubmitting = true;
+            paymentCompleted = false;
+            clearError();
+            clearNotice();
+            setLoading(true);
+
+            fetch(CREATE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ amount: raw })
+            })
+                .then(parseJsonResponse)
+                .then(function (result) {
+                    if (result.data && result.data.redirect_url) {
+                        window.location.assign(result.data.redirect_url);
+                        return;
+                    }
+                    if (!result.ok || !result.data.success) {
+                        showNotice(
+                            result.data.message ||
+                            'A previous wallet top-up payment is still being confirmed.'
+                        );
+                        return;
+                    }
+                    currentTopupId = result.data.topup_id;
+                    currentStatusUrl = result.data.status_url;
+                    openCheckout(result.data);
+                })
+                .catch(function (error) {
+                    isSubmitting = false;
+                    setLoading(false);
+                    showError(error.message || 'We could not start the wallet top-up. Please try again.');
+                });
+        });
+    }
+})();
+</script>
+{% endif %}
+{% endblock %}

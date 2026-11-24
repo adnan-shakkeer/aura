@@ -18,6 +18,7 @@ from user_panel.orders.exceptions import (
 from user_panel.orders.financials import get_order_financials
 from user_panel.orders.models import Order, OrderItem, ReturnItem
 from user_panel.orders.order_lifecycle import _ADMIN_TRANSITIONS, transition_order_status
+from user_panel.wallet.models import WalletTransaction
 
 
 @admin_required
@@ -242,6 +243,10 @@ def order_detail(request, order_number):
             payment_subtitle = (
                 f"Razorpay payment confirmed (₹{order.payment_collected_amount})"
             )
+        elif order.payment_method == Order.PaymentMethod.WALLET:
+            payment_subtitle = (
+                f"AURA Wallet payment confirmed (₹{order.payment_collected_amount})"
+            )
         else:
             payment_subtitle = (
                 f"Cash on Delivery collected (₹{order.payment_collected_amount})"
@@ -323,6 +328,12 @@ def order_detail(request, order_number):
         "payment_attempts": list(order.payment_attempts.all()[:10]),
         "refunds": list(order.refunds.all()[:10]),
         "latest_payment_attempt": order.payment_attempts.first(),
+        "wallet_transactions": (
+            WalletTransaction.objects
+            .filter(order=order)
+            .select_related("order_item")
+            .order_by("created_at")
+        ),
     }
     return render(request, "admin_panel/orders/order_detail.html", context)
 

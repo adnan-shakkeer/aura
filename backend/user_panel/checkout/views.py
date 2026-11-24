@@ -28,6 +28,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 
 from admin_panel.products.models import ProductVariant
 from user_panel.address.models import Address
+from user_panel.orders.models import Order
 from user_panel.orders.coupons import (
     discover_available_coupons,
     get_coupon_by_code,
@@ -60,6 +61,8 @@ from user_panel.orders.services import (
     review_direct_checkout,
     validate_direct_purchase,
 )
+from user_panel.wallet.exceptions import WalletError
+from user_panel.wallet.services import get_wallet
 
 
 REVIEW_SESSION_KEY = "checkout_review_token"
@@ -419,6 +422,13 @@ def checkout_review(request):
         line.quantity for line in review.lines
     )
 
+    wallet = get_wallet(user)
+    wallet_balance = wallet.balance if wallet is not None else Decimal("0.00")
+    context["wallet_balance"] = wallet_balance
+    context["wallet_sufficient"] = wallet_balance >= review.total
+    context["wallet_required"] = review.total
+    context["wallet_exists"] = wallet is not None
+
     return render(request, "checkout/checkout.html", context)
 
 
@@ -559,6 +569,13 @@ def buy_now_review(request):
         line.quantity for line in review.lines
     )
 
+    wallet = get_wallet(user)
+    wallet_balance = wallet.balance if wallet is not None else Decimal("0.00")
+    context["wallet_balance"] = wallet_balance
+    context["wallet_sufficient"] = wallet_balance >= review.total
+    context["wallet_required"] = review.total
+    context["wallet_exists"] = wallet is not None
+
     return render(request, "checkout/checkout.html", context)
 
 
@@ -566,7 +583,7 @@ def buy_now_review(request):
 @never_cache
 @require_POST
 def buy_now_place_order(request):
-    """Place the reviewed Buy Now selection as a COD order."""
+    """Place the reviewed Buy Now selection as a COD or AURA Wallet order."""
     review_token = request.session.get(DIRECT_REVIEW_SESSION_KEY)
     address_id = request.session.get(DIRECT_REVIEW_ADDRESS_SESSION_KEY)
 
@@ -577,15 +594,31 @@ def buy_now_place_order(request):
         )
         return redirect("checkout:buy_now_review")
 
-    if request.POST.get("payment_method", "COD").strip().upper() != "COD":
+    payment_method = (request.POST.get("payment_method") or "COD").strip().upper()
+    if payment_method not in ("COD", "WALLET"):
         messages.error(
             request,
-            "Online payment could not start. Please retry the secure payment.",
+            "That payment method is not available. "
+            "Please choose Cash on Delivery or AURA Wallet.",
         )
         return redirect("checkout:buy_now_review")
 
+    if payment_method == "WALLET":
+        place_payment_method = Order.PaymentMethod.WALLET
+        place_payment_status = Order.PaymentStatus.PAID
+    else:
+        place_payment_method = Order.PaymentMethod.COD
+        place_payment_status = Order.PaymentStatus.UNPAID
+
     try:
-        result = place_direct_order(request.user, address_id, review_token)
+        result = place_direct_order(
+            request.user,
+            address_id,
+            review_token,
+            payment_method=place_payment_method,
+            payment_status=place_payment_status,
+            checkout_source=Order.CheckoutSource.DIRECT,
+        )
     except InvalidReviewTokenError:
         _clear_direct_review_session(request)
         messages.error(
@@ -604,6 +637,11 @@ def buy_now_place_order(request):
         return redirect("checkout:buy_now_review")
     except InvalidAddressError as exc:
         _clear_direct_review_session(request)
+        messages.error(request, str(exc))
+        return redirect("checkout:buy_now_review")
+    except WalletError as exc:
+        # Insufficient balance or other wallet issue: keep the review state
+        # so the customer can add money and return.
         messages.error(request, str(exc))
         return redirect("checkout:buy_now_review")
     except (
@@ -683,7 +721,7 @@ def buy_now_place_order(request):
 @never_cache
 @require_POST
 def place_order_submit(request):
-    """Place the reviewed cart as a COD order.
+    """Place the reviewed cart as a COD or AURA Wallet order.
 
     The signed review token and selected address are read exclusively from the
     server-side session. On success or duplicate we deliberately keep the
@@ -701,15 +739,31 @@ def place_order_submit(request):
         )
         return redirect("checkout:checkout_review")
 
-    if request.POST.get("payment_method", "COD").strip().upper() != "COD":
+    payment_method = (request.POST.get("payment_method") or "COD").strip().upper()
+    if payment_method not in ("COD", "WALLET"):
         messages.error(
             request,
-            "Online payment could not start. Please retry the secure payment.",
+            "That payment method is not available. "
+            "Please choose Cash on Delivery or AURA Wallet.",
         )
         return redirect("checkout:checkout_review")
 
+    if payment_method == "WALLET":
+        place_payment_method = Order.PaymentMethod.WALLET
+        place_payment_status = Order.PaymentStatus.PAID
+    else:
+        place_payment_method = Order.PaymentMethod.COD
+        place_payment_status = Order.PaymentStatus.UNPAID
+
     try:
-        result = place_order(request.user, address_id, review_token)
+        result = place_order(
+            request.user,
+            address_id,
+            review_token,
+            payment_method=place_payment_method,
+            payment_status=place_payment_status,
+            checkout_source=Order.CheckoutSource.CART,
+        )
     except InvalidReviewTokenError:
         _clear_review_session(request)
         messages.error(
@@ -729,6 +783,11 @@ def place_order_submit(request):
     except EmptyCartError:
         _clear_review_session(request)
         messages.error(request, "Your bag is empty.")
+        return redirect("checkout:checkout_review")
+    except WalletError as exc:
+        # Insufficient balance or other wallet issue: keep the cart and
+        # review state so the customer can add money and return.
+        messages.error(request, str(exc))
         return redirect("checkout:checkout_review")
     except InvalidAddressError as exc:
         _clear_review_session(request)
