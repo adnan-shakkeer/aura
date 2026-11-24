@@ -1,10 +1,13 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Prefetch
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_POST
 
 from .cancellation import cancel_order, cancel_order_item
@@ -29,8 +32,52 @@ from .models import Order, OrderItem, OrderStatusEvent, ReturnItem
 from .returns import request_return, request_return_order
 
 
-MY_ORDERS_PAGE_SIZE = 8
+MY_ORDERS_PAGE_SIZE = 10
 MAX_ORDER_SEARCH_LENGTH = 100
+
+
+def _customer_payment_status_label(order):
+    """Customer-facing overall order payment badge, distinct from attempt state."""
+    if order.payment_status == Order.PaymentStatus.PAID:
+        return order.get_payment_status_display()
+    if order.payment_method == Order.PaymentMethod.RAZORPAY:
+        if order.status == Order.OrderStatus.CANCELLED:
+            return Order.PaymentStatus.UNPAID.label
+        if order.status == Order.OrderStatus.PENDING:
+            return Order.PaymentStatus.PENDING.label
+    return order.get_payment_status_display()
+
+
+def _build_payment_context(order):
+    from user_panel.payments.models import PaymentAttempt
+    from user_panel.payments.services import is_order_payable
+
+    captured = (
+        order.payment_attempts.filter(status=PaymentAttempt.Status.CAPTURED)
+        .order_by("-captured_at", "-id")
+        .first()
+    )
+    return {
+        "payment_reference": captured.provider_payment_id if captured else "",
+        "can_retry_payment": (
+            order.payment_method == Order.PaymentMethod.RAZORPAY
+            and order.payment_status
+            in (
+                Order.PaymentStatus.PENDING,
+                Order.PaymentStatus.FAILED,
+            )
+            and is_order_payable(order)
+        ),
+        "payment_failed_url": (
+            f"{reverse('payments:payment_failed', args=[order.order_number])}"
+            "?origin=order"
+            if order.payment_method == Order.PaymentMethod.RAZORPAY
+            else ""
+        ),
+        "razorpay_enabled": settings.RAZORPAY_ENABLED,
+        "razorpay_key_id": settings.RAZORPAY_KEY_ID,
+        "payment_status_label": _customer_payment_status_label(order),
+    }
 
 
 def _build_order_cards(orders):
@@ -51,8 +98,9 @@ def _build_order_cards(orders):
                 "order": order,
                 "first_item": first_item,
                 "image": image,
-                "extra_item_count": max(len(items) - 1, 0),
                 "total_quantity": sum(item.quantity for item in items),
+                "extra_item_count": max(len(items) - 1, 0),
+                "payment_status_label": _customer_payment_status_label(order),
             }
         )
 
@@ -189,10 +237,14 @@ def _build_item_rows(order):
 
 @login_required
 @never_cache
+@ensure_csrf_cookie
 def order_confirmation(request, order_number):
     """Render the persisted confirmation for one of the customer's orders."""
     order = get_object_or_404(
-        Order.objects.prefetch_related("items__variant__images"),
+        Order.objects.prefetch_related(
+            "items__variant__images",
+            "payment_attempts",
+        ),
         order_number=order_number,
         user=request.user,
     )
@@ -212,6 +264,7 @@ def order_confirmation(request, order_number):
         "order": order,
         "line_rows": line_rows,
         "total_quantity": sum(item.quantity for item in items),
+        **_build_payment_context(order),
     }
     return render(request, "orders/order_confirmation.html", context)
 
@@ -221,6 +274,12 @@ def order_confirmation(request, order_number):
 @require_GET
 def my_orders(request):
     """Render the authenticated customer's order history."""
+    from user_panel.payments.services import (  # noqa: PLC0415
+        expire_overdue_orders_for_user,
+    )
+
+    expire_overdue_orders_for_user(request.user)
+
     search_query = request.GET.get("q", "").strip()[:MAX_ORDER_SEARCH_LENGTH]
 
     orders = Order.objects.filter(user=request.user).prefetch_related(
@@ -256,9 +315,16 @@ def my_orders(request):
 
 @login_required
 @never_cache
+@ensure_csrf_cookie
 @require_GET
 def order_detail(request, order_number):
     """Render the individual order details page with line-level outcomes and timeline."""
+    from user_panel.payments.services import (  # noqa: PLC0415
+        expire_overdue_order_for_user,
+    )
+
+    expire_overdue_order_for_user(request.user, order_number)
+
     order = get_object_or_404(
         Order.objects.filter(user=request.user).prefetch_related(
             Prefetch(
@@ -271,6 +337,8 @@ def order_detail(request, order_number):
                 "status_events",
                 queryset=OrderStatusEvent.objects.order_by("created_at", "id"),
             ),
+            "payment_attempts",
+            "refunds",
         ),
         order_number=order_number,
     )
@@ -296,6 +364,9 @@ def order_detail(request, order_number):
         "is_order_returnable": is_order_returnable,
         "can_download_invoice": is_invoice_available(order),
         "active_nav": "orders",
+        "payment_attempts": list(order.payment_attempts.all()[:10]),
+        "refunds": list(order.refunds.all()[:10]),
+        **_build_payment_context(order),
     }
     return render(request, "orders/order_detail.html", context)
 

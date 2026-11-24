@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "user_panel.wishlist",
     "user_panel.orders",
     "user_panel.checkout",
+    "user_panel.payments",
 ]
 
 MIDDLEWARE = [
@@ -160,7 +161,7 @@ AUTHENTICATION_BACKENDS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
@@ -178,6 +179,25 @@ STATICFILES_DIRS = [
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+
+# Security headers
+# Razorpay Checkout opens external bank/3-D Secure authentication popups. Allow
+# those popups to keep an opener relationship so they can hand control back to
+# the checkout instead of remaining blank. Django's default is "same-origin".
+
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
+
+
+# Razorpay
+# Keep secrets in the environment. Only RAZORPAY_KEY_ID is ever sent to the
+# browser, and the checkout amount is always derived from the persisted order.
+
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_CURRENCY = "INR"
+RAZORPAY_PAYMENT_TIMEOUT_MINUTES = 5
+RAZORPAY_ENABLED = bool(RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET)
 
 
 # Email

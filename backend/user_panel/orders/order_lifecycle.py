@@ -41,6 +41,9 @@ def _assert_admin(actor):
 
 
 def _collect_payment(order, actor):
+    if order.payment_method != Order.PaymentMethod.COD:
+        return
+
     financials = get_order_financials(order)
     now = timezone.now()
 
@@ -51,6 +54,22 @@ def _collect_payment(order, actor):
         order.payment_collected_amount = financials.total_due
     if order.payment_collected_by_id is None:
         order.payment_collected_by = actor
+
+
+def _assert_payment_allows_fulfilment(order, new_status):
+    if (
+        new_status
+        in (
+            Order.OrderStatus.SHIPPED,
+            Order.OrderStatus.OUT_FOR_DELIVERY,
+            Order.OrderStatus.DELIVERED,
+        )
+        and order.payment_method == Order.PaymentMethod.RAZORPAY
+        and order.payment_status != Order.PaymentStatus.PAID
+    ):
+        raise InvalidOrderStatusTransitionError(
+            "Online payment must be confirmed before this order can be shipped."
+        )
 
 
 @transaction.atomic
@@ -74,6 +93,8 @@ def transition_order_status(order_id, new_status, *, actor, note=""):
     order = Order.objects.select_for_update().filter(pk=order_id).first()
     if order is None:
         raise OrderNotFoundError("Order not found.")
+
+    _assert_payment_allows_fulfilment(order, new_status)
 
     if order.status == new_status:
         if (

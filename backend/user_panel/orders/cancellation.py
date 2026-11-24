@@ -19,6 +19,35 @@ from .models import Order, OrderItem, OrderStatusEvent
 COUPON_RELEASE_NOTE = "Order cancelled by customer."
 
 
+def _record_razorpay_refund(
+    order,
+    amount,
+    *,
+    kind,
+    dedupe_key,
+    reason,
+):
+    if (
+        order.payment_method != Order.PaymentMethod.RAZORPAY
+        or order.payment_status != Order.PaymentStatus.PAID
+    ):
+        return
+
+    from user_panel.payments.services import (  # noqa: PLC0415
+        captured_attempt_for_order,
+        record_refund_obligation,
+    )
+
+    record_refund_obligation(
+        order,
+        amount,
+        kind=kind,
+        dedupe_key=dedupe_key,
+        reason=reason,
+        payment_attempt=captured_attempt_for_order(order),
+    )
+
+
 def _assert_customer(user):
     if (
         user is None
@@ -97,6 +126,18 @@ def cancel_order_item(user, order_item_id, *, reason=""):
 
     _restore_stock(item)
 
+    from user_panel.payments.services import (  # noqa: PLC0415
+        refund_amount_for_order_item,
+    )
+
+    _record_razorpay_refund(
+        order,
+        refund_amount_for_order_item(item),
+        kind="CANCELLATION",
+        dedupe_key=f"order:{order.pk}:cancel-item:{item.pk}",
+        reason=f"Order item cancelled. {item.cancellation_reason}".strip(),
+    )
+
     has_active_items = (
         order.items.filter(cancelled_at__isnull=True)
         .exclude(pk=item.pk)
@@ -164,6 +205,18 @@ def cancel_order(user, order_id, *, reason=""):
     now = timezone.now()
     clean_reason = (reason or "").strip()
 
+    from user_panel.payments.services import (  # noqa: PLC0415
+        refund_amount_for_order_item,
+    )
+
+    refund_total = sum(
+        (
+            refund_amount_for_order_item(item)
+            for item in active_items
+        ),
+        start=0,
+    )
+
     # Sort items by variant_id to guarantee deterministic lock acquisition and prevent deadlocks
     sorted_items = sorted(active_items, key=lambda x: x.variant_id)
     for item in sorted_items:
@@ -196,4 +249,69 @@ def cancel_order(user, order_id, *, reason=""):
         reason=COUPON_RELEASE_NOTE,
     )
 
+    _record_razorpay_refund(
+        order,
+        refund_total,
+        kind="CANCELLATION",
+        dedupe_key=f"order:{order.pk}:cancel",
+        reason=(
+            f"Order cancelled. {clean_reason}"
+            if clean_reason
+            else "Order cancelled."
+        ),
+    )
+
     return order
+
+
+@transaction.atomic
+def cancel_order_for_expiry(order):
+    """System cancellation for an unpaid Razorpay order past its window.
+
+    The caller must have locked ``order``. Stock and coupon usage are released
+    exactly once, and no customer refund obligation is created because no
+    payment was collected.
+    """
+    if order.status != Order.OrderStatus.PENDING:
+        return False
+
+    active_items = list(
+        OrderItem.objects.select_for_update()
+        .filter(order=order, cancelled_at__isnull=True)
+        .order_by("id")
+    )
+    if not active_items:
+        return False
+
+    now = timezone.now()
+    expiry_reason = "Online payment window expired."
+
+    sorted_items = sorted(active_items, key=lambda x: x.variant_id)
+    for item in sorted_items:
+        item.cancelled_at = now
+        item.cancellation_reason = expiry_reason
+        item.save(update_fields=["cancelled_at", "cancellation_reason"])
+        _restore_stock(item)
+
+    previous_status = order.status
+    order.status = Order.OrderStatus.CANCELLED
+    order.save(update_fields=["status", "updated_at"])
+
+    OrderStatusEvent.objects.create(
+        order=order,
+        status=Order.OrderStatus.CANCELLED,
+        previous_status=previous_status,
+        changed_by=None,
+        note=(
+            "PAYMENT_WINDOW_EXPIRED — Razorpay payment was not completed "
+            "within the 5-minute payment window. The order expired and "
+            "reserved stock/coupon were released."
+        ),
+    )
+
+    release_coupon_usage_for_order(
+        order,
+        reason="Order expired before online payment.",
+    )
+
+    return True

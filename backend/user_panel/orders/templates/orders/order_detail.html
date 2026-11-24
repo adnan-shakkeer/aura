@@ -147,7 +147,7 @@
                 <!-- Payment Status Pill -->
                 <span class="inline-flex items-center gap-1.5 rounded-full border border-auraBorder bg-white px-3 py-1 text-[10px] font-semibold tracking-[0.14em] uppercase {% if order.payment_status == 'PAID' %}text-[#247A4A]{% else %}text-auraChampagneDark{% endif %} shadow-sm">
                     <span class="h-1.5 w-1.5 rounded-full {% if order.payment_status == 'PAID' %}bg-[#247A4A]{% else %}bg-auraChampagneDark{% endif %}" aria-hidden="true"></span>
-                    {{ order.get_payment_status_display }}
+                    {{ payment_status_label }}
                 </span>
             </div>
 
@@ -489,12 +489,70 @@
                             </div>
                             <div class="flex items-center justify-between text-auraMuted">
                                 <span>Payment Status</span>
-                                <span class="font-medium text-auraBlack">{{ order.get_payment_status_display }}</span>
+                                <span class="font-medium text-auraBlack">{{ payment_status_label }}</span>
                             </div>
                             <div class="flex items-center justify-between text-auraMuted">
                                 <span>Amount Paid</span>
                                 <span class="font-medium text-auraBlack">₹{{ financials.amount_collected|floatformat:2 }}</span>
                             </div>
+                            {% if payment_reference %}
+                            <div class="flex items-center justify-between gap-4 text-auraMuted">
+                                <span>Payment Reference</span>
+                                <span class="break-all text-right font-medium text-auraBlack">{{ payment_reference }}</span>
+                            </div>
+                            {% endif %}
+
+                            {% if refunds %}
+                            <div class="pt-2">
+                                {% for refund in refunds %}
+                                <div class="flex items-start justify-between gap-4 text-auraMuted">
+                                    <span>Refund ({{ refund.get_kind_display }})</span>
+                                    <span class="text-right font-medium text-auraBlack">₹{{ refund.amount|floatformat:2 }} · {{ refund.get_status_display }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            {% if can_retry_payment and is_order_cancellable %}
+                            <div class="mt-6 space-y-3 border-t border-auraBorder pt-5">
+                                {% if razorpay_enabled %}
+                                <button
+                                    type="button"
+                                    id="complete-payment-btn"
+                                    class="group relative flex min-h-[64px] w-full items-center justify-center gap-3 rounded-xl border border-[#C9A96A]/30 bg-gradient-to-r from-[#17130E] via-[#241B12] to-[#3A2C1A] px-6 text-[11px] font-semibold uppercase tracking-[0.22em] text-white shadow-[0_18px_40px_-20px_rgba(58,42,22,0.65)] transition-all duration-300 hover:border-[#C9A96A]/60 hover:shadow-[0_24px_54px_-20px_rgba(58,42,22,0.7)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A8842C] disabled:cursor-not-allowed disabled:opacity-70"
+                                >
+                                    <svg class="h-[18px] w-[18px] shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+                                    </svg>
+                                    <span id="complete-payment-label">Complete Payment</span>
+                                    <svg class="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 12h16m0 0-6-6m6 6-6 6" />
+                                    </svg>
+                                </button>
+                                <p id="complete-payment-error" class="hidden text-center text-[11px] leading-relaxed text-[#B04A3F]" role="alert"></p>
+                                {% else %}
+                                <a href="{{ payment_failed_url }}" class="group relative flex min-h-[64px] w-full items-center justify-center gap-3 rounded-xl border border-[#C9A96A]/30 bg-gradient-to-r from-[#17130E] via-[#241B12] to-[#3A2C1A] px-6 text-[11px] font-semibold uppercase tracking-[0.22em] text-white shadow-[0_18px_40px_-20px_rgba(58,42,22,0.65)] transition-all duration-300 hover:border-[#C9A96A]/60 hover:shadow-[0_24px_54px_-20px_rgba(58,42,22,0.7)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A8842C]">
+                                    <svg class="h-[18px] w-[18px] shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+                                    </svg>
+                                    <span>Complete Payment</span>
+                                    <svg class="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 12h16m0 0-6-6m6 6-6 6" />
+                                    </svg>
+                                </a>
+                                {% endif %}
+                                <button
+                                    type="button"
+                                    onclick="openCancelOrderModal()"
+                                    class="flex min-h-[56px] w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-[#FFFBFB] px-6 text-[11px] font-semibold uppercase tracking-[0.2em] text-red-700 transition-colors duration-300 hover:border-red-300 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+                                >
+                                    <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                    </svg>
+                                    <span>Cancel Order</span>
+                                </button>
+                            </div>
+                            {% endif %}
 
                             <!-- Outstanding Balance Due if any -->
                             {% if financials.total_due > 0 %}
@@ -516,7 +574,7 @@
                 </section>
 
                 <!-- 2. ORDER-LEVEL ACTION CARDS (Inspired by VERSE Screenshots 2 & 3) -->
-                {% if is_order_cancellable %}
+                {% if not can_retry_payment and is_order_cancellable %}
                 <!-- CANCEL ORDER ACTION CARD (Shown only while PENDING and active items remain) -->
                 <div class="rounded-2xl border border-auraBorder bg-white p-5 sm:p-6 shadow-aura-subtle">
                     <button
@@ -1017,4 +1075,175 @@
         }
     });
 </script>
+{% endblock %}
+
+{% block extra_js %}
+{% if can_retry_payment and razorpay_enabled %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    var RETRY_URL = '{% url "payments:retry_payment" order.order_number %}';
+    var VERIFY_URL = '{% url "payments:verify_payment" %}';
+    var FAILURE_URL = '{% url "payments:payment_failed" order.order_number %}?origin=order';
+    var RAZORPAY_KEY_ID = '{{ razorpay_key_id|escapejs }}';
+    var ORIGIN = 'order';
+    var button = document.getElementById('complete-payment-btn');
+    var errorBox = document.getElementById('complete-payment-error');
+    var label = document.getElementById('complete-payment-label');
+    var isSubmitting = false;
+    var paymentCompleted = false;
+
+    function getCookie(name) {
+        var match = document.cookie.split(';').map(function (c) { return c.trim(); }).find(function (c) { return c.startsWith(name + '='); });
+        return match ? decodeURIComponent(match.split('=')[1]) : null;
+    }
+    var CSRF = getCookie('csrftoken');
+
+    function parseJsonResponse(response) {
+        return response.json().catch(function () { return {}; }).then(function (data) {
+            return { ok: response.ok, data: data };
+        });
+    }
+
+    function clearError() {
+        if (!errorBox) return;
+        errorBox.textContent = '';
+        errorBox.classList.add('hidden');
+    }
+
+    function showError(message) {
+        if (!errorBox) {
+            window.alert(message);
+            return;
+        }
+        errorBox.textContent = message;
+        errorBox.classList.remove('hidden');
+    }
+
+    function setLoading(loading) {
+        if (!button) return;
+        button.disabled = Boolean(loading);
+        button.setAttribute('aria-busy', loading ? 'true' : 'false');
+        if (label) {
+            label.textContent = loading ? 'STARTING PAYMENT…' : 'Complete Payment';
+        }
+    }
+
+    function verifyPayment(response) {
+        paymentCompleted = true;
+        setLoading(true);
+        clearError();
+        fetch(VERIFY_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                origin: ORIGIN
+            })
+        })
+            .then(parseJsonResponse)
+            .then(function (result) {
+                if (result.ok && result.data.success) {
+                    window.location.assign(result.data.redirect_url);
+                    return;
+                }
+                if (result.data.failure_url) {
+                    window.location.assign(result.data.failure_url);
+                    return;
+                }
+                throw new Error(result.data.message || 'We could not verify this payment.');
+            })
+            .catch(function (error) {
+                paymentCompleted = false;
+                isSubmitting = false;
+                setLoading(false);
+                showError(error.message || 'We could not verify this payment. Please try again.');
+            });
+    }
+
+    function openCheckout(data) {
+        if (typeof window.Razorpay !== 'function') {
+            isSubmitting = false;
+            setLoading(false);
+            showError('The payment window could not load. Please check your connection and try again.');
+            return;
+        }
+
+        var checkout = data.checkout || {};
+        var rzp = new window.Razorpay({
+            key: checkout.key || RAZORPAY_KEY_ID,
+            amount: checkout.amount,
+            currency: checkout.currency || 'INR',
+            name: checkout.name || 'AURA',
+            description: checkout.description || 'AURA order payment',
+            order_id: checkout.order_id,
+            prefill: checkout.prefill || {},
+            notes: checkout.notes || {},
+            theme: checkout.theme || { color: '#1A1A1A' },
+            handler: verifyPayment,
+            modal: {
+                ondismiss: function () {
+                    if (paymentCompleted) return;
+                    isSubmitting = false;
+                    setLoading(false);
+                    showError('Payment was not completed. Your order is still reserved for a limited time, so you can try again.');
+                }
+            }
+        });
+        if (rzp.on) {
+            rzp.on('payment.failed', function () {
+                // Navigation only: the server remains the source of truth.
+                if (paymentCompleted) return;
+                paymentCompleted = true;
+                window.location.assign(FAILURE_URL);
+            });
+        }
+        rzp.open();
+    }
+
+    if (button) {
+        button.addEventListener('click', function () {
+            if (isSubmitting) return;
+            isSubmitting = true;
+            clearError();
+            setLoading(true);
+
+            fetch(RETRY_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ origin: ORIGIN })
+            })
+                .then(parseJsonResponse)
+                .then(function (result) {
+                    if (result.data && result.data.redirect_url) {
+                        window.location.assign(result.data.redirect_url);
+                        return;
+                    }
+                    if (!result.ok || !result.data.success) {
+                        throw new Error(result.data.message || 'We could not start the payment.');
+                    }
+                    openCheckout(result.data);
+                })
+                .catch(function (error) {
+                    isSubmitting = false;
+                    setLoading(false);
+                    showError(error.message || 'We could not start the payment. Please try again.');
+                });
+        });
+    }
+})();
+</script>
+{% endif %}
 {% endblock %}

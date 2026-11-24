@@ -775,7 +775,17 @@ def _is_order_number_conflict(constraint):
     return bool(constraint) and "order_number" in constraint
 
 
-def _create_order_with_retry(*, user, submission_id, address, totals, coupon_code=""):
+def _create_order_with_retry(
+    *,
+    user,
+    submission_id,
+    address,
+    totals,
+    coupon_code="",
+    payment_method=Order.PaymentMethod.COD,
+    payment_status=Order.PaymentStatus.UNPAID,
+    checkout_source=Order.CheckoutSource.CART,
+):
     """Create the order, retrying a bounded number of times on number clash.
 
     Returns ``(order, is_duplicate)``. Each attempt runs inside a savepoint
@@ -790,8 +800,9 @@ def _create_order_with_retry(*, user, submission_id, address, totals, coupon_cod
                     user=user,
                     idempotency_key=submission_id,
                     status=Order.OrderStatus.PENDING,
-                    payment_method=Order.PaymentMethod.COD,
-                    payment_status=Order.PaymentStatus.UNPAID,
+                    payment_method=payment_method,
+                    payment_status=payment_status,
+                    checkout_source=checkout_source,
                     subtotal=totals["subtotal"],
                     discount_total=totals["discount_total"],
                     offer_discount_total=totals["offer_discount_total"],
@@ -894,7 +905,15 @@ def _clear_cart(cart):
 
 
 @transaction.atomic
-def _place_order_atomic(user, address_id, review_token):
+def _place_order_atomic(
+    user,
+    address_id,
+    review_token,
+    *,
+    payment_method=Order.PaymentMethod.COD,
+    payment_status=Order.PaymentStatus.UNPAID,
+    checkout_source=Order.CheckoutSource.CART,
+):
     _assert_active_user(user)
 
     payload, expired = _decode_review_token(review_token)
@@ -974,6 +993,9 @@ def _place_order_atomic(user, address_id, review_token):
         address=address,
         totals=totals,
         coupon_code=coupon.code if coupon is not None else "",
+        payment_method=payment_method,
+        payment_status=payment_status,
+        checkout_source=checkout_source,
     )
 
     if duplicate:
@@ -983,7 +1005,7 @@ def _place_order_atomic(user, address_id, review_token):
     _deduct_stock(state)
     _clear_cart(cart)
 
-    # Consume the coupon for COD placement.
+    # Consume the coupon for the selected payment method.
     if coupon is not None:
         consume_coupon(
             coupon=coupon,
@@ -995,15 +1017,31 @@ def _place_order_atomic(user, address_id, review_token):
     return OrderPlacementResult(status=STATUS_CREATED, order=order)
 
 
-def place_order(user, address_id, review_token):
-    """Convert a reviewed cart into a COD order.
+def place_order(
+    user,
+    address_id,
+    review_token,
+    *,
+    payment_method=Order.PaymentMethod.COD,
+    payment_status=Order.PaymentStatus.UNPAID,
+    checkout_source=Order.CheckoutSource.CART,
+):
+    """Convert a reviewed cart into an order for the selected payment method.
 
-    Raises ``OrderServiceError`` subclasses for expected failures; anything
-    else is wrapped as ``UnexpectedOrderFailure`` after the transaction has
-    rolled back.
+    The defaults preserve the original COD behaviour. Raises
+    ``OrderServiceError`` subclasses for expected failures; anything else is
+    wrapped as ``UnexpectedOrderFailure`` after the transaction has rolled
+    back.
     """
     try:
-        return _place_order_atomic(user, address_id, review_token)
+        return _place_order_atomic(
+            user,
+            address_id,
+            review_token,
+            payment_method=payment_method,
+            payment_status=payment_status,
+            checkout_source=checkout_source,
+        )
     except OrderServiceError:
         raise
     except Exception as exc:
@@ -1013,7 +1051,15 @@ def place_order(user, address_id, review_token):
 
 
 @transaction.atomic
-def _place_direct_order_atomic(user, address_id, review_token):
+def _place_direct_order_atomic(
+    user,
+    address_id,
+    review_token,
+    *,
+    payment_method=Order.PaymentMethod.COD,
+    payment_status=Order.PaymentStatus.UNPAID,
+    checkout_source=Order.CheckoutSource.DIRECT,
+):
     _assert_active_user(user)
 
     payload, expired = _decode_review_token(
@@ -1122,6 +1168,9 @@ def _place_direct_order_atomic(user, address_id, review_token):
         address=address,
         totals=totals,
         coupon_code=coupon.code if coupon is not None else "",
+        payment_method=payment_method,
+        payment_status=payment_status,
+        checkout_source=checkout_source,
     )
 
     if duplicate:
@@ -1130,7 +1179,7 @@ def _place_direct_order_atomic(user, address_id, review_token):
     _create_order_items(order, state, lines)
     _deduct_stock(state)
 
-    # Consume the coupon for COD placement.
+    # Consume the coupon for the selected payment method.
     if coupon is not None:
         consume_coupon(
             coupon=coupon,
@@ -1142,10 +1191,25 @@ def _place_direct_order_atomic(user, address_id, review_token):
     return OrderPlacementResult(status=STATUS_CREATED, order=order)
 
 
-def place_direct_order(user, address_id, review_token):
-    """Convert one Buy Now selection into a COD order without touching carts."""
+def place_direct_order(
+    user,
+    address_id,
+    review_token,
+    *,
+    payment_method=Order.PaymentMethod.COD,
+    payment_status=Order.PaymentStatus.UNPAID,
+    checkout_source=Order.CheckoutSource.DIRECT,
+):
+    """Convert one Buy Now selection into an order without touching carts."""
     try:
-        return _place_direct_order_atomic(user, address_id, review_token)
+        return _place_direct_order_atomic(
+            user,
+            address_id,
+            review_token,
+            payment_method=payment_method,
+            payment_status=payment_status,
+            checkout_source=checkout_source,
+        )
     except OrderServiceError:
         raise
     except Exception as exc:

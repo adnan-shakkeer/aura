@@ -240,7 +240,7 @@
                             </span>
                             <span class="inline-flex items-center gap-1.5">
                                 <span class="h-1 w-1 rounded-full {% if card.order.payment_status == 'PAID' %}bg-[#2F9E6B]{% else %}bg-auraChampagneDark{% endif %}" aria-hidden="true"></span>
-                                {{ card.order.get_payment_status_display }}
+                                {{ card.payment_status_label }}
                             </span>
                         </div>
 
@@ -315,9 +315,22 @@
         {% endif %}
     </div>
 
-    <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-auraMuted">
-        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-    </p>
+    <div class="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+        {% for number in page_obj.paginator.page_range %}
+            {% if number == page_obj.number %}
+            <span aria-current="page" class="inline-flex h-9 min-w-9 items-center justify-center rounded-full bg-auraBlack px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
+                {{ number }}
+            </span>
+            {% elif number >= page_obj.number|add:"-2" and number <= page_obj.number|add:"2" %}
+            <a
+                href="?{% if base_query %}{{ base_query }}&{% endif %}page={{ number }}"
+                class="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-auraBorder bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-auraMuted transition-colors hover:border-auraBlack/40 hover:text-auraBlack"
+            >
+                {{ number }}
+            </a>
+            {% endif %}
+        {% endfor %}
+    </div>
 
     <div class="flex items-center gap-2">
         {% if page_obj.has_next %}

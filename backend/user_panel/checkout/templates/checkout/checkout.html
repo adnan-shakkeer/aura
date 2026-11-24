@@ -5,6 +5,17 @@
 
 {% block extra_css %}
 <style>
+    .payment-option {
+        transition: border-color 150ms ease, background-color 150ms ease;
+    }
+    .payment-option[data-selected="true"] {
+        border-color: #1A1A1A;
+        background-color: #FDFBF7;
+    }
+    .payment-option[data-selected="true"] .payment-dot {
+        background-color: #1A1A1A;
+    }
+
     /* =========================================================
        AURA TOAST NOTIFICATION
        Fixed top-right toast with entrance/exit animations.
@@ -459,26 +470,46 @@
                         </h2>
                     </div>
 
-                    <!-- Single Payment Option: Cash on Delivery -->
-                    <div class="mt-6 border border-[#E5D7C5] bg-[#FDFBF7] rounded-xl p-5 flex items-center gap-4">
-                        <!-- Selected Radio Indicator -->
-                        <span class="w-4 h-4 rounded-full border border-auraBlack bg-white flex items-center justify-center flex-shrink-0" aria-hidden="true">
-                            <span class="w-2 h-2 rounded-full bg-auraBlack"></span>
-                        </span>
+                    <div class="mt-6 space-y-3" id="payment-options">
+                        <!-- Online Payment -->
+                        <label class="payment-option flex cursor-pointer items-center gap-4 rounded-xl border border-auraBorder bg-white p-5" data-selected="true">
+                            <input type="radio" name="payment_method" value="RAZORPAY" class="sr-only" {% if not razorpay_enabled %}disabled{% else %}checked{% endif %}>
+                            <span class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border border-auraBlack bg-white" aria-hidden="true">
+                                <span class="payment-dot h-2 w-2 rounded-full"></span>
+                            </span>
+                            <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-[#E5E0D8] bg-white text-auraBlack shadow-sm" aria-hidden="true">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+                                </svg>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-semibold text-auraBlack">Razorpay Secure Payment</span>
+                                <span class="mt-0.5 block text-xs text-auraMuted">UPI, credit/debit cards and netbanking. Your payment is verified before the order is confirmed.</span>
+                                {% if not razorpay_enabled %}
+                                <span class="mt-1 block text-[11px] font-medium text-[#B54708]">Online payment is temporarily unavailable.</span>
+                                {% endif %}
+                            </span>
+                            <span class="ml-auto hidden rounded-full bg-auraBlack px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-white sm:inline-flex">Recommended</span>
+                        </label>
 
-                        <!-- Cash Icon -->
-                        <div class="w-10 h-10 rounded-lg bg-white border border-[#E5E0D8] flex items-center justify-center text-auraBlack flex-shrink-0 shadow-sm" aria-hidden="true">
-                            <svg class="w-5 h-5 text-auraBlack" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6H2.25m0 0v8.25m0 0a60.1 60.1 0 0 0 15.797 2.101c.727.198 1.453-.342 1.453-1.096V14.25m-16.5-6H18m0 0a2.25 2.25 0 0 1 2.25 2.25v7.5a2.25 2.25 0 0 1-2.25 2.25M18 4.5v3.75m0 0h3.75M18 4.5a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 4.5v3.75" />
-                            </svg>
-                        </div>
-
-                        <!-- Option Description -->
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-semibold text-auraBlack">Cash on Delivery</p>
-                            <p class="text-xs text-auraMuted mt-0.5">Pay when your order is delivered.</p>
-                        </div>
+                        <!-- Cash on Delivery -->
+                        <label class="payment-option flex cursor-pointer items-center gap-4 rounded-xl border border-auraBorder bg-white p-5" data-selected="{% if not razorpay_enabled %}true{% else %}false{% endif %}">
+                            <input type="radio" name="payment_method" value="COD" class="sr-only" {% if not razorpay_enabled %}checked{% endif %}>
+                            <span class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border border-auraBlack bg-white" aria-hidden="true">
+                                <span class="payment-dot h-2 w-2 rounded-full"></span>
+                            </span>
+                            <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-[#E5E0D8] bg-white text-auraBlack shadow-sm" aria-hidden="true">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6H2.25m0 0v8.25m0 0a60.1 60.1 0 0 0 15.797 2.101c.727.198 1.453-.342 1.453-1.096V14.25m-16.5-6H18m0 0a2.25 2.25 0 0 1 2.25 2.25v7.5a2.25 2.25 0 0 1-2.25 2.25M18 4.5v3.75m0 0h3.75M18 4.5a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 4.5v3.75" />
+                                </svg>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-semibold text-auraBlack">Cash on Delivery</span>
+                                <span class="mt-0.5 block text-xs text-auraMuted">Pay in cash when your order is delivered.</span>
+                            </span>
+                        </label>
                     </div>
+                    <p id="payment-error" class="mt-3 hidden text-xs text-red-600" role="alert"></p>
                 </section>
 
                 <!-- ── Section 03: Order Review ── -->
@@ -677,12 +708,18 @@
                             id="place-order-btn"
                             class="w-full py-4 text-xs font-semibold uppercase tracking-[0.24em] bg-auraBlack text-white rounded-none transition-all flex items-center justify-center hover:bg-auraDark focus:outline-none focus:ring-2 focus:ring-auraBlack/30 disabled:cursor-not-allowed disabled:opacity-75"
                         >
-                            PLACE ORDER
+                            {% if razorpay_enabled %}PAY SECURELY{% else %}PLACE ORDER{% endif %}
                         </button>
                     </form>
 
                     <p class="mt-4 text-center text-[11px] leading-relaxed text-auraMuted">
-                        Payment will be collected in cash when your order is delivered.
+                        <span id="payment-help-text">
+                            {% if razorpay_enabled %}
+                            You will be redirected to Razorpay's secure payment window. Online payments are confirmed by AURA's server before the order is accepted.
+                            {% else %}
+                            Payment will be collected in cash when your order is delivered.
+                            {% endif %}
+                        </span>
                         {% if checkout_mode == 'direct' %}
                         Your Buy Now selection is checked out separately and your shopping bag is not changed.
                         {% else %}
@@ -1106,6 +1143,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
 (function () {
     'use strict';
@@ -1423,17 +1461,246 @@
         closeModal('coupons-modal');
     });
 
-    // ─── Place Order Submission Guard ─────────────────────────────────────────
-    // UX-only guard against double clicks. Server-side idempotency remains the
-    // authoritative protection and allows retries to recover the same order.
+    // ─── Payment Method + Order Submission ────────────────────────────────────
+    var RAZORPAY_ENABLED = {{ razorpay_enabled|yesno:"true,false" }};
+    var RAZORPAY_KEY_ID = '{{ razorpay_key_id|escapejs }}';
+    var PAYMENT_ORIGIN = 'checkout';
+    var CREATE_CART_PAYMENT_URL = '{% url "payments:create_cart_payment" %}';
+    var CREATE_DIRECT_PAYMENT_URL = '{% url "payments:create_direct_payment" %}';
+    var VERIFY_PAYMENT_URL = '{% url "payments:verify_payment" %}';
+    var paymentRadios = Array.prototype.slice.call(
+        document.querySelectorAll('input[name="payment_method"]')
+    );
+    var paymentOptions = Array.prototype.slice.call(
+        document.querySelectorAll('.payment-option')
+    );
+    var paymentError = document.getElementById('payment-error');
     var placeOrderForm = document.getElementById('place-order-form');
-    if (placeOrderForm) {
-        placeOrderForm.addEventListener('submit', function () {
-            var button = document.getElementById('place-order-btn');
-            if (button) {
-                button.disabled = true;
-                button.textContent = 'PLACING ORDER…';
+    var placeOrderButton = document.getElementById('place-order-btn');
+    var paymentHelpText = document.getElementById('payment-help-text');
+    var isSubmitting = false;
+    var paymentCompleted = false;
+
+    function selectedPaymentMethod() {
+        var selected = paymentRadios.find(function (radio) {
+            return radio.checked;
+        });
+        return selected ? selected.value : 'COD';
+    }
+
+    function setPlaceButton(loading, label) {
+        if (!placeOrderButton) return;
+        placeOrderButton.disabled = Boolean(loading);
+        if (label) {
+            placeOrderButton.textContent = label;
+        } else {
+            placeOrderButton.textContent = selectedPaymentMethod() === 'RAZORPAY'
+                ? 'PAY SECURELY'
+                : 'PLACE ORDER';
+        }
+    }
+
+    function clearPaymentError() {
+        if (!paymentError) return;
+        paymentError.textContent = '';
+        paymentError.classList.add('hidden');
+    }
+
+    function showPaymentError(message) {
+        if (!paymentError) {
+            showToast(message, 'error');
+            return;
+        }
+        paymentError.textContent = message;
+        paymentError.classList.remove('hidden');
+    }
+
+    function syncPaymentOptions() {
+        var method = selectedPaymentMethod();
+        paymentOptions.forEach(function (option) {
+            var radio = option.querySelector('input[name="payment_method"]');
+            option.dataset.selected = radio && radio.checked ? 'true' : 'false';
+        });
+        if (paymentHelpText) {
+            paymentHelpText.textContent = method === 'RAZORPAY'
+                ? "You will be redirected to Razorpay's secure payment window. Online payments are confirmed by AURA's server before the order is accepted."
+                : 'Payment will be collected in cash when your order is delivered.';
+        }
+        if (!isSubmitting) {
+            setPlaceButton(false);
+        }
+    }
+
+    paymentRadios.forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            clearPaymentError();
+            syncPaymentOptions();
+        });
+    });
+    syncPaymentOptions();
+
+    function parseJsonResponse(response) {
+        return response.json().catch(function () {
+            return {};
+        }).then(function (data) {
+            return { ok: response.ok, data: data };
+        });
+    }
+
+    function redirectTo(url) {
+        window.location.assign(url);
+    }
+
+    function verifyRazorpayPayment(response, failureUrl) {
+        paymentCompleted = true;
+        setPlaceButton(true, 'VERIFYING PAYMENT…');
+        clearPaymentError();
+
+        fetch(VERIFY_PAYMENT_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                origin: PAYMENT_ORIGIN
+            })
+        })
+            .then(parseJsonResponse)
+            .then(function (result) {
+                if (result.ok && result.data.success) {
+                    redirectTo(result.data.redirect_url);
+                    return;
+                }
+                var target = result.data.failure_url || failureUrl;
+                if (target) {
+                    redirectTo(target);
+                    return;
+                }
+                throw new Error(result.data.message || 'We could not verify this payment.');
+            })
+            .catch(function (error) {
+                paymentCompleted = false;
+                isSubmitting = false;
+                setPlaceButton(false);
+                showPaymentError(error.message || 'We could not verify this payment. Please try again.');
+            });
+    }
+
+    function openRazorpayCheckout(data) {
+        if (typeof window.Razorpay !== 'function') {
+            isSubmitting = false;
+            setPlaceButton(false);
+            showPaymentError('The payment window could not load. Please check your connection and try again.');
+            return;
+        }
+
+        var checkout = data.checkout || {};
+        var failureUrl = data.failure_url || '';
+        var options = {
+            key: checkout.key || checkout.key_id || RAZORPAY_KEY_ID,
+            amount: checkout.amount,
+            currency: checkout.currency || 'INR',
+            name: checkout.name || 'AURA',
+            description: checkout.description || 'AURA order payment',
+            order_id: checkout.order_id,
+            prefill: checkout.prefill || {},
+            notes: checkout.notes || {},
+            theme: checkout.theme || { color: '#1A1A1A' },
+            handler: function (response) {
+                verifyRazorpayPayment(response, failureUrl);
+            },
+            modal: {
+                ondismiss: function () {
+                    if (paymentCompleted) return;
+                    isSubmitting = false;
+                    setPlaceButton(false);
+                    showToast('Payment cancelled. Your order is reserved for 5 minutes.', 'warning');
+                }
             }
+        };
+
+        var rzp = new window.Razorpay(options);
+        if (rzp.on) {
+            rzp.on('payment.failed', function () {
+                // The browser event only decides where the customer goes.
+                // Payment state is always confirmed by the server.
+                if (paymentCompleted) return;
+                paymentCompleted = true;
+                if (failureUrl) {
+                    redirectTo(failureUrl);
+                    return;
+                }
+                isSubmitting = false;
+                setPlaceButton(false);
+                showPaymentError('The payment could not be completed. You can try again.');
+            });
+        }
+        rzp.open();
+    }
+
+    if (placeOrderForm) {
+        placeOrderForm.addEventListener('submit', function (event) {
+            if (isSubmitting) {
+                event.preventDefault();
+                return;
+            }
+
+            var method = selectedPaymentMethod();
+            if (method === 'COD') {
+                isSubmitting = true;
+                setPlaceButton(true, 'PLACING ORDER…');
+                return;
+            }
+
+            event.preventDefault();
+            clearPaymentError();
+
+            if (!RAZORPAY_ENABLED) {
+                showPaymentError('Online payment is temporarily unavailable. Please choose Cash on Delivery.');
+                return;
+            }
+
+            isSubmitting = true;
+            setPlaceButton(true, 'STARTING PAYMENT…');
+
+            var createUrl = CHECKOUT_SOURCE === 'direct'
+                ? CREATE_DIRECT_PAYMENT_URL
+                : CREATE_CART_PAYMENT_URL;
+
+            fetch(createUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: '{}'
+            })
+                .then(parseJsonResponse)
+                .then(function (result) {
+                    if (result.data && result.data.redirect_url) {
+                        redirectTo(result.data.redirect_url);
+                        return;
+                    }
+                    if (!result.ok || !result.data.success) {
+                        throw new Error(result.data.message || 'We could not start the payment. Please try again.');
+                    }
+                    if (result.data.already_paid) {
+                        redirectTo(result.data.redirect_url);
+                        return;
+                    }
+                    openRazorpayCheckout(result.data);
+                })
+                .catch(function (error) {
+                    isSubmitting = false;
+                    setPlaceButton(false);
+                    showPaymentError(error.message || 'We could not start the payment. Please try again.');
+                });
         });
     }
 

@@ -96,6 +96,7 @@ class InvoiceContext:
     offer_discount_total: Decimal = Decimal("0.00")
     coupon_discount_total: Decimal = Decimal("0.00")
     coupon_code: str = ""
+    payment_reference: str = ""
 
 
 def is_invoice_available(order):
@@ -147,6 +148,19 @@ def _shipping_address_lines(order):
     return tuple(lines)
 
 
+def _payment_reference(order):
+    from user_panel.payments.models import PaymentAttempt  # noqa: PLC0415
+
+    attempt = (
+        order.payment_attempts.filter(status=PaymentAttempt.Status.CAPTURED)
+        .order_by("-captured_at", "-id")
+        .first()
+    )
+    if attempt is None:
+        return ""
+    return attempt.provider_payment_id or ""
+
+
 def build_invoice_context(order):
     invoice_number = build_invoice_number(order)
     total = _money(order.total)
@@ -194,6 +208,7 @@ def build_invoice_context(order):
         offer_discount_total=_money(order.offer_discount_total),
         coupon_discount_total=_money(order.coupon_discount_total),
         coupon_code=order.coupon_code or "",
+        payment_reference=_payment_reference(order),
     )
 
 
@@ -516,6 +531,14 @@ def _payment_block(context):
             Paragraph(escape(context.payment_status), right),
         ],
     ]
+
+    if context.payment_reference:
+        rows.append(
+            [
+                Paragraph("Payment reference", body),
+                Paragraph(escape(context.payment_reference), right),
+            ]
+        )
 
     if context.payment_collected_at:
         rows.append(

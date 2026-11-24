@@ -179,6 +179,8 @@ def order_detail(request, order_number):
             "items__variant__images",
             "items__return_item",
             "status_events__changed_by",
+            "payment_attempts__refunds",
+            "refunds",
         ),
         order_number=order_number,
     )
@@ -206,7 +208,16 @@ def order_detail(request, order_number):
 
     # 2. Status Transition Options
     # Determine allowed next statuses
-    allowed_next_statuses = _ADMIN_TRANSITIONS.get(order.status, set())
+    payment_blocks_fulfilment = (
+        order.payment_method == Order.PaymentMethod.RAZORPAY
+        and order.payment_status != Order.PaymentStatus.PAID
+        and order.status != Order.OrderStatus.CANCELLED
+    )
+    allowed_next_statuses = (
+        set()
+        if payment_blocks_fulfilment
+        else _ADMIN_TRANSITIONS.get(order.status, set())
+    )
     # Sort them in approved progression order
     progression_order = [
         Order.OrderStatus.SHIPPED,
@@ -226,6 +237,22 @@ def order_detail(request, order_number):
     # Map out events by status
     event_by_status = {ev.status: ev for ev in status_events}
 
+    if order.payment_status == Order.PaymentStatus.PAID:
+        if order.payment_method == Order.PaymentMethod.RAZORPAY:
+            payment_subtitle = (
+                f"Razorpay payment confirmed (₹{order.payment_collected_amount})"
+            )
+        else:
+            payment_subtitle = (
+                f"Cash on Delivery collected (₹{order.payment_collected_amount})"
+            )
+    elif order.status == Order.OrderStatus.CANCELLED:
+        payment_subtitle = "Order cancelled before payment"
+    elif order.payment_method == Order.PaymentMethod.RAZORPAY:
+        payment_subtitle = "Awaiting verified Razorpay payment"
+    else:
+        payment_subtitle = "Awaiting COD collection upon delivery"
+
     timeline = [
         {
             "key": "placed",
@@ -241,7 +268,7 @@ def order_detail(request, order_number):
             "title": "Payment Confirmed",
             "timestamp": order.payment_collected_at if order.payment_status == Order.PaymentStatus.PAID else None,
             "status": "completed" if order.payment_status == Order.PaymentStatus.PAID else ("cancelled" if order.status == Order.OrderStatus.CANCELLED else "pending"),
-            "subtitle": f"Cash on Delivery collected (₹{order.payment_collected_amount})" if order.payment_status == Order.PaymentStatus.PAID else ("Order cancelled before payment" if order.status == Order.OrderStatus.CANCELLED else "Awaiting COD collection upon delivery"),
+            "subtitle": payment_subtitle,
             "actor": (order.payment_collected_by.get_full_name() or order.payment_collected_by.username) if order.payment_collected_by else None,
             "note": "",
         },
@@ -292,6 +319,10 @@ def order_detail(request, order_number):
         "timeline": timeline,
         "next_status_choices": next_status_choices,
         "can_update_status": bool(next_status_choices),
+        "payment_blocks_fulfilment": payment_blocks_fulfilment,
+        "payment_attempts": list(order.payment_attempts.all()[:10]),
+        "refunds": list(order.refunds.all()[:10]),
+        "latest_payment_attempt": order.payment_attempts.first(),
     }
     return render(request, "admin_panel/orders/order_detail.html", context)
 

@@ -336,6 +336,25 @@ def approve_return(return_item_id, *, admin, note=""):
         ]
     )
 
+    if (
+        order.payment_method == Order.PaymentMethod.RAZORPAY
+        and order.payment_status == Order.PaymentStatus.PAID
+    ):
+        from user_panel.payments.services import (  # noqa: PLC0415
+            captured_attempt_for_order,
+            record_refund_obligation,
+            refund_amount_for_order_item,
+        )
+
+        record_refund_obligation(
+            order,
+            refund_amount_for_order_item(order_item),
+            kind="RETURN",
+            dedupe_key=f"order:{order.pk}:return-item:{return_item.pk}",
+            reason=f"Return approved for {order_item.product_name}.",
+            payment_attempt=captured_attempt_for_order(order),
+        )
+
     return return_item
 
 

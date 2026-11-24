@@ -344,8 +344,10 @@ class CheckoutRedesignLayoutTests(CheckoutReviewViewTestBase):
 
         self.assertContains(response, "Cash on Delivery")
         self.assertContains(response, "Pay when your order is delivered.")
-        # Ensure unimplemented payment methods are absent
-        self.assertNotContains(response, "Razorpay")
+        self.assertFalse(response.context["razorpay_enabled"])
+        self.assertContains(response, 'value="COD" class="sr-only" checked')
+        # Razorpay is rendered only when credentials are configured; it must
+        # not be the default or active checkout payment method here.
         self.assertNotContains(response, "PayPal")
         self.assertNotContains(response, "Wallet")
 

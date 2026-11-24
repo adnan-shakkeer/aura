@@ -68,6 +68,8 @@ urlpatterns = [
     path("orders/", include("user_panel.orders.urls")),
 
     path("checkout/", include("user_panel.checkout.urls")),
+
+    path("payments/", include("user_panel.payments.urls")),
     
 ]
 

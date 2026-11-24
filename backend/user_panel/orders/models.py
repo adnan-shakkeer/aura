@@ -28,10 +28,18 @@ class Order(models.Model):
 
     class PaymentMethod(models.TextChoices):
         COD = "COD", "Cash on Delivery"
+        RAZORPAY = "RAZORPAY", "Razorpay"
 
     class PaymentStatus(models.TextChoices):
         UNPAID = "UNPAID", "Unpaid"
+        PENDING = "PENDING", "Payment pending"
+        FAILED = "FAILED", "Payment failed"
+        EXPIRED = "EXPIRED", "Payment expired"
         PAID = "PAID", "Paid"
+
+    class CheckoutSource(models.TextChoices):
+        CART = "CART", "Shopping bag"
+        DIRECT = "DIRECT", "Buy Now"
 
     class DeliveryAddressType(models.TextChoices):
         HOME = "HOME", "Home"
@@ -75,6 +83,12 @@ class Order(models.Model):
         max_length=20,
         choices=PaymentStatus.choices,
         default=PaymentStatus.UNPAID,
+    )
+
+    checkout_source = models.CharField(
+        max_length=10,
+        choices=CheckoutSource.choices,
+        default=CheckoutSource.CART,
     )
 
     payment_collected_at = models.DateTimeField(

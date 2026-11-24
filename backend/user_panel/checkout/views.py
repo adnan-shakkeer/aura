@@ -16,6 +16,7 @@ from decimal import Decimal
 
 from urllib.parse import urlencode
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -325,6 +326,8 @@ def _base_checkout_context(
         "back_label": back_label,
         "issue_url": issue_url,
         "issue_label": issue_label,
+        "razorpay_enabled": settings.RAZORPAY_ENABLED,
+        "razorpay_key_id": settings.RAZORPAY_KEY_ID,
     }
 
 
@@ -574,6 +577,13 @@ def buy_now_place_order(request):
         )
         return redirect("checkout:buy_now_review")
 
+    if request.POST.get("payment_method", "COD").strip().upper() != "COD":
+        messages.error(
+            request,
+            "Online payment could not start. Please retry the secure payment.",
+        )
+        return redirect("checkout:buy_now_review")
+
     try:
         result = place_direct_order(request.user, address_id, review_token)
     except InvalidReviewTokenError:
@@ -688,6 +698,13 @@ def place_order_submit(request):
         messages.error(
             request,
             "Please review your order before placing it.",
+        )
+        return redirect("checkout:checkout_review")
+
+    if request.POST.get("payment_method", "COD").strip().upper() != "COD":
+        messages.error(
+            request,
+            "Online payment could not start. Please retry the secure payment.",
         )
         return redirect("checkout:checkout_review")
 

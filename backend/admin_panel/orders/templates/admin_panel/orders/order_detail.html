@@ -59,6 +59,8 @@ ADMIN / <a href="{% url 'admin_orders:list' %}" class="hover:text-auraGold trans
                         Payment: 
                         {% if order.payment_status == 'PAID' %}
                             <span class="text-[#1E7E4D] font-semibold">Paid</span>
+                        {% elif order.payment_method == 'RAZORPAY' %}
+                            <span class="text-[#B54708] font-semibold">{{ order.get_payment_status_display }} (Razorpay)</span>
                         {% else %}
                             <span class="text-[#B54708] font-semibold">Unpaid (Awaiting COD)</span>
                         {% endif %}
@@ -88,6 +90,11 @@ ADMIN / <a href="{% url 'admin_orders:list' %}" class="hover:text-auraGold trans
                     <span>Update Status</span>
                 </button>
             </form>
+            {% elif payment_blocks_fulfilment %}
+            <div class="inline-flex items-center gap-2 px-4 py-2 bg-[#FFF7ED] border border-[#B54708]/30 text-xs text-[#B54708] rounded-sm">
+                <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                <span>Awaiting verified Razorpay payment before fulfilment</span>
+            </div>
             {% else %}
             <div class="inline-flex items-center gap-2 px-4 py-2 bg-[#F7F5F0] border border-[#E8E5DF] text-xs text-[#6E6A63] rounded-sm">
                 <i data-lucide="lock" class="w-3.5 h-3.5 text-[#A8842C]"></i>
@@ -296,10 +303,14 @@ ADMIN / <a href="{% url 'admin_orders:list' %}" class="hover:text-auraGold trans
                         <div class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold mb-2">Payment Method</div>
                         <div class="flex items-center gap-2 text-xs font-semibold text-[#141414]">
                             <i data-lucide="truck" class="w-4 h-4 text-[#A8842C]"></i>
-                            <span>{{ order.get_payment_method_display }} (COD)</span>
+                            <span>{{ order.get_payment_method_display }}</span>
                         </div>
                         <div class="text-[11px] text-[#6E6A63] mt-1">
-                            Payment collected upon physical delivery of goods.
+                            {% if order.payment_method == 'RAZORPAY' %}
+                                Online payment verified server-side through Razorpay.
+                            {% else %}
+                                Payment collected upon physical delivery of goods.
+                            {% endif %}
                         </div>
                     </div>
 
@@ -321,6 +332,15 @@ ADMIN / <a href="{% url 'admin_orders:list' %}" class="hover:text-auraGold trans
                                 <div class="text-[11px] text-[#6E6A63]">
                                     Collected by: {{ order.payment_collected_by.get_full_name|default:order.payment_collected_by.username }}
                                 </div>
+                                {% elif order.payment_method == 'RAZORPAY' %}
+                                <div class="text-[11px] text-[#6E6A63]">
+                                    Confirmed by Razorpay
+                                </div>
+                                {% endif %}
+                                {% if latest_payment_attempt.provider_payment_id %}
+                                <div class="text-[11px] text-[#6E6A63] break-all">
+                                    Razorpay payment: {{ latest_payment_attempt.provider_payment_id }}
+                                </div>
                                 {% endif %}
                             {% else %}
                                 <span class="inline-flex items-center px-3 py-1 text-[9px] uppercase tracking-widest font-semibold border border-[#B54708]/30 bg-[#FFF7ED] text-[#B54708] rounded-sm">
@@ -337,6 +357,66 @@ ADMIN / <a href="{% url 'admin_orders:list' %}" class="hover:text-auraGold trans
                             {% endif %}
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- 3b. PAYMENT ATTEMPTS & REFUND TRACKING -->
+            <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
+                <div class="flex items-center gap-2.5 border-b border-[#E8E5DF] pb-4 mb-5">
+                    <div class="w-8 h-8 rounded-full bg-[#FAF3E3] border border-[#A8842C]/30 flex items-center justify-center">
+                        <i data-lucide="receipt" class="w-4 h-4 text-[#A8842C]"></i>
+                    </div>
+                    <h3 class="text-xs uppercase tracking-[0.2em] text-[#141414] font-bold">Payment Attempts & Refunds</h3>
+                </div>
+
+                {% if payment_attempts %}
+                <div class="space-y-3">
+                    {% for attempt in payment_attempts %}
+                    <div class="rounded-sm border border-[#EFECE6] bg-[#FAF8F5] p-3 text-xs">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="font-semibold text-[#141414]">{{ attempt.get_status_display }}</span>
+                            <span class="text-[#6E6A63]">₹{{ attempt.amount|floatformat:2 }}</span>
+                        </div>
+                        <div class="mt-1 text-[11px] text-[#6E6A63] break-all">
+                            Order: {{ attempt.provider_order_id }}
+                            {% if attempt.provider_payment_id %}<br>Payment: {{ attempt.provider_payment_id }}{% endif %}
+                        </div>
+                        {% if attempt.failure_description %}
+                        <div class="mt-1 text-[11px] text-[#B42318]">{{ attempt.failure_description }}</div>
+                        {% endif %}
+                        <div class="mt-1 text-[10px] uppercase tracking-widest text-[#A8A29A]">
+                            Created {{ attempt.created_at|date:"M d, Y H:i" }}
+                            {% if attempt.captured_at %} · Captured {{ attempt.captured_at|date:"M d, Y H:i" }}{% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-xs text-[#6E6A63]">No Razorpay payment attempts recorded.</p>
+                {% endif %}
+
+                <div class="mt-6 border-t border-[#EFECE6] pt-5">
+                    <h4 class="text-[10px] uppercase tracking-widest font-semibold text-[#6E6A63] mb-3">Manual Refund Obligations</h4>
+                    {% if refunds %}
+                    <div class="space-y-3">
+                        {% for refund in refunds %}
+                        <div class="rounded-sm border border-[#E3C9A8] bg-[#FDF6EA] p-3 text-xs">
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="font-semibold text-[#141414]">{{ refund.get_kind_display }}</span>
+                                <span class="font-semibold text-[#8A5A22]">₹{{ refund.amount|floatformat:2 }}</span>
+                            </div>
+                            <div class="mt-1 text-[11px] text-[#6E6A63]">
+                                {{ refund.get_status_display }}
+                                {% if refund.manual_reference %} · Ref: {{ refund.manual_reference }}{% endif %}
+                                {% if refund.completed_at %} · {{ refund.completed_at|date:"M d, Y" }}{% endif %}
+                            </div>
+                            {% if refund.reason %}<div class="mt-1 text-[11px] text-[#6E6A63]">{{ refund.reason }}</div>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-xs text-[#6E6A63]">No refund obligations recorded.</p>
+                    {% endif %}
                 </div>
             </div>
 
