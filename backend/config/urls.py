@@ -45,6 +45,8 @@ urlpatterns = [
 
     path("admin-panel/products/", include("admin_panel.products.urls")),
 
+    path("admin-panel/reports/", include("admin_panel.reports.urls")),
+
     path("admin-panel/orders/", include("admin_panel.orders.urls")),
 
     path("admin-panel/returns/", include("admin_panel.returns.urls")),

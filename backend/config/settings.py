@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "admin_panel.brands",
     "admin_panel.coupons",
     "admin_panel.orders",
+    "admin_panel.reports",
     "admin_panel.returns",
 
     # User Panel Apps

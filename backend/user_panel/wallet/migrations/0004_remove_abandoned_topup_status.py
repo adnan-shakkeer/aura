@@ -6,8 +6,8 @@ from django.db import migrations, models
 def convert_abandoned_to_failed(apps, schema_editor):
     WalletTopUp = apps.get_model("wallet", "WalletTopUp")
     WalletTopUp.objects.filter(
-        status=WalletTopUp.Status.ABANDONED
-    ).update(status=WalletTopUp.Status.FAILED)
+        status="ABANDONED"
+    ).update(status="FAILED")
 
 
 class Migration(migrations.Migration):

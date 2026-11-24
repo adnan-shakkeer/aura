@@ -1,100 +1,119 @@
 {% extends "dashboard/base_admin.html" %}
 
 {% block admin_content %}
-<!-- Dashboard Header & Filter [C] -->
+{# ------------------------------------------------------------------ #}
+{# Dashboard Header & Period Selector                                  #}
+{# ------------------------------------------------------------------ #}
 <div class="flex justify-between items-end mb-10">
     <div>
         <h2 class="font-serif text-4xl tracking-wide text-[#141414] mb-4">Dashboard</h2>
         <div class="w-16 h-[1px] bg-auraGold"></div>
     </div>
-    
-    <!-- Date Filter Dropdown -->
-    <div class="relative group">
-        <button class="flex items-center gap-3 px-5 py-2.5 border border-auraBorder bg-auraSurface rounded-sm hover:border-auraGold transition-all duration-300">
-            <span class="text-[10px] uppercase tracking-widest text-auraMuted font-medium group-hover:text-[#141414] transition-colors">Period: <span class="text-[#141414]">Last 30 Days</span></span>
-            <i data-lucide="chevron-down" class="w-3 h-3 text-auraMuted group-hover:text-auraGold transition-colors"></i>
+
+    {# Period selector — submits via GET, highlights the active period #}
+    <form method="GET" class="flex items-center border border-auraBorder rounded-sm bg-auraSurface overflow-hidden">
+        {% for days, label in period_options %}
+        <button type="submit" name="period" value="{{ days }}"
+            class="px-4 py-2.5 text-[10px] uppercase tracking-widest font-medium transition-all duration-200 border-r border-auraBorder last:border-r-0
+            {% if period_days == days %}bg-auraGold text-white{% else %}text-auraMuted hover:text-[#141414] hover:bg-[#F7F5F0]{% endif %}">
+            {{ label }}
         </button>
-    </div>
+        {% endfor %}
+    </form>
 </div>
 
-<!-- 4 Metric Stat Cards [D] -->
+{# ------------------------------------------------------------------ #}
+{# KPI Cards                                                           #}
+{# ------------------------------------------------------------------ #}
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-    
-    <!-- TOTAL REVENUE (Featured) -->
+
+    {# TOTAL REVENUE (featured gold border) #}
     <div class="bg-[#FDFBF6] border border-auraGold/30 rounded-sm p-8 shadow-lg relative overflow-hidden group hover:border-auraGold transition-all duration-300">
         <div class="absolute -right-10 -top-10 w-32 h-32 bg-auraGold/5 rounded-full blur-2xl group-hover:bg-auraGold/10 transition-all duration-500"></div>
         <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4 relative z-10">Total Revenue</p>
-        <h3 class="font-serif text-4xl text-[#141414] tracking-wide mb-6 relative z-10">₹{{ total_revenue }}</h3>
-        <p class="text-[9px] uppercase tracking-widest text-[#1E7E4D] font-medium relative z-10">+8.2% VS PREV MONTH</p>
+        <h3 class="font-serif text-4xl text-[#141414] tracking-wide mb-6 relative z-10">₹{{ total_revenue|floatformat:0 }}</h3>
+        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium relative z-10">
+            {% if avg_order_value %}
+                Avg. ₹{{ avg_order_value|floatformat:0 }} per order
+            {% else %}
+                No paid orders this period
+            {% endif %}
+        </p>
     </div>
 
-    <!-- TOTAL ORDERS -->
+    {# TOTAL ORDERS #}
     <div class="bg-auraSurface border border-auraBorder rounded-sm p-8 hover:border-auraGold/50 transition-all duration-300">
         <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4">Total Orders</p>
         <h3 class="font-serif text-4xl text-[#141414] tracking-wide mb-6">{{ total_orders }}</h3>
-        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium">Avg. Order Value: ₹{{ avg_order_value }}</p>
+        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium">
+            {{ pending_orders }} Pending
+        </p>
     </div>
 
-    <!-- TOTAL CUSTOMERS (Featured) -->
+    {# TOTAL CUSTOMERS (featured gold border) #}
     <div class="bg-[#FDFBF6] border border-auraGold/30 rounded-sm p-8 shadow-lg relative overflow-hidden group hover:border-auraGold transition-all duration-300">
         <div class="absolute -right-10 -top-10 w-32 h-32 bg-auraGold/5 rounded-full blur-2xl group-hover:bg-auraGold/10 transition-all duration-500"></div>
         <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4 relative z-10">Total Customers</p>
         <h3 class="font-serif text-4xl text-[#141414] tracking-wide mb-6 relative z-10">{{ total_customers }}</h3>
-        <p class="text-[9px] uppercase tracking-widest text-auraGold/80 font-medium relative z-10">24 New Today</p>
+        <p class="text-[9px] uppercase tracking-widest text-auraGold/80 font-medium relative z-10">
+            {% if new_customers %}
+                {{ new_customers }} New This Period
+            {% else %}
+                No new customers this period
+            {% endif %}
+        </p>
     </div>
 
-    <!-- TOTAL PRODUCTS -->
+    {# TOTAL PRODUCTS #}
     <div class="bg-auraSurface border border-auraBorder rounded-sm p-8 hover:border-auraGold/50 transition-all duration-300">
         <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4">Total Products</p>
         <h3 class="font-serif text-4xl text-[#141414] tracking-wide mb-6">{{ total_products }}</h3>
-        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium">Across 12 Brands</p>
+        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium">
+            Across {{ brand_count }} Brand{{ brand_count|pluralize }}
+        </p>
     </div>
+
 </div>
 
-<!-- Sales Overtime Chart Section [E] -->
+{# ------------------------------------------------------------------ #}
+{# Sales Overtime Chart                                                #}
+{# ------------------------------------------------------------------ #}
 <div class="bg-auraSurface border border-auraBorder rounded-sm mb-10 overflow-hidden">
-    <!-- Chart Header -->
+
+    {# Chart header #}
     <div class="px-8 py-6 border-b border-auraBorder flex items-center justify-between">
         <h3 class="text-[11px] uppercase tracking-[0.2em] text-[#141414] font-semibold">Sales Overtime</h3>
-        <div class="flex items-center gap-8">
-            <span class="text-[10px] uppercase tracking-widest text-auraGold font-medium">Monthly Growth: +12.4%</span>
-            <div class="flex items-center gap-6 text-[9px] uppercase tracking-[0.2em] font-medium">
-                <button class="text-[#141414] border-b border-auraGold pb-1">Revenue</button>
-                <button class="text-auraMuted hover:text-[#141414] transition-colors pb-1">Units Sold</button>
-            </div>
+        <div class="flex items-center gap-6 text-[9px] uppercase tracking-[0.2em] font-medium">
+            <button data-chart-toggle="revenue"
+                class="chart-toggle-btn text-[#141414] border-b border-auraGold pb-1 transition-all duration-200">
+                Revenue
+            </button>
+            <button data-chart-toggle="units"
+                class="chart-toggle-btn text-auraMuted hover:text-[#141414] transition-colors pb-1">
+                Units Sold
+            </button>
         </div>
     </div>
-    
-    <!-- Chart Area (Mockup using HTML/CSS) -->
-    <div class="p-8 h-80 relative flex items-end justify-between gap-4">
-        <!-- Dashed Trendline (SVG Overlay) -->
-        <svg class="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
-            <polyline points="0,80 16,65 33,75 50,45 66,50 83,20 100,10" fill="none" stroke="#A8842C" stroke-width="0.5" stroke-dasharray="2,2" class="opacity-50" />
-        </svg>
-        
-        <!-- Bars -->
-        <div class="w-full bg-[#E3DFD7] rounded-t-sm relative group h-[20%] hover:bg-[#D5CFC4] transition-colors"></div>
-        <div class="w-full bg-[#E3DFD7] rounded-t-sm relative group h-[40%] hover:bg-[#D5CFC4] transition-colors"></div>
-        <div class="w-full bg-[#E3DFD7] rounded-t-sm relative group h-[25%] hover:bg-[#D5CFC4] transition-colors"></div>
-        <div class="w-full bg-[#E3DFD7] rounded-t-sm relative group h-[60%] hover:bg-[#D5CFC4] transition-colors"></div>
-        <div class="w-full bg-[#E3DFD7] rounded-t-sm relative group h-[50%] hover:bg-[#D5CFC4] transition-colors"></div>
-        <div class="w-full bg-[#E3DFD7] rounded-t-sm relative group h-[80%] hover:bg-[#D5CFC4] transition-colors"></div>
-        
-        <!-- Active/Highlighted Bar -->
-        <div class="w-full bg-[#141414] rounded-t-sm relative group h-[95%] shadow-[0_0_15px_rgba(0,0,0,0.12)]">
-            <!-- Tooltip Tag -->
-            <div class="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-white border border-auraBorder text-[#141414] text-[9px] uppercase tracking-widest px-3 py-2 rounded-sm whitespace-nowrap shadow-lg">
-                Jul <br> <span class="text-auraMuted">(Act)</span>
-            </div>
+
+    {# Chart canvas area #}
+    <div class="p-8">
+        <div id="chart-empty" class="hidden py-16 text-center text-auraMuted text-xs tracking-widest">
+            No sales data available for this period.
+        </div>
+        <div id="chart-wrapper" style="position: relative; height: 320px;">
+            <canvas id="salesChart"></canvas>
         </div>
     </div>
 </div>
 
-<!-- Recent Orders Table [F] -->
+{# ------------------------------------------------------------------ #}
+{# Recent Orders Table                                                 #}
+{# ------------------------------------------------------------------ #}
 <div class="mb-10">
     <div class="flex items-center justify-between mb-6 px-1">
         <h3 class="font-serif text-2xl tracking-wide text-[#141414]">Recent Orders</h3>
-        <a href="{% url 'admin_orders:list' %}" class="text-[9px] uppercase tracking-[0.2em] text-auraGold hover:text-[#141414] transition-colors flex items-center gap-2 font-medium">
+        <a href="{% url 'admin_orders:list' %}"
+            class="text-[9px] uppercase tracking-[0.2em] text-auraGold hover:text-[#141414] transition-colors flex items-center gap-2 font-medium">
             View All Orders <i data-lucide="arrow-right" class="w-3 h-3"></i>
         </a>
     </div>
@@ -103,38 +122,45 @@
         <table class="w-full text-left border-collapse">
             <thead>
                 <tr class="border-b border-auraBorder bg-[#F7F5F0]">
-                    <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold w-32">Order ID</th>
+                    <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold w-48">Order ID</th>
                     <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold">Customer</th>
                     <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold w-40">Date</th>
                     <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold w-32">Total</th>
-                    <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold w-40">Status</th>
+                    <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold w-44">Status</th>
                     <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold w-24 text-right">Action</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-auraBorder">
                 {% for order in recent_orders %}
                 <tr class="hover:bg-[#FAF8F4] transition-colors duration-200">
-                    <td class="py-5 px-6 text-xs text-[#141414] font-medium">{{ order.order_id }}</td>
-                    <td class="py-5 px-6 text-xs text-auraMuted">{{ order.customer }}</td>
-                    <td class="py-5 px-6 text-xs text-auraMuted">{{ order.date }}</td>
-                    <td class="py-5 px-6 text-xs text-[#141414] font-semibold">₹{{ order.total }}</td>
+                    <td class="py-5 px-6 text-xs text-[#141414] font-medium">#{{ order.order_number }}</td>
+                    <td class="py-5 px-6 text-xs text-auraMuted">
+                        {% with name=order.user.get_full_name %}
+                            {% if name %}{{ name }}{% else %}{{ order.user.email }}{% endif %}
+                        {% endwith %}
+                    </td>
+                    <td class="py-5 px-6 text-xs text-auraMuted">{{ order.created_at|date:"M d, Y" }}</td>
+                    <td class="py-5 px-6 text-xs text-[#141414] font-semibold">₹{{ order.total|floatformat:0 }}</td>
                     <td class="py-5 px-6">
-                        {% if order.status|lower == 'shipped' %}
-                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-[#C9C4BB] text-[#6E6A63] rounded-sm w-24">Shipped</span>
-                        {% elif order.status|lower == 'processing' %}
-                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest bg-[#141414] text-white font-bold rounded-sm w-24">Processing</span>
-                        {% elif order.status|lower == 'pending' %}
-                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-auraBorder text-auraMuted rounded-sm w-24">Pending</span>
-                        {% elif order.status|lower == 'delivered' %}
-                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-[#1E7E4D]/30 text-[#1E7E4D] rounded-sm w-24">Delivered</span>
-                        {% elif order.status|lower == 'cancelled' %}
-                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-[#B42318]/30 text-[#B42318] rounded-sm w-24">Cancelled</span>
+                        {% with s=order.status %}
+                        {% if s == 'SHIPPED' %}
+                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-[#C9C4BB] text-[#6E6A63] rounded-sm w-32">Shipped</span>
+                        {% elif s == 'PENDING' %}
+                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-auraBorder text-auraMuted rounded-sm w-32">Pending</span>
+                        {% elif s == 'OUT_FOR_DELIVERY' %}
+                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest bg-[#141414] text-white font-bold rounded-sm w-32">Out for Delivery</span>
+                        {% elif s == 'DELIVERED' %}
+                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-[#1E7E4D]/30 text-[#1E7E4D] rounded-sm w-32">Delivered</span>
+                        {% elif s == 'CANCELLED' %}
+                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-[#B42318]/30 text-[#B42318] rounded-sm w-32">Cancelled</span>
                         {% else %}
-                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-auraBorder text-auraMuted rounded-sm w-24">{{ order.status }}</span>
+                            <span class="inline-flex items-center justify-center px-3 py-1 text-[8px] uppercase tracking-widest border border-auraBorder text-auraMuted rounded-sm w-32">{{ order.status }}</span>
                         {% endif %}
+                        {% endwith %}
                     </td>
                     <td class="py-5 px-6 text-right">
-                        <a href="{{ order.action_url|default:'#' }}" class="text-[9px] uppercase tracking-widest text-auraMuted hover:text-auraGold transition-colors inline-flex items-center gap-1 font-medium group">
+                        <a href="{% url 'admin_orders:detail' order.order_number %}"
+                            class="text-[9px] uppercase tracking-widest text-auraMuted hover:text-auraGold transition-colors inline-flex items-center gap-1 font-medium group">
                             View <i data-lucide="arrow-right" class="w-3 h-3 group-hover:translate-x-0.5 transition-transform"></i>
                         </a>
                     </td>
@@ -149,4 +175,150 @@
     </div>
 </div>
 
+{# ------------------------------------------------------------------ #}
+{# Chart.js — loaded only on the dashboard page (not in base_admin)   #}
+{# ------------------------------------------------------------------ #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    var CHART_DATA = {{ chart_data_json|safe }};
+
+    var ctx = document.getElementById('salesChart');
+    var wrapper = document.getElementById('chart-wrapper');
+    var emptyMsg = document.getElementById('chart-empty');
+
+    if (!CHART_DATA.has_data || CHART_DATA.labels.length === 0) {
+        wrapper.style.display = 'none';
+        emptyMsg.classList.remove('hidden');
+        return;
+    }
+
+    var BAR_COLOR        = '#E3DFD7';
+    var BAR_COLOR_HOVER  = '#D5CFC4';
+    var GRID_COLOR       = '#E8E5DF';
+    var TICK_COLOR       = '#6E6A63';
+
+    var salesChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: CHART_DATA.labels,
+            datasets: [
+                {
+                    label: 'Revenue (₹)',
+                    data: CHART_DATA.revenue,
+                    backgroundColor: BAR_COLOR,
+                    hoverBackgroundColor: BAR_COLOR_HOVER,
+                    borderRadius: 2,
+                    borderSkipped: false,
+                    hidden: false,
+                },
+                {
+                    label: 'Units Sold',
+                    data: CHART_DATA.units,
+                    backgroundColor: BAR_COLOR,
+                    hoverBackgroundColor: BAR_COLOR_HOVER,
+                    borderRadius: 2,
+                    borderSkipped: false,
+                    hidden: true,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#E8E5DF',
+                    borderWidth: 1,
+                    titleColor: '#141414',
+                    bodyColor: '#6E6A63',
+                    titleFont: { size: 10, weight: '600', family: 'inherit' },
+                    bodyFont: { size: 10, family: 'inherit' },
+                    padding: 12,
+                    cornerRadius: 2,
+                    callbacks: {
+                        label: function (context) {
+                            var label = context.dataset.label || '';
+                            var val = context.parsed.y;
+                            if (label.indexOf('Revenue') !== -1) {
+                                return ' ₹' + val.toLocaleString('en-IN');
+                            }
+                            return ' ' + val + ' units';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: GRID_COLOR, drawBorder: false },
+                    ticks: {
+                        color: TICK_COLOR,
+                        font: { size: 9, family: 'inherit' },
+                        maxRotation: 45,
+                        autoSkip: true,
+                        maxTicksLimit: 12,
+                    }
+                },
+                y: {
+                    grid: { color: GRID_COLOR, drawBorder: false },
+                    ticks: {
+                        color: TICK_COLOR,
+                        font: { size: 9, family: 'inherit' },
+                        callback: function (value) {
+                            // Show compact numbers for revenue mode
+                            if (value >= 100000) return '₹' + (value / 100000).toFixed(1) + 'L';
+                            if (value >= 1000)   return '₹' + (value / 1000).toFixed(1) + 'k';
+                            return value;
+                        }
+                    },
+                    beginAtZero: true,
+                }
+            }
+        }
+    });
+
+    // Active mode tracking
+    var activeMode = 'revenue';
+
+    // Toggle Revenue / Units Sold
+    document.querySelectorAll('.chart-toggle-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var mode = this.getAttribute('data-chart-toggle');
+            if (mode === activeMode) return;
+            activeMode = mode;
+
+            // Switch dataset visibility
+            salesChart.data.datasets[0].hidden = (mode !== 'revenue');
+            salesChart.data.datasets[1].hidden = (mode !== 'units');
+
+            // Fix y-axis label for units mode (no ₹ prefix)
+            salesChart.options.scales.y.ticks.callback = mode === 'units'
+                ? function (value) { return value; }
+                : function (value) {
+                    if (value >= 100000) return '₹' + (value / 100000).toFixed(1) + 'L';
+                    if (value >= 1000)   return '₹' + (value / 1000).toFixed(1) + 'k';
+                    return value;
+                  };
+
+            salesChart.update();
+
+            // Update button styles
+            document.querySelectorAll('.chart-toggle-btn').forEach(function (b) {
+                var isActive = b.getAttribute('data-chart-toggle') === mode;
+                b.classList.toggle('text-[#141414]', isActive);
+                b.classList.toggle('border-b', isActive);
+                b.classList.toggle('border-auraGold', isActive);
+                b.classList.toggle('pb-1', true);
+                b.classList.toggle('text-auraMuted', !isActive);
+            });
+        });
+    });
+
+})();
+</script>
 {% endblock %}

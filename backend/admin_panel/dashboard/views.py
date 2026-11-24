@@ -1,88 +1,82 @@
-from django.shortcuts import render
-from django.views.decorators.cache import never_cache
-from admin_panel.admin_auth.decorators import admin_required
+import json
+from datetime import timedelta
 
-# Note: Once your models are created, you will replace the hardcoded values with actual Django queries:
-# from orders.models import Order
-# from products.models import Product
-# from accounts.models import User
+from django.core.serializers.json import DjangoJSONEncoder
+from django.shortcuts import render
+from django.utils import timezone
+from django.views.decorators.cache import never_cache
+
+from admin_panel.admin_auth.decorators import admin_required
+from user_panel.orders.models import Order
+
+from .services import ALLOWED_PERIODS, get_dashboard_stats, get_sales_chart_data
+
+_PERIOD_OPTIONS = [
+    (7,   "7 Days"),
+    (30,  "30 Days"),
+    (90,  "90 Days"),
+    (365, "1 Year"),
+]
+
 
 @admin_required
 @never_cache
 def dashboard_overview(request):
-    """
-    Renders the main Admin Dashboard overview with metrics and recent orders.
-    """
-    # 1. Total Revenue
-    # total_revenue = Order.objects.filter(status='completed').aggregate(Sum('total_price'))['total_price__sum'] or 0
-    total_revenue = 842650
+    """Render the main Admin Dashboard overview with live database metrics."""
 
-    # 2. Total Orders & Average Order Value
-    # total_orders = Order.objects.count()
-    # avg_order_value = Order.objects.aggregate(Avg('total_price'))['total_price__avg'] or 0
-    total_orders = 1248
-    avg_order_value = 675
+    # --- Period validation -------------------------------------------------
+    try:
+        period_days = int(request.GET.get("period", "30"))
+    except (ValueError, TypeError):
+        period_days = 30
+    if period_days not in ALLOWED_PERIODS:
+        period_days = 30
 
-    # 3. Total Customers
-    # total_customers = User.objects.filter(is_staff=False, is_superuser=False).count()
-    total_customers = 864
+    until = timezone.now()
+    since = until - timedelta(days=period_days)
 
-    # 4. Total Products
-    # total_products = Product.objects.count()
-    total_products = 126
+    # --- KPI aggregations --------------------------------------------------
+    stats = get_dashboard_stats(since, until)
 
-    # 5. Recent Orders List (including explicit action_url for the ACTION column)
-    # recent_orders = Order.objects.select_related('user').order_by('-created_at')[:5]
-    recent_orders = [
-        {
-            'order_id': '#AUR102415',
-            'customer': 'Isabella Saint-Germain',
-            'date': 'Oct 12, 2026',
-            'total': '12,400',
-            'status': 'SHIPPED',
-            'action_url': '/admin-panel/orders/AUR102415/',
-        },
-        {
-            'order_id': '#AUR102416',
-            'customer': 'Sebastian Blackwood',
-            'date': 'Oct 12, 2026',
-            'total': '8,900',
-            'status': 'PROCESSING',
-            'action_url': '/admin-panel/orders/AUR102416/',
-        },
-        {
-            'order_id': '#AUR102417',
-            'customer': 'Margot Devereux',
-            'date': 'Oct 11, 2026',
-            'total': '24,150',
-            'status': 'PENDING',
-            'action_url': '/admin-panel/orders/AUR102417/',
-        },
-        {
-            'order_id': '#AUR102418',
-            'customer': 'Julian Vane',
-            'date': 'Oct 11, 2026',
-            'total': '15,000',
-            'status': 'DELIVERED',
-            'action_url': '/admin-panel/orders/AUR102418/',
-        },
-        {
-            'order_id': '#AUR102419',
-            'customer': 'Clara Fontaine',
-            'date': 'Oct 10, 2026',
-            'total': '6,200',
-            'status': 'CANCELLED',
-            'action_url': '/admin-panel/orders/AUR102419/',
-        },
-    ]
+    # --- Chart data --------------------------------------------------------
+    chart_data = get_sales_chart_data(since, until)
+    chart_data_json = json.dumps(chart_data, cls=DjangoJSONEncoder)
+
+    # --- Recent Orders (8 rows, snapshot total only) -----------------------
+    recent_orders = (
+        Order.objects
+        .select_related("user")
+        .only(
+            "order_number",
+            "created_at",
+            "total",
+            "status",
+            "user__first_name",
+            "user__last_name",
+            "user__email",
+        )
+        .order_by("-created_at")[:8]
+    )
 
     context = {
-        'total_revenue': total_revenue,
-        'total_orders': total_orders,
-        'avg_order_value': avg_order_value,
-        'total_customers': total_customers,
-        'total_products': total_products,
-        'recent_orders': recent_orders,
+        # Period selector
+        "period_days": period_days,
+        "period_options": _PERIOD_OPTIONS,
+        "since": since,
+        "until": until,
+        # KPI cards
+        "total_revenue": stats["total_revenue"],
+        "avg_order_value": stats["avg_order_value"],
+        "total_orders": stats["total_orders"],
+        "pending_orders": stats["pending_orders"],
+        "total_customers": stats["total_customers"],
+        "new_customers": stats["new_customers"],
+        "total_products": stats["total_products"],
+        "brand_count": stats["brand_count"],
+        # Chart
+        "chart_data_json": chart_data_json,
+        # Recent orders table
+        "recent_orders": recent_orders,
     }
 
-    return render(request, 'dashboard/index.html', context)
+    return render(request, "dashboard/index.html", context)
