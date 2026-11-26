@@ -472,7 +472,7 @@
 
                     <div class="mt-6 space-y-3" id="payment-options">
                         <!-- Online Payment -->
-                        <label class="payment-option flex cursor-pointer items-center gap-4 rounded-xl border border-auraBorder bg-white p-5" data-selected="true">
+                        <label class="payment-option flex cursor-pointer items-center gap-4 rounded-xl border border-auraBorder bg-white p-5" data-selected="{% if razorpay_enabled %}true{% else %}false{% endif %}">
                             <input type="radio" name="payment_method" value="RAZORPAY" class="sr-only" {% if not razorpay_enabled %}disabled{% else %}checked{% endif %}>
                             <span class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border border-auraBlack bg-white" aria-hidden="true">
                                 <span class="payment-dot h-2 w-2 rounded-full"></span>
@@ -504,45 +504,35 @@
                                 </svg>
                             </span>
                             <span class="min-w-0 flex-1">
-                            <span class="block text-sm font-semibold text-auraBlack">Cash on Delivery</span>
-                            <span class="mt-0.5 block text-xs text-auraMuted">Pay in cash when your order is delivered.</span>
+                                <span class="block text-sm font-semibold text-auraBlack">Cash on Delivery</span>
+                                <span class="mt-0.5 block text-xs text-auraMuted">Pay in cash when your order is delivered.</span>
+                            </span>
                         </label>
 
                         <!-- AURA Wallet -->
-                        <label class="payment-option flex cursor-pointer items-center gap-4 rounded-xl border border-auraBorder bg-white p-5 {% if not wallet_sufficient %}opacity-60{% endif %}" data-selected="{% if not razorpay_enabled and not wallet_sufficient %}true{% else %}false{% endif %}">
+                        <label class="payment-option flex items-center gap-4 rounded-xl border p-5 {% if not wallet_exists or not wallet_sufficient %}cursor-not-allowed border-[#E8E4DD] bg-[#FAF9F7] opacity-85{% else %}cursor-pointer border-auraBorder bg-white{% endif %}" data-selected="false">
                             <input type="radio" name="payment_method" value="WALLET" class="sr-only" {% if not wallet_exists or not wallet_sufficient %}disabled{% endif %}>
-                            <span class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border border-auraBlack bg-white" aria-hidden="true">
+                            <span class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border {% if not wallet_exists or not wallet_sufficient %}border-[#D1CDC7]{% else %}border-auraBlack{% endif %} bg-white" aria-hidden="true">
                                 <span class="payment-dot h-2 w-2 rounded-full"></span>
                             </span>
-                            <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-[#E5E0D8] bg-white text-auraBlack shadow-sm" aria-hidden="true">
+                            <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-[#E5E0D8] bg-white shadow-sm {% if not wallet_exists or not wallet_sufficient %}text-auraMuted{% else %}text-auraBlack{% endif %}" aria-hidden="true">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm0-11a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v3h-3.5a2 2 0 0 0 0 4H21v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5" />
+                                    <circle cx="17.5" cy="14" r="0.85" fill="currentColor" stroke="none" />
                                 </svg>
                             </span>
                             <span class="min-w-0 flex-1">
-                                <span class="block text-sm font-semibold text-auraBlack">AURA Wallet</span>
+                                <span class="block text-sm font-semibold {% if not wallet_exists or not wallet_sufficient %}text-auraMuted{% else %}text-auraBlack{% endif %}">AURA Wallet</span>
                                 <span class="mt-0.5 block text-xs text-auraMuted">Pay using your AURA Wallet balance.</span>
-                                <span class="mt-1 block text-xs font-semibold text-auraChampagneDark">Available: ₹{{ wallet_balance }}</span>
-                                {% if not wallet_exists %}
-                                <p class="mt-1 block text-[11px] text-[#B54708]">No AURA Wallet found yet.</p>
-                                <a
-                                    href="{% url 'wallet:topup_page' %}?next={{ request.get_full_path|urlencode }}"
-                                    class="mt-1 block text-[11px] font-medium text-auraBlack underline underline-offset-2 hover:text-auraBlack"
-                                >
-                                    Add money to your wallet
-                                </a>
-                                {% elif not wallet_sufficient %}
-                                <p class="mt-1 block text-[11px] text-[#B54708]">
-                                    Insufficient wallet balance. Need ₹{{ wallet_required }},
-                                    have ₹{{ wallet_balance }}.
-                                </p>
-                                <a
-                                    href="{% url 'wallet:topup_page' %}?next={{ request.get_full_path|urlencode }}"
-                                    class="mt-1 block text-[11px] font-medium text-auraBlack underline underline-offset-2 hover:text-auraBlack"
-                                >
-                                    Add money to your wallet
-                                </a>
-                                {% endif %}
+                                <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                    {% if not wallet_exists or not wallet_sufficient %}
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-[#B42318]">INSUFFICIENT BALANCE</span>
+                                    <span class="text-xs text-[#D1CDC7]" aria-hidden="true">|</span>
+                                    <span class="text-xs font-medium text-auraMuted">Available: ₹{{ wallet_balance|floatformat:2 }}</span>
+                                    {% else %}
+                                    <span class="text-xs font-semibold text-auraChampagneDark">Available: ₹{{ wallet_balance|floatformat:2 }}</span>
+                                    {% endif %}
+                                </span>
                             </span>
                         </label>
                     </div>
@@ -1521,9 +1511,13 @@
 
     function selectedPaymentMethod() {
         var selected = paymentRadios.find(function (radio) {
-            return radio.checked;
+            return radio.checked && !radio.disabled;
         });
-        return selected ? selected.value : 'COD';
+        if (selected) return selected.value;
+        var fallback = paymentRadios.find(function (radio) {
+            return !radio.disabled;
+        });
+        return fallback ? fallback.value : 'COD';
     }
 
     function setPlaceButton(loading, label) {
@@ -1561,7 +1555,7 @@
         }
         paymentOptions.forEach(function (option) {
             var radio = option.querySelector('input[name="payment_method"]');
-            option.dataset.selected = radio && radio.checked ? 'true' : 'false';
+            option.dataset.selected = (radio && radio.checked && !radio.disabled) ? 'true' : 'false';
         });
         if (paymentHelpText) {
             paymentHelpText.textContent = method === 'RAZORPAY'
@@ -1575,8 +1569,22 @@
         }
     }
 
+    paymentOptions.forEach(function (option) {
+        option.addEventListener('click', function (event) {
+            var radio = option.querySelector('input[name="payment_method"]');
+            if (radio && radio.disabled) {
+                event.preventDefault();
+                return;
+            }
+        });
+    });
+
     paymentRadios.forEach(function (radio) {
         radio.addEventListener('change', function () {
+            if (radio.disabled) {
+                radio.checked = false;
+                return;
+            }
             clearPaymentError();
             syncPaymentOptions();
         });

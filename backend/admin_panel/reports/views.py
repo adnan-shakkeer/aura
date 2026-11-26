@@ -19,8 +19,11 @@ Order date is driven by Order.created_at (Asia/Kolkata timezone).
 """
 
 import csv
+import json
 import logging
 from datetime import date, datetime, time, timedelta
+
+from django.core.serializers.json import DjangoJSONEncoder
 
 from django.contrib import messages
 from django.db.models import DecimalField, F, Q, Sum, Value
@@ -32,6 +35,7 @@ from django.utils.dateparse import parse_date
 from django.views.decorators.cache import never_cache
 
 from admin_panel.admin_auth.decorators import admin_required
+from admin_panel.reports.pdf_report import render_sales_report_pdf as _render_sales_report_pdf
 from user_panel.orders.financials import get_order_financials
 from user_panel.orders.models import Order, OrderItem, ReturnItem
 from user_panel.payments.models import Refund
@@ -58,8 +62,6 @@ ORDER_STATUS_CHOICES = (
 PAYMENT_STATUS_CHOICES = (
     ("UNPAID", "Unpaid"),
     ("PENDING", "Payment pending"),
-    ("FAILED", "Payment failed"),
-    ("EXPIRED", "Payment expired"),
     ("PAID", "Paid"),
 )
 
@@ -332,11 +334,25 @@ def _compute_chart_data(orders_qs, granularity, tz):
                 continue
             daily_data[key]["units_sold"] += item.quantity
 
-    # Sort by key
+    # Sort by key and build flat series arrays (matching dashboard structure)
     sorted_keys = sorted(daily_data.keys())
-    chart_data = [daily_data[k] for k in sorted_keys]
 
-    return chart_data
+    labels = []
+    revenue_series = []
+    units_series = []
+    for k in sorted_keys:
+        labels.append(daily_data[k]["label"])
+        revenue_series.append(round(daily_data[k]["revenue"], 2))
+        units_series.append(daily_data[k]["units_sold"])
+
+    has_data = any(v > 0 for v in revenue_series) or any(v > 0 for v in units_series)
+
+    return {
+        "labels": labels,
+        "revenue": revenue_series,
+        "units": units_series,
+        "has_data": has_data,
+    }
 
 
 def _compute_best_selling_products(orders_qs):
@@ -380,7 +396,7 @@ def _compute_best_selling_products(orders_qs):
         product_map.values(),
         key=lambda p: p["units_sold"],
         reverse=True,
-    )[:10]
+    )[:3]
 
     for p in products:
         p["product_revenue"] = round(p["product_revenue"], 2)
@@ -443,12 +459,13 @@ def sales_report(request):
     if granularity not in ("daily", "monthly"):
         granularity = "daily"
     chart_data = _compute_chart_data(orders_qs, granularity, tz)
+    chart_data_json = json.dumps(chart_data, cls=DjangoJSONEncoder)
     best_selling = _compute_best_selling_products(orders_qs)
 
     # Pagination for detailed transactions
     from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 
-    paginator = Paginator(orders_qs, 25)
+    paginator = Paginator(orders_qs, 5)
     page_number = request.GET.get("page", 1)
     try:
         page_obj = paginator.page(page_number)
@@ -471,6 +488,7 @@ def sales_report(request):
         "metrics": metrics,
         "payment_breakdown": payment_breakdown,
         "chart_data": chart_data,
+        "chart_data_json": chart_data_json,
         "chart_granularity": granularity,
         "best_selling_products": best_selling,
         "transaction_rows": transaction_rows,
@@ -495,52 +513,110 @@ def sales_report(request):
     return render(request, "admin_panel/reports/sales_report.html", context)
 
 
-def _csv_export(orders_qs, start_date, end_date):
-    """Stream CSV export of filtered transaction records."""
-    from django.utils.encoding import smart_str
+def _csv_export(orders_qs, start_date, end_date, request=None, metrics=None,
+                payment_breakdown=None, best_selling_products=None):
+    """Structured CSV export — Sections A–E, Excel-friendly with UTF-8 BOM."""
+    from datetime import date as date_cls
 
-    rows = []
-    for order in orders_qs.select_related("user"):
-        financials = get_order_financials(order)
-        rows.append(
-            [
-                order.order_number,
-                timezone.localtime(order.created_at).strftime("%Y-%m-%d %H:%M"),
-                order.delivery_full_name
-                or (order.user.get_full_name() if order.user else "")
-                or (order.user.username if order.user else ""),
-                order.get_payment_method_display(),
-                order.get_payment_status_display(),
-                order.get_status_display(),
-                f"{float(order.subtotal):.2f}",
-                f"{float(order.discount_total):.2f}",
-                f"{float(financials.adjusted_total):.2f}",
-            ]
-        )
+    start_str = start_date.isoformat() if start_date else "N/A"
+    end_str = end_date.isoformat() if end_date else "N/A"
+    generated = date_cls.today().strftime("%d %b %Y")
+    filename = f"aura_sales_report_{start_str}_{end_str}.csv"
 
-    start_str = start_date.isoformat() if start_date else "start"
-    end_str = end_date.isoformat() if end_date else "end"
-    filename = f"sales_report_{start_str}_{end_str}.csv"
+    # Collect filter labels for the header
+    pm_filter = ""
+    os_filter = ""
+    ps_filter = ""
+    if request:
+        pm_val = request.GET.get("payment_method", "")
+        os_val = request.GET.get("order_status", "")
+        ps_val = request.GET.get("payment_status", "")
+        pm_filter = dict(PAYMENT_METHOD_CHOICES).get(pm_val.upper(), "All") if pm_val else "All"
+        os_filter = dict(ORDER_STATUS_CHOICES).get(os_val.upper(), "All") if os_val else "All"
+        ps_filter = dict(PAYMENT_STATUS_CHOICES).get(ps_val.upper(), "All") if ps_val else "All"
 
-    response = HttpResponse(content_type="text/csv")
+    # UTF-8 BOM so Excel auto-detects encoding
+    response = HttpResponse(content_type="text/csv; charset=utf-8-sig")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response.write("\ufeff")  # BOM
 
     writer = csv.writer(response)
-    writer.writerow(
-        [
-            "Order Number",
-            "Order Date",
-            "Customer",
-            "Payment Method",
-            "Payment Status",
-            "Order Status",
-            "Gross Amount",
-            "Discount",
-            "Net Amount",
-        ]
-    )
-    for row in rows:
-        writer.writerow([_csv_escape(cell) for cell in row])
+
+    # ── Section A: Report Header ──────────────────────────────────────────
+    writer.writerow(["AURA Sales Report"])
+    writer.writerow(["Date Range", f"{start_str} to {end_str}"])
+    writer.writerow(["Generated On", generated])
+    writer.writerow(["Payment Method Filter", pm_filter])
+    writer.writerow(["Order Status Filter", os_filter])
+    writer.writerow(["Payment Status Filter", ps_filter])
+    writer.writerow([])  # blank row separator
+
+    # ── Section B: Sales Overview ─────────────────────────────────────────
+    if metrics:
+        writer.writerow(["SALES OVERVIEW"])
+        writer.writerow(["Metric", "Value (INR)"])
+        writer.writerow(["Gross Sales", f"{metrics['gross_sales']:.2f}"])
+        writer.writerow(["Discounts", f"{metrics['discounts']:.2f}"])
+        writer.writerow(["Net Sales", f"{metrics['net_sales']:.2f}"])
+        writer.writerow(["Collected Revenue", f"{metrics['collected_revenue']:.2f}"])
+        writer.writerow(["Total Orders", metrics["total_orders"]])
+        writer.writerow(["Paid Orders", metrics["paid_orders"]])
+        writer.writerow(["Average Collected per Paid Order",
+                         f"{metrics['average_collected_per_paid_order']:.2f}"])
+        writer.writerow([])
+
+    # ── Section C: Payment Method Breakdown ───────────────────────────────
+    if payment_breakdown:
+        writer.writerow(["PAYMENT METHOD BREAKDOWN"])
+        writer.writerow(["Payment Method", "Order Count", "Order Value (INR)", "Collected Revenue (INR)"])
+        for _code, method in payment_breakdown.items():
+            writer.writerow([
+                method["label"],
+                method["order_count"],
+                f"{method['order_value']:.2f}",
+                f"{method['collected_revenue']:.2f}",
+            ])
+        writer.writerow([])
+
+    # ── Section D: Best-Selling Products ─────────────────────────────────
+    if best_selling_products:
+        writer.writerow(["BEST-SELLING PRODUCTS (TOP 3)"])
+        writer.writerow(["Product", "Brand", "Variant", "Units Sold", "Product Revenue (INR)"])
+        for p in best_selling_products:
+            writer.writerow([
+                _csv_escape(p["product_name"]),
+                _csv_escape(p["brand_name"]),
+                _csv_escape(p["variant_size"]),
+                p["units_sold"],
+                f"{p['product_revenue']:.2f}",
+            ])
+        writer.writerow([])
+
+    # ── Section E: Detailed Sales Transactions ────────────────────────────
+    writer.writerow(["DETAILED SALES TRANSACTIONS"])
+    writer.writerow([
+        "Order ID", "Customer", "Order Date",
+        "Payment Method", "Payment Status", "Order Status",
+        "Subtotal (INR)", "Discount (INR)", "Final Total (INR)",
+    ])
+    for order in orders_qs.select_related("user"):
+        financials = get_order_financials(order)
+        customer = (
+            order.delivery_full_name
+            or (order.user.get_full_name() if order.user else "")
+            or (order.user.username if order.user else "")
+        )
+        writer.writerow([
+            _csv_escape(order.order_number),
+            _csv_escape(customer),
+            timezone.localtime(order.created_at).strftime("%d %b %Y"),
+            order.get_payment_method_display(),
+            order.get_payment_status_display(),
+            order.get_status_display(),
+            float(order.subtotal),
+            float(order.discount_total),
+            float(financials.adjusted_total),
+        ])
 
     return response
 
@@ -548,7 +624,55 @@ def _csv_export(orders_qs, start_date, end_date):
 @admin_required
 @never_cache
 def sales_report_csv(request):
-    """Dedicated CSV export endpoint for the sales report."""
+    """Dedicated structured CSV export for the sales report."""
     tz = timezone.get_current_timezone()
     orders_qs, start_date, end_date = _get_filtered_orders(request, tz)
-    return _csv_export(orders_qs, start_date, end_date)
+    metrics = _compute_metrics(orders_qs, tz)
+    payment_breakdown = _compute_payment_method_breakdown(orders_qs)
+    best_selling = _compute_best_selling_products(orders_qs)
+    return _csv_export(
+        orders_qs, start_date, end_date,
+        request=request,
+        metrics=metrics,
+        payment_breakdown=payment_breakdown,
+        best_selling_products=best_selling,
+    )
+
+
+@admin_required
+@never_cache
+def sales_report_pdf(request):
+    """PDF export for the Sales Report — ReportLab Platypus (same library as order invoices)."""
+    tz = timezone.get_current_timezone()
+    orders_qs, start_date, end_date = _get_filtered_orders(request, tz)
+    metrics = _compute_metrics(orders_qs, tz)
+    payment_breakdown = _compute_payment_method_breakdown(orders_qs)
+    best_selling = _compute_best_selling_products(orders_qs)
+
+    start_str = start_date.isoformat() if start_date else "N/A"
+    end_str = end_date.isoformat() if end_date else "N/A"
+    filename = f"aura_sales_report_{start_str}_{end_str}.pdf"
+
+    # Build filter labels
+    pm_val = request.GET.get("payment_method", "")
+    os_val = request.GET.get("order_status", "")
+    ps_val = request.GET.get("payment_status", "")
+    pm_label = dict(PAYMENT_METHOD_CHOICES).get(pm_val.upper(), "All") if pm_val else "All"
+    os_label = dict(ORDER_STATUS_CHOICES).get(os_val.upper(), "All") if os_val else "All"
+    ps_label = dict(PAYMENT_STATUS_CHOICES).get(ps_val.upper(), "All") if ps_val else "All"
+
+    pdf_bytes = _render_sales_report_pdf(
+        orders_qs=orders_qs,
+        start_date=start_date,
+        end_date=end_date,
+        metrics=metrics,
+        payment_breakdown=payment_breakdown,
+        best_selling_products=best_selling,
+        pm_label=pm_label,
+        os_label=os_label,
+        ps_label=ps_label,
+    )
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response

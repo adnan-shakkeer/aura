@@ -4,439 +4,755 @@
 {% block breadcrumbs %}ADMIN / <span class="text-auraGold">SALES REPORT</span>{% endblock %}
 
 {% block admin_content %}
-<!-- Page Header -->
-<div class="mb-10">
-    <div class="flex justify-between items-end border-b border-[#A8842C]/30 pb-4 mb-8">
-        <div>
-            <h2 class="font-serif text-4xl tracking-wide text-[#141414] mb-2">Sales Report</h2>
-            <div class="inline-flex items-center justify-center px-4 py-1 border border-[#A8842C]/50 bg-[#FAF3E3] rounded-full">
-                <span class="text-[10px] uppercase tracking-widest text-[#A8842C] font-semibold">Order-date based</span>
-            </div>
-        </div>
 
-        <!-- Export CSV -->
+{# ================================================================== #}
+{# UNIFIED FILTER FORM — wraps all GET parameters                     #}
+{# ================================================================== #}
+<form id="report-form" method="GET" class="mb-0">
+    {# Hidden state mirrors — kept in sync by JS before any submit #}
+    <input type="hidden" id="f-preset"         name="preset"         value="{{ active_preset }}">
+    <input type="hidden" id="f-start-date"     name="start_date"     value="{{ start_date }}">
+    <input type="hidden" id="f-end-date"       name="end_date"       value="{{ end_date }}">
+    <input type="hidden" id="f-granularity"    name="granularity"    value="{{ chart_granularity }}">
+    <input type="hidden" id="f-payment-method" name="payment_method" value="{{ payment_method }}">
+    <input type="hidden" id="f-order-status"   name="order_status"   value="{{ order_status }}">
+    <input type="hidden" id="f-payment-status" name="payment_status" value="{{ payment_status }}">
+    <input type="hidden" id="f-page"           name="page"           value="1">
+</form>
+
+{# ================================================================== #}
+{# A. PAGE HEADER                                                      #}
+{# ================================================================== #}
+<div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+    <div>
+        <h2 class="font-serif text-4xl tracking-wide text-[#141414] mb-4">Sales Report</h2>
+        <div class="flex items-center gap-3">
+            <div class="w-16 h-[1px] bg-auraGold"></div>
+            <span class="text-[9px] uppercase tracking-[0.2em] text-auraGold font-semibold">Order-date based</span>
+        </div>
+    </div>
+
+    {# Export buttons — CSV and PDF #}
+    <div class="flex items-center gap-3 shrink-0">
+        <a href="{% url 'reports:sales_report_pdf' %}?{{ current_query_string }}"
+           class="inline-flex items-center gap-2 px-5 py-2.5 border border-[#141414] text-[#141414] text-[10px] uppercase tracking-widest font-semibold hover:bg-[#141414] hover:text-white transition-colors rounded-sm">
+            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+            <span>Download PDF</span>
+        </a>
         <a href="{% url 'reports:sales_report_csv' %}?{{ current_query_string }}"
-           class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold hover:bg-black transition-colors rounded-sm shadow-sm">
+           class="inline-flex items-center gap-2 px-5 py-2.5 bg-[#141414] text-white text-[10px] uppercase tracking-widest font-semibold hover:bg-[#0B0B0C] transition-colors rounded-sm">
             <i data-lucide="download" class="w-3.5 h-3.5"></i>
             <span>Export CSV</span>
         </a>
     </div>
+</div>
 
-    <!-- Date Range Filter -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
-        <div class="flex items-center gap-4 overflow-x-auto pb-2 w-full sm:w-auto">
+{# ================================================================== #}
+{# B. FILTERS                                                          #}
+{# ================================================================== #}
+<div class="bg-auraSurface border border-auraBorder rounded-sm mb-8">
+
+    {# B1 — Preset date tabs #}
+    <div class="px-6 py-4 border-b border-auraBorder">
+        <div class="flex flex-wrap items-center gap-1">
             {% for key, label_and_fn in preset_ranges.items %}
-                {% with label=label_and_fn.0 %}
-                <a href="?preset={{ key }}{% if payment_method %}&payment_method={{ payment_method }}{% endif %}{% if order_status %}&order_status={{ order_status }}{% endif %}{% if payment_status %}&payment_status={{ payment_status }}{% endif %}"
-                   class="text-[10px] uppercase tracking-widest font-semibold px-3 py-1.5 border-b-2 transition-colors whitespace-nowrap {% if active_preset == key %}text-[#A8842C] border-[#A8842C]{% else %}text-[#6E6A63] border-transparent hover:text-[#141414] hover:border-[#141414]/30{% endif %}">
-                    {{ label }}
-                </a>
-                {% endwith %}
-                {% endfor %}
-                <a href="#" onclick="document.getElementById('custom-date-range').classList.toggle('hidden'); return false;"
-                   class="text-[10px] uppercase tracking-widest font-semibold px-3 py-1.5 border-b-2 transition-colors text-[#6E6A63] border-transparent hover:text-[#141414] hover:border-[#141414]/30">
-                    Custom Range
-                </a>
-            </div>
+            {% with label=label_and_fn.0 %}
+            <button type="button"
+                    onclick="applyPreset('{{ key }}')"
+                    class="preset-btn text-[10px] uppercase tracking-widest font-semibold px-3 py-1.5 rounded-sm transition-all duration-200
+                    {% if active_preset == key %}bg-auraGold text-white{% else %}text-auraMuted hover:text-[#141414] hover:bg-[#F7F5F0]{% endif %}">
+                {{ label }}
+            </button>
+            {% endwith %}
+            {% endfor %}
+            <button type="button"
+                    onclick="toggleCustomRange()"
+                    id="custom-range-btn"
+                    class="text-[10px] uppercase tracking-widest font-semibold px-3 py-1.5 rounded-sm transition-all duration-200
+                    {% if active_preset == '' or active_preset == 'custom' %}bg-auraGold text-white{% else %}text-auraMuted hover:text-[#141414] hover:bg-[#F7F5F0]{% endif %}">
+                Custom Range
+            </button>
+        </div>
 
-        <!-- Custom Date Inputs (hidden by default) -->
-        <div id="custom-date-range" class="hidden mt-4 flex items-center gap-2 sm:flex-row">
-            <label for="start_date" class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold whitespace-nowrap">From:</label>
-            <input type="date" name="start_date" value="{{ start_date }}"
-                   class="bg-white border border-[#E8E5DF] rounded-sm py-1.5 px-3 text-xs text-[#141414] focus:outline-none focus:border-[#A8842C]">
-            <label for="end_date" class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold whitespace-nowrap ml-2">To:</label>
-            <input type="date" name="end_date" value="{{ end_date }}"
-                   class="bg-white border border-[#E8E5DF] rounded-sm py-1.5 px-3 text-xs text-[#141414] focus:outline-none focus:border-[#A8842C]">
-            <button type="submit" form="date-filter-form"
-                    class="bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold px-4 py-1.5 rounded-sm hover:bg-black transition-colors">
+        {# Custom date range (hidden by default unless custom is active) #}
+        <div id="custom-date-panel"
+             class="{% if active_preset == '' or not active_preset %}flex{% else %}hidden{% endif %} flex-wrap items-center gap-3 mt-4 pt-4 border-t border-auraBorder">
+            <div class="flex items-center gap-2">
+                <label class="text-[9px] uppercase tracking-widest text-auraMuted font-semibold whitespace-nowrap">From</label>
+                <input type="date" id="custom-start" value="{{ start_date }}"
+                       class="bg-white border border-auraBorder rounded-sm py-1.5 px-3 text-xs text-[#141414] focus:outline-none focus:border-auraGold">
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-[9px] uppercase tracking-widest text-auraMuted font-semibold whitespace-nowrap">To</label>
+                <input type="date" id="custom-end" value="{{ end_date }}"
+                       class="bg-white border border-auraBorder rounded-sm py-1.5 px-3 text-xs text-[#141414] focus:outline-none focus:border-auraGold">
+            </div>
+            <button type="button" onclick="applyCustomRange()"
+                    class="px-4 py-1.5 bg-[#141414] text-white text-[10px] uppercase tracking-widest font-semibold rounded-sm hover:bg-black transition-colors">
                 Apply
             </button>
-            <a href="?preset=last_30_days{% if payment_method %}&payment_method={{ payment_method }}{% endif %}{% if order_status %}&order_status={{ order_status }}{% endif %}{% if payment_status %}&payment_status={{ payment_status }}{% endif %}"
-               class="text-[10px] uppercase tracking-widest text-[#6E6A63] hover:text-[#141414] transition-colors">
+            <button type="button" onclick="applyPreset('last_30_days')"
+                    class="text-[10px] uppercase tracking-widest text-auraMuted hover:text-[#141414] transition-colors">
                 Clear
             </button>
         </div>
+    </div>
 
-        <!-- Additional Filters -->
-        <form method="GET" class="flex items-center gap-4 overflow-x-auto pb-2 w-full sm:w-auto">
-            <input type="hidden" name="start_date" value="{{ start_date }}">
-            <input type="hidden" name="end_date" value="{{ end_date }}">
-            <input type="hidden" name="preset" value="{{ active_preset }}">
+    {# B2 — Additional filters row #}
+    <div class="px-6 py-4 flex flex-wrap items-center gap-3">
+        <span class="text-[9px] uppercase tracking-widest text-auraMuted font-semibold">Filter:</span>
 
-            <select name="payment_method"
-                    class="bg-white border border-[#E8E5DF] rounded-sm py-1.5 px-3 text-xs text-[#141414] focus:outline-none focus:border-[#A8842C]">
-                <option value="">All Payment Methods</option>
-                {% for code, label in payment_method_choices %}
-                <option value="{{ code }}" {% if payment_method == code %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
+        <select id="sel-payment-method"
+                onchange="updateSelectFilter('payment_method', this.value)"
+                class="bg-white border border-auraBorder rounded-sm py-1.5 px-3 text-xs text-[#141414] focus:outline-none focus:border-auraGold">
+            <option value="">All Payment Methods</option>
+            {% for code, label in payment_method_choices %}
+            <option value="{{ code }}" {% if payment_method == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
 
-            <select name="order_status"
-                    class="bg-white border border-[#E8E5DF] rounded-sm py-1.5 px-3 text-xs text-[#141414] focus:outline-none focus:border-[#A8842C]">
-                <option value="">All Order Statuses</option>
-                {% for code, label in order_status_choices %}
-                <option value="{{ code }}" {% if order_status == code %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
+        <select id="sel-order-status"
+                onchange="updateSelectFilter('order_status', this.value)"
+                class="bg-white border border-auraBorder rounded-sm py-1.5 px-3 text-xs text-[#141414] focus:outline-none focus:border-auraGold">
+            <option value="">All Order Statuses</option>
+            {% for code, label in order_status_choices %}
+            <option value="{{ code }}" {% if order_status == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
 
-            <select name="payment_status"
-                    class="bg-white border border-[#E8E5DF] rounded-sm py-1.5 px-3 text-xs text-[#141414] focus:outline-none focus:border-[#A8842C]">
-                <option value="">All Payment Statuses</option>
-                {% for code, label in payment_status_choices %}
-                <option value="{{ code }}" {% if payment_status == code %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
+        <select id="sel-payment-status"
+                onchange="updateSelectFilter('payment_status', this.value)"
+                class="bg-white border border-auraBorder rounded-sm py-1.5 px-3 text-xs text-[#141414] focus:outline-none focus:border-auraGold">
+            <option value="">All Payment Statuses</option>
+            {% for code, label in payment_status_choices %}
+            <option value="{{ code }}" {% if payment_status == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
 
-            <button type="submit"
-                    class="bg-[#0D0D0E] text-white text-[10px] uppercase tracking-widest font-bold px-4 py-1.5 rounded-sm hover:bg-black transition-colors">
-                Apply Filters
-            </button>
-        </form>
+        <button type="button" onclick="submitReport()"
+                class="px-4 py-1.5 bg-[#141414] text-white text-[10px] uppercase tracking-widest font-semibold rounded-sm hover:bg-black transition-colors">
+            Apply
+        </button>
     </div>
 </div>
 
-<!-- Section A — Sales Overview KPI Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-    <!-- Gross Sales -->
-    <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-            <span class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Gross Sales</span>
-            <div class="w-8 h-8 rounded-full bg-[#FAF8F5] border border-[#E8E5DF] flex items-center justify-center">
-                <i data-lucide="credit-card" class="w-4 h-4 text-[#A8842C]"></i>
-            </div>
-        </div>
-        <div class="font-serif text-3xl font-bold text-[#141414] mb-1">₹{{ metrics.gross_sales|floatformat:2 }}</div>
-        <div class="flex items-center gap-1.5 text-[11px] text-[#6E6A63] font-medium">Pre-discount merchandise value</div>
+{# ================================================================== #}
+{# C. SALES OVERVIEW — 7 KPI CARDS                                    #}
+{# ================================================================== #}
+<div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+
+    {# Gross Sales — featured #}
+    <div class="col-span-2 md:col-span-1 bg-[#FDFBF6] border border-auraGold/30 rounded-sm p-8 shadow-lg relative overflow-hidden group hover:border-auraGold transition-all duration-300">
+        <div class="absolute -right-10 -top-10 w-32 h-32 bg-auraGold/5 rounded-full blur-2xl group-hover:bg-auraGold/10 transition-all duration-500"></div>
+        <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4 relative z-10">Gross Sales</p>
+        <h3 class="font-serif text-3xl text-[#141414] tracking-wide mb-6 relative z-10">₹{{ metrics.gross_sales|floatformat:2 }}</h3>
+        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium relative z-10">Pre-discount value</p>
     </div>
 
-    <!-- Discounts -->
-    <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-            <span class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Discounts</span>
-            <div class="w-8 h-8 rounded-full bg-[#FFF7ED] border border-[#B54708]/30 flex items-center justify-center">
-                <i data-lucide="tag" class="w-4 h-4 text-[#B54708]"></i>
-            </div>
-        </div>
-        <div class="font-serif text-3xl font-bold text-[#141414] mb-1">₹{{ metrics.discounts|floatformat:2 }}</div>
-        <div class="flex items-center gap-1.5 text-[11px] text-[#6E6A63] font-medium">Offers + Coupons</div>
+    {# Discounts #}
+    <div class="bg-auraSurface border border-auraBorder rounded-sm p-8 hover:border-auraGold/50 transition-all duration-300">
+        <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4">Discounts</p>
+        <h3 class="font-serif text-3xl text-[#141414] tracking-wide mb-6">₹{{ metrics.discounts|floatformat:2 }}</h3>
+        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium">Offers + Coupons</p>
     </div>
 
-    <!-- Net Sales -->
-    <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-            <span class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Net Sales</span>
-            <div class="w-8 h-8 rounded-full bg-[#F0FDF4] border border-[#1E7E4D]/30 flex items-center justify-center">
-                <i data-lucide="dollar-sign" class="w-4 h-4 text-[#1E7E4D]"></i>
-            </div>
-        </div>
-        <div class="font-serif text-3xl font-bold text-[#141414] mb-1">₹{{ metrics.net_sales|floatformat:2 }}</div>
-        <div class="flex items-center gap-1.5 text-[11px] text-[#6E6A63] font-medium">After cancellations &amp; returns</div>
+    {# Net Sales — featured #}
+    <div class="bg-[#FDFBF6] border border-auraGold/30 rounded-sm p-8 shadow-lg relative overflow-hidden group hover:border-auraGold transition-all duration-300">
+        <div class="absolute -right-10 -top-10 w-32 h-32 bg-auraGold/5 rounded-full blur-2xl group-hover:bg-auraGold/10 transition-all duration-500"></div>
+        <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4 relative z-10">Net Sales</p>
+        <h3 class="font-serif text-3xl text-[#141414] tracking-wide mb-6 relative z-10">₹{{ metrics.net_sales|floatformat:2 }}</h3>
+        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium relative z-10">After cancellations &amp; returns</p>
     </div>
 
-    <!-- Collected Revenue -->
-    <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-            <span class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Collected Revenue</span>
-            <div class="w-8 h-8 rounded-full bg-[#F0FDF4] border border-[#1E7E4D]/30 flex items-center justify-center">
-                <i data-lucide="banknote" class="w-4 h-4 text-[#1E7E4D]"></i>
-            </div>
-        </div>
-        <div class="font-serif text-3xl font-bold text-[#141414] mb-1">₹{{ metrics.collected_revenue|floatformat:2 }}</div>
-        <div class="flex items-center gap-1.5 text-[11px] text-[#6E6A63] font-medium">After completed refunds</div>
+    {# Collected Revenue — white #}
+    <div class="bg-auraSurface border border-auraBorder rounded-sm p-8 hover:border-auraGold/50 transition-all duration-300">
+        <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4">Collected Revenue</p>
+        <h3 class="font-serif text-3xl text-[#141414] tracking-wide mb-6">₹{{ metrics.collected_revenue|floatformat:2 }}</h3>
+        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium">After completed refunds</p>
     </div>
 
-    <!-- Total Orders -->
-    <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-            <span class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Total Orders</span>
-            <div class="w-8 h-8 rounded-full bg-[#FAF8F5] border border-[#E8E5DF] flex items-center justify-center">
-                <i data-lucide="shopping-bag" class="w-4 h-4 text-[#A8842C]"></i>
-            </div>
-        </div>
-        <div class="font-serif text-3xl font-bold text-[#141414] mb-1">{{ metrics.total_orders }}</div>
-        <div class="flex items-center gap-1.5 text-[11px] text-[#6E6A63] font-medium">All orders in range</div>
-    </div>
-
-    <!-- Paid Orders -->
-    <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-            <span class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Paid Orders</span>
-            <div class="w-8 h-8 rounded-full bg-[#F0FDF4] border border-[#1E7E4D]/30 flex items-center justify-center">
-                <i data-lucide="check-circle" class="w-4 h-4 text-[#1E7E4D]"></i>
-            </div>
-        </div>
-        <div class="font-serif text-3xl font-bold text-[#141414] mb-1">{{ metrics.paid_orders }}</div>
-        <div class="flex items-center gap-1.5 text-[11px] text-[#6E6A63] font-medium">Payment confirmed</div>
-    </div>
-
-    <!-- Average Collected per Paid Order -->
-    <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-            <span class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Avg. Collected / Paid Order</span>
-            <div class="w-8 h-8 rounded-full bg-[#FAF3E3] border border-[#A8842C]/30 flex items-center justify-center">
-                <i data-lucide="pie-chart" class="w-4 h-4 text-[#A8842C]"></i>
-            </div>
-        </div>
-        <div class="font-serif text-3xl font-bold text-[#141414] mb-1">₹{{ metrics.average_collected_per_paid_order|floatformat:2 }}</div>
-        <div class="flex items-center gap-1.5 text-[11px] text-[#6E6A63] font-medium">Collected Revenue ÷ Paid Orders</div>
-    </div>
 </div>
 
-<!-- Section B — Sales Performance Chart -->
-<div class="bg-auraSurface border border-[#E8E5DF] rounded-xl mb-10 overflow-hidden">
-    <div class="px-8 py-6 border-b border-[#E8E5DF] flex items-center justify-between">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+
+    {# Total Orders #}
+    <div class="bg-auraSurface border border-auraBorder rounded-sm p-8 hover:border-auraGold/50 transition-all duration-300">
+        <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4">Total Orders</p>
+        <h3 class="font-serif text-4xl text-[#141414] tracking-wide mb-6">{{ metrics.total_orders }}</h3>
+        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium">All orders in range</p>
+    </div>
+
+    {# Paid Orders — featured #}
+    <div class="bg-[#FDFBF6] border border-auraGold/30 rounded-sm p-8 shadow-lg relative overflow-hidden group hover:border-auraGold transition-all duration-300">
+        <div class="absolute -right-10 -top-10 w-32 h-32 bg-auraGold/5 rounded-full blur-2xl group-hover:bg-auraGold/10 transition-all duration-500"></div>
+        <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4 relative z-10">Paid Orders</p>
+        <h3 class="font-serif text-4xl text-[#141414] tracking-wide mb-6 relative z-10">{{ metrics.paid_orders }}</h3>
+        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium relative z-10">Payment confirmed</p>
+    </div>
+
+    {# Avg Collected / Paid Order — white #}
+    <div class="bg-auraSurface border border-auraBorder rounded-sm p-8 hover:border-auraGold/50 transition-all duration-300">
+        <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4">Avg. per Paid Order</p>
+        <h3 class="font-serif text-3xl text-[#141414] tracking-wide mb-6">₹{{ metrics.average_collected_per_paid_order|floatformat:2 }}</h3>
+        <p class="text-[9px] uppercase tracking-widest text-auraMuted font-medium">Collected ÷ Paid Orders</p>
+    </div>
+
+</div>
+
+{# ================================================================== #}
+{# D. SALES PERFORMANCE CHART                                         #}
+{# ================================================================== #}
+<div class="bg-auraSurface border border-auraBorder rounded-sm mb-10 overflow-hidden">
+
+    {# Chart header #}
+    <div class="px-8 py-6 border-b border-auraBorder flex flex-wrap items-center justify-between gap-4">
         <h3 class="text-[11px] uppercase tracking-[0.2em] text-[#141414] font-semibold">Sales Performance</h3>
+
         <div class="flex items-center gap-6">
-            <label class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold whitespace-nowrap">Granularity:</label>
-            <select name="granularity" id="granularity-select"
-                    class="bg-white border border-[#E8E5DF] rounded-sm py-1 px-2 text-[10px] uppercase tracking-widest text-[#141414] focus:outline-none focus:border-[#A8842C]"
-                    onchange="this.form.submit()">
-                <input type="hidden" name="start_date" value="{{ start_date }}">
-                <input type="hidden" name="end_date" value="{{ end_date }}">
-                <input type="hidden" name="payment_method" value="{{ payment_method }}">
-                <input type="hidden" name="order_status" value="{{ order_status }}">
-                <input type="hidden" name="payment_status" value="{{ payment_status }}">
-                <option value="daily" {% if chart_granularity == "daily" %}selected{% endif %}>Daily</option>
-                <option value="monthly" {% if chart_granularity == "monthly" %}selected{% endif %}>Monthly</option>
-            </select>
-        </div>
-    </div>
-
-    <div class="p-8 h-[400px] relative">
-        <canvas id="salesChart"></canvas>
-    </div>
-
-    <div class="px-8 py-4 text-[10px] text-[#6E6A63]">
-        <p>Revenue = Collected Revenue (PAID orders minus completed refunds). Units Sold = eligible item quantities (non-cancelled, non-approved-returned). Date = order creation date (Asia/Kolkata).</p>
-    </div>
-</div>
-
-<!-- Section C — Payment Method Breakdown -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-    {% for code, method in payment_breakdown.items %}
-    <div class="bg-white border border-[#E8E5DF] rounded-xl p-6 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-            <span class="text-[10px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">{{ method.label }}</span>
-            <div class="w-8 h-8 rounded-full bg-[#FAF8F5] border border-[#E8E5DF] flex items-center justify-center">
-                {% if code == "COD" %}
-                <i data-lucide="credit-card" class="w-4 h-4 text-[#A8842C]"></i>
-                {% elif code == "RAZORPAY" %}
-                <i data-lucide="smartphone" class="w-4 h-4 text-[#A8842C]"></i>
-                {% else %}
-                <i data-lucide="wallet" class="w-4 h-4 text-[#A8842C]"></i>
-                {% endif %}
+            {# Granularity toggle #}
+            <div class="flex items-center border border-auraBorder rounded-sm bg-white overflow-hidden">
+                <button type="button" data-gran="daily"
+                        onclick="setGranularity('daily')"
+                        class="gran-btn text-[10px] uppercase tracking-widest font-medium px-3 py-1.5 transition-all duration-200
+                        {% if chart_granularity == 'daily' %}bg-auraGold text-white{% else %}text-auraMuted hover:text-[#141414]{% endif %}">
+                    Daily
+                </button>
+                <button type="button" data-gran="monthly"
+                        onclick="setGranularity('monthly')"
+                        class="gran-btn text-[10px] uppercase tracking-widest font-medium px-3 py-1.5 border-l border-auraBorder transition-all duration-200
+                        {% if chart_granularity == 'monthly' %}bg-auraGold text-white{% else %}text-auraMuted hover:text-[#141414]{% endif %}">
+                    Monthly
+                </button>
             </div>
-        </div>
-        <div class="font-serif text-3xl font-bold text-[#141414] mb-1">₹{{ method.collected_revenue|floatformat:2 }}</div>
-        <div class="space-y-1 text-[10px] text-[#6E6A63]">
-            <div class="flex justify-between">
-                <span>Orders: {{ method.order_count }}</span>
-                <span class="font-semibold text-[#141414]">{{ method.order_count }}</span>
-            </div>
-            <div class="flex justify-between">
-                <span>Order Value: ₹{{ method.order_value|floatformat:2 }}</span>
+
+            {# Revenue / Units toggle (client-side only) #}
+            <div class="flex items-center gap-6 text-[9px] uppercase tracking-[0.2em] font-medium">
+                <button type="button" data-chart-toggle="revenue"
+                        class="chart-metric-btn text-[#141414] border-b border-auraGold pb-1 transition-all duration-200">
+                    Revenue
+                </button>
+                <button type="button" data-chart-toggle="units"
+                        class="chart-metric-btn text-auraMuted hover:text-[#141414] transition-colors pb-1">
+                    Units Sold
+                </button>
             </div>
         </div>
     </div>
-    {% endfor %}
-</div>
 
-<!-- Section D — Best-Selling Products -->
-<div class="bg-white border border-[#E8E5DF] rounded-xl shadow-sm mb-10 overflow-hidden">
-    <div class="px-8 py-6 border-b border-[#E8E5DF] flex items-center justify-between">
-        <h3 class="text-[11px] uppercase tracking-[0.2em] text-[#141414] font-semibold">Best-Selling Products</h3>
+    {# Chart canvas #}
+    <div class="p-8">
+        <div id="chart-empty-revenue" class="hidden py-16 text-center text-auraMuted text-xs tracking-widest uppercase tracking-widest">
+            No revenue data available for this period.
+        </div>
+        <div id="chart-empty-units" class="hidden py-16 text-center text-auraMuted text-xs tracking-widest uppercase tracking-widest">
+            No eligible units sold for this period.
+        </div>
+        <div id="chart-wrapper" style="position:relative; height:320px;">
+            <canvas id="salesChart"></canvas>
+        </div>
     </div>
-    <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-            <thead>
-                <tr class="border-b border-[#E8E5DF] bg-[#F7F5F0]">
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Product</th>
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Brand</th>
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Variant</th>
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold text-right">Units Sold</th>
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold text-right">Product Revenue</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-[#EFECE6]">
-                {% for product in best_selling_products %}
-                <tr class="hover:bg-[#FAF8F4] transition-colors">
-                    <td class="py-5 px-6 text-xs font-medium text-[#141414]">{{ product.product_name }}</td>
-                    <td class="py-5 px-6 text-xs text-[#6E6A63]">{{ product.brand_name }}</td>
-                    <td class="py-5 px-6 text-xs text-[#6E6A63]">{{ product.variant_size }}</td>
-                    <td class="py-5 px-6 text-xs text-right font-semibold text-[#141414]">{{ product.units_sold }}</td>
-                    <td class="py-5 px-6 text-xs text-right font-semibold text-[#141414]">₹{{ product.product_revenue|floatformat:2 }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5" class="py-10 px-6 text-center text-xs text-[#6E6A63]">No product sales in this period.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+
+    {# Chart footnote #}
+    <div class="px-8 pb-5 text-[9px] uppercase tracking-widest text-auraMuted">
+        Revenue = Collected (PAID, net of completed refunds).&nbsp;
+        Units = Non-cancelled, non-returned items.&nbsp;
+        Date = Order creation date (Asia/Kolkata).
     </div>
 </div>
 
-<!-- Section E — Detailed Sales Transactions -->
-<div class="bg-white border border-[#E8E5DF] rounded-xl shadow-sm mb-10 overflow-hidden">
-    <div class="px-8 py-6 border-b border-[#E8E5DF] flex items-center justify-between">
-        <h3 class="text-[11px] uppercase tracking-[0.2em] text-[#141414] font-semibold">Detailed Sales Transactions</h3>
-        <div class="text-[10px] uppercase tracking-widest text-[#6E6A63] font-semibold">
+{# ================================================================== #}
+{# E. PAYMENT METHOD BREAKDOWN                                        #}
+{# ================================================================== #}
+<div class="mb-10">
+    <div class="flex items-center gap-4 mb-6 px-1">
+        <h3 class="font-serif text-2xl tracking-wide text-[#141414]">Payment Breakdown</h3>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        {% for code, method in payment_breakdown.items %}
+        {% if code == "RAZORPAY" %}
+        <div class="bg-[#FDFBF6] border border-auraGold/30 rounded-sm overflow-hidden hover:border-auraGold transition-all duration-300">
+        {% else %}
+        <div class="bg-auraSurface border border-auraBorder rounded-sm overflow-hidden hover:border-auraGold/50 transition-all duration-300">
+        {% endif %}
+            {# Card header band #}
+            <div class="px-8 pt-7 pb-5 border-b border-auraBorder">
+                <p class="text-[10px] uppercase tracking-[0.2em] text-auraMuted font-semibold mb-4">{{ method.label }}</p>
+                <h4 class="font-serif text-3xl text-[#141414] tracking-wide">₹{{ method.collected_revenue|floatformat:2 }}</h4>
+                <p class="text-[9px] uppercase tracking-widest text-auraGold/80 font-medium mt-2">Collected revenue</p>
+            </div>
+            {# Stats rows #}
+            <div class="divide-y divide-auraBorder">
+                <div class="flex items-center justify-between px-8 py-3">
+                    <span class="text-[10px] uppercase tracking-widest text-auraMuted font-medium">Orders</span>
+                    <span class="text-xs font-semibold text-[#141414]">{{ method.order_count }}</span>
+                </div>
+                <div class="flex items-center justify-between px-8 py-3">
+                    <span class="text-[10px] uppercase tracking-widest text-auraMuted font-medium">Order Value</span>
+                    <span class="text-xs font-semibold text-[#141414]">₹{{ method.order_value|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="sm:col-span-3 py-10 text-center text-xs text-auraMuted tracking-wider">
+            No payment data for this period.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{# ================================================================== #}
+{# F. BEST-SELLING PRODUCTS                                           #}
+{# ================================================================== #}
+<div class="mb-10">
+    <div class="flex items-center gap-4 mb-6 px-1">
+        <h3 class="font-serif text-2xl tracking-wide text-[#141414]">Best-Selling Products</h3>
+    </div>
+
+    <div class="bg-auraSurface border border-auraBorder rounded-sm overflow-hidden">
+        {# Desktop table #}
+        <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-auraBorder bg-[#F7F5F0]">
+                        <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold">Product</th>
+                        <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold">Brand</th>
+                        <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold">Variant</th>
+                        <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold text-right">Units Sold</th>
+                        <th class="py-4 px-6 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold text-right">Revenue</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-auraBorder">
+                    {% for product in best_selling_products %}
+                    <tr class="hover:bg-[#FAF8F4] transition-colors duration-200">
+                        <td class="py-5 px-6 text-xs font-medium text-[#141414]">{{ product.product_name }}</td>
+                        <td class="py-5 px-6 text-xs text-auraMuted">{{ product.brand_name }}</td>
+                        <td class="py-5 px-6 text-xs text-auraMuted">{{ product.variant_size }}</td>
+                        <td class="py-5 px-6 text-xs text-right font-semibold text-[#141414]">{{ product.units_sold }}</td>
+                        <td class="py-5 px-6 text-xs text-right font-semibold text-[#141414]">₹{{ product.product_revenue|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="py-10 px-6 text-center text-xs text-auraMuted tracking-wider">No product sales in this period.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# Mobile stacked cards #}
+        <div class="md:hidden divide-y divide-auraBorder">
+            {% for product in best_selling_products %}
+            <div class="px-6 py-5">
+                <div class="flex items-start justify-between mb-2">
+                    <div>
+                        <p class="text-xs font-semibold text-[#141414]">{{ product.product_name }}</p>
+                        <p class="text-[10px] text-auraMuted mt-0.5">{{ product.brand_name }} · {{ product.variant_size }}</p>
+                    </div>
+                    <span class="text-xs font-semibold text-[#141414] ml-4">₹{{ product.product_revenue|floatformat:2 }}</span>
+                </div>
+                <p class="text-[10px] uppercase tracking-widest text-auraMuted">{{ product.units_sold }} units sold</p>
+            </div>
+            {% empty %}
+            <div class="py-10 px-6 text-center text-xs text-auraMuted tracking-wider">No product sales in this period.</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{# ================================================================== #}
+{# G. DETAILED SALES TRANSACTIONS                                     #}
+{# ================================================================== #}
+<div class="mb-10">
+    <div class="flex items-center justify-between mb-6 px-1">
+        <h3 class="font-serif text-2xl tracking-wide text-[#141414]">Transactions</h3>
+        <span class="text-[10px] uppercase tracking-widest text-auraMuted font-semibold">
             Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-        </div>
-    </div>
-    <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-            <thead>
-                <tr class="border-b border-[#E8E5DF] bg-[#F7F5F0]">
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold w-32">Order Number</th>
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Order Date</th>
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Customer</th>
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Payment Method</th>
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Payment Status</th>
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold">Order Status</th>
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold text-right">Gross Amount</th>
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold text-right">Discount</th>
-                    <th class="py-5 px-6 text-[9px] uppercase tracking-[0.2em] text-[#6E6A63] font-semibold text-right">Net Amount</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-[#EFECE6]">
-                {% for row in transaction_rows %}
-                <tr class="hover:bg-[#FAF8F4] transition-colors">
-                    <td class="py-5 px-6 text-xs font-semibold text-[#141414]">
-                        <a href="{% url 'admin_orders:detail' row.order_number %}"
-                           class="hover:text-[#A8842C] transition-colors">#{{ row.order_number }}</a>
-                    </td>
-                    <td class="py-5 px-6 text-xs text-[#6E6A63]">{{ row.order_date|date:"M d, Y" }}</td>
-                    <td class="py-5 px-6 text-xs text-[#6E6A63]">{{ row.customer }}</td>
-                    <td class="py-5 px-6 text-xs text-[#141414]">{{ row.payment_method }}</td>
-                    <td class="py-5 px-6 text-xs">
-                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full
-                            {% if row.payment_status == 'PAID' %}border border-[#1E7E4D]/30 bg-[#F0FDF4] text-[#1E7E4D]
-                            {% elif row.payment_status == 'FAILED' or row.payment_status == 'EXPIRED' %}border border-[#B42318]/30 bg-[#FEF2F2] text-[#B42318]
-                            {% else %}border border-auraBorder bg-[#FAF8F5] text-[#6E6A63]
-                            {% endif %}">
-                            {{ row.payment_status }}
-                        </span>
-                    </td>
-                    <td class="py-5 px-6 text-xs text-[#6E6A63]">{{ row.order_status }}</td>
-                    <td class="py-5 px-6 text-xs text-right font-semibold text-[#141414]">₹{{ row.gross_amount|floatformat:2 }}</td>
-                    <td class="py-5 px-6 text-xs text-right font-semibold text-[#141414]">₹{{ row.discount|floatformat:2 }}</td>
-                    <td class="py-5 px-6 text-xs text-right font-semibold text-[#141414]">₹{{ row.net_amount|floatformat:2 }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="9" class="py-10 px-6 text-center text-xs text-[#6E6A63]">No transactions found in this period.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    {% if page_obj.has_other_pages %}
-    <div class="px-8 py-4 border-t border-[#E8E5DF] bg-[#F7F5F0] flex items-center justify-between">
-        <span class="text-xs text-[#6E6A63]">
-            Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
         </span>
-        <div class="flex items-center gap-2">
-            {% if page_obj.has_previous %}
-            <a href="?page={{ page_obj.previous_page_number }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if payment_method %}&payment_method={{ payment_method }}{% endif %}{% if order_status %}&order_status={{ order_status }}{% endif %}{% if payment_status %}&payment_status={{ payment_status }}{% endif %}"
-               class="px-3 py-1.5 border border-[#E8E5DF] bg-white text-xs text-[#141414] hover:border-[#A8842C] rounded-sm transition-colors">
-                Previous
-            </a>
-            {% endif %}
+    </div>
 
-            {% for num in page_obj.paginator.page_range %}
-                {% if page_obj.number == num %}
-                <span class="px-3 py-1.5 border border-[#A8842C] bg-[#FAF3E3] text-xs font-bold text-[#A8842C] rounded-sm">
-                    {{ num }}
-                </span>
-                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                <a href="?page={{ num }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if payment_method %}&payment_method={{ payment_method }}{% endif %}{% if order_status %}&order_status={{ order_status }}{% endif %}{% if payment_status %}&payment_status={{ payment_status }}{% endif %}"
-                   class="px-3 py-1.5 border border-[#E8E5DF] bg-white text-xs text-[#141414] hover:border-[#A8842C] rounded-sm transition-colors">
-                    {{ num }}
+    <div class="bg-auraSurface border border-auraBorder rounded-sm overflow-hidden">
+
+        {# Desktop table #}
+        <div class="hidden lg:block overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-auraBorder bg-[#F7F5F0]">
+                        <th class="py-4 px-5 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold">Order</th>
+                        <th class="py-4 px-5 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold">Date</th>
+                        <th class="py-4 px-5 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold">Customer</th>
+                        <th class="py-4 px-5 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold">Method</th>
+                        <th class="py-4 px-5 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold">Pay Status</th>
+                        <th class="py-4 px-5 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold">Order Status</th>
+                        <th class="py-4 px-5 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold text-right">Gross</th>
+                        <th class="py-4 px-5 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold text-right">Discount</th>
+                        <th class="py-4 px-5 text-[9px] uppercase tracking-[0.2em] text-auraMuted font-semibold text-right">Net</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-auraBorder">
+                    {% for row in transaction_rows %}
+                    <tr class="hover:bg-[#FAF8F4] transition-colors duration-200">
+                        <td class="py-4 px-5 text-xs font-medium text-[#141414] whitespace-nowrap">
+                            <a href="{% url 'admin_orders:detail' row.order_number %}"
+                               class="hover:text-auraGold transition-colors inline-flex items-center gap-1 group">
+                                #{{ row.order_number }}
+                                <i data-lucide="arrow-up-right" class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                            </a>
+                        </td>
+                        <td class="py-4 px-5 text-xs text-auraMuted whitespace-nowrap">{{ row.order_date|date:"M d, Y" }}</td>
+                        <td class="py-4 px-5 text-xs text-auraMuted max-w-[140px] truncate">{{ row.customer }}</td>
+                        <td class="py-4 px-5 text-xs text-[#141414]">{{ row.payment_method }}</td>
+                        <td class="py-4 px-5 text-xs">
+                            {% with ps=row.payment_status %}
+                            <span class="inline-flex items-center justify-center px-2 py-0.5 text-[8px] uppercase tracking-widest rounded-sm
+                                {% if ps == 'PAID' %}border border-[#1E7E4D]/30 text-[#1E7E4D]
+                                {% elif ps == 'FAILED' or ps == 'EXPIRED' %}border border-[#B42318]/30 text-[#B42318]
+                                {% elif ps == 'PENDING' %}border border-auraGold/40 text-auraGold
+                                {% else %}border border-auraBorder text-auraMuted
+                                {% endif %}">
+                                {{ ps }}
+                            </span>
+                            {% endwith %}
+                        </td>
+                        <td class="py-4 px-5 text-xs text-auraMuted">
+                            {% with os=row.order_status %}
+                            {% if os == 'DELIVERED' %}<span class="text-[#1E7E4D]">Delivered</span>
+                            {% elif os == 'CANCELLED' %}<span class="text-[#B42318]">Cancelled</span>
+                            {% elif os == 'SHIPPED' %}<span class="text-[#141414]">Shipped</span>
+                            {% elif os == 'OUT_FOR_DELIVERY' %}<span class="text-[#141414] font-medium">Out for Delivery</span>
+                            {% else %}{{ os|capfirst }}
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="py-4 px-5 text-xs text-right font-semibold text-[#141414] whitespace-nowrap">₹{{ row.gross_amount|floatformat:2 }}</td>
+                        <td class="py-4 px-5 text-xs text-right text-auraMuted whitespace-nowrap">₹{{ row.discount|floatformat:2 }}</td>
+                        <td class="py-4 px-5 text-xs text-right font-semibold text-[#141414] whitespace-nowrap">₹{{ row.net_amount|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="py-10 px-6 text-center text-xs text-auraMuted tracking-wider">No transactions found in this period.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# Tablet / Mobile stacked cards #}
+        <div class="lg:hidden divide-y divide-auraBorder">
+            {% for row in transaction_rows %}
+            <div class="px-6 py-5">
+                <div class="flex items-start justify-between mb-3">
+                    <div>
+                        <a href="{% url 'admin_orders:detail' row.order_number %}"
+                           class="text-xs font-semibold text-[#141414] hover:text-auraGold transition-colors">
+                            #{{ row.order_number }}
+                        </a>
+                        <p class="text-[10px] text-auraMuted mt-0.5">{{ row.order_date|date:"M d, Y" }}</p>
+                    </div>
+                    <div class="text-right ml-4 shrink-0">
+                        <p class="text-xs font-semibold text-[#141414]">₹{{ row.net_amount|floatformat:2 }}</p>
+                        <p class="text-[9px] text-auraMuted mt-0.5">Net</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                    <span class="text-[10px] text-auraMuted">{{ row.customer }}</span>
+                    <span class="text-[10px] text-auraMuted">{{ row.payment_method }}</span>
+                    <span class="inline-flex items-center px-2 py-0.5 text-[8px] uppercase tracking-widest rounded-sm
+                        {% if row.payment_status == 'PAID' %}border border-[#1E7E4D]/30 text-[#1E7E4D]
+                        {% elif row.payment_status == 'FAILED' or row.payment_status == 'EXPIRED' %}border border-[#B42318]/30 text-[#B42318]
+                        {% elif row.payment_status == 'PENDING' %}border border-auraGold/40 text-auraGold
+                        {% else %}border border-auraBorder text-auraMuted
+                        {% endif %}">
+                        {{ row.payment_status }}
+                    </span>
+                </div>
+                <div class="flex items-center gap-4 mt-2 text-[10px] text-auraMuted">
+                    <span>Gross ₹{{ row.gross_amount|floatformat:2 }}</span>
+                    <span>Disc ₹{{ row.discount|floatformat:2 }}</span>
+                </div>
+            </div>
+            {% empty %}
+            <div class="py-10 px-6 text-center text-xs text-auraMuted tracking-wider">No transactions found in this period.</div>
+            {% endfor %}
+        </div>
+
+        {# Pagination #}
+        {% if page_obj.has_other_pages %}
+        <div class="px-8 py-4 border-t border-auraBorder bg-[#F7F5F0] flex flex-wrap items-center justify-between gap-3">
+            <span class="text-[10px] uppercase tracking-widest text-auraMuted font-semibold">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+            <div class="flex items-center gap-1">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&{{ current_query_string }}"
+                   class="px-3 py-1.5 border border-auraBorder bg-white text-xs text-[#141414] hover:border-auraGold rounded-sm transition-colors">
+                    Previous
                 </a>
                 {% endif %}
-            {% endfor %}
 
-            {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if payment_method %}&payment_method={{ payment_method }}{% endif %}{% if order_status %}&order_status={{ order_status }}{% endif %}{% if payment_status %}&payment_status={{ payment_status }}{% endif %}"
-               class="px-3 py-1.5 border border-[#E8E5DF] bg-white text-xs text-[#141414] hover:border-[#A8842C] rounded-sm transition-colors">
-                Next
-            </a>
-            {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <span class="px-3 py-1.5 border border-auraGold bg-auraGold text-xs font-bold text-white rounded-sm">{{ num }}</span>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?page={{ num }}&{{ current_query_string }}"
+                       class="px-3 py-1.5 border border-auraBorder bg-white text-xs text-[#141414] hover:border-auraGold rounded-sm transition-colors">
+                        {{ num }}
+                    </a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&{{ current_query_string }}"
+                   class="px-3 py-1.5 border border-auraBorder bg-white text-xs text-[#141414] hover:border-auraGold rounded-sm transition-colors">
+                    Next
+                </a>
+                {% endif %}
+            </div>
         </div>
+        {% endif %}
+
     </div>
-    {% endif %}
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{# ================================================================== #}
+{# SCRIPTS — Chart.js v4 + filter wiring                             #}
+{# NOTE: base_admin.html has no extra_js block; scripts go here.      #}
+{# ================================================================== #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var ctx = document.getElementById('salesChart');
-        if (!ctx) return;
+(function () {
+    'use strict';
 
-        var chartData = JSON.parse('{{ chart_data|safe }}');
-        var granularity = '{{ chart_granularity }}';
+    /* ---- Shared form helpers ---------------------------------------- */
+    var form = document.getElementById('report-form');
 
-        var labels = chartData.map(function (d) { return d.label; });
-        var revenueData = chartData.map(function (d) { return d.revenue; });
-        var unitsData = chartData.map(function (d) { return d.units_sold; });
+    function setHidden(id, val) {
+        var el = document.getElementById(id);
+        if (el) el.value = val;
+    }
 
-        var salesChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Collected Revenue (INR)',
+    function submitReport() {
+        /* Sync visible selects into hidden form fields before submit */
+        setHidden('f-payment-method', document.getElementById('sel-payment-method').value);
+        setHidden('f-order-status',   document.getElementById('sel-order-status').value);
+        setHidden('f-payment-status', document.getElementById('sel-payment-status').value);
+        setHidden('f-page', '1');
+        form.submit();
+    }
+    window.submitReport = submitReport;
+
+    function updateSelectFilter(field, value) {
+        /* Called by onchange on each select — auto-submits */
+        setHidden('f-' + field.replace('_', '-'), value);
+        setHidden('f-page', '1');
+        submitReport();
+    }
+    window.updateSelectFilter = updateSelectFilter;
+
+    /* ---- Preset tabs ------------------------------------------------ */
+    function applyPreset(key) {
+        setHidden('f-preset',     key);
+        setHidden('f-start-date', '');
+        setHidden('f-end-date',   '');
+        setHidden('f-page', '1');
+        submitReport();
+    }
+    window.applyPreset = applyPreset;
+
+    /* ---- Custom date range ------------------------------------------ */
+    function toggleCustomRange() {
+        var panel = document.getElementById('custom-date-panel');
+        panel.classList.toggle('hidden');
+        panel.classList.toggle('flex');
+    }
+    window.toggleCustomRange = toggleCustomRange;
+
+    function applyCustomRange() {
+        var start = document.getElementById('custom-start').value;
+        var end   = document.getElementById('custom-end').value;
+        if (!start || !end) { return; }
+        setHidden('f-preset',     '');
+        setHidden('f-start-date', start);
+        setHidden('f-end-date',   end);
+        setHidden('f-page', '1');
+        submitReport();
+    }
+    window.applyCustomRange = applyCustomRange;
+
+    /* ---- Granularity toggle (requires page reload) ------------------ */
+    function setGranularity(val) {
+        setHidden('f-granularity', val);
+        setHidden('f-page', '1');
+        submitReport();
+    }
+    window.setGranularity = setGranularity;
+
+    /* ---- Chart.js v4 ------------------------------------------------ */
+    var CHART_DATA = {{ chart_data_json|safe }};
+    var labels      = CHART_DATA.labels;
+    var revenueData = CHART_DATA.revenue;
+    var unitsData   = CHART_DATA.units;
+
+    var BAR_COLOR       = '#E3DFD7';
+    var BAR_HOVER       = '#D5CFC4';
+    var GRID_COLOR      = '#E8E5DF';
+    var TICK_COLOR      = '#6E6A63';
+
+    var ctx              = document.getElementById('salesChart');
+    var wrapper          = document.getElementById('chart-wrapper');
+    var emptyRevenue     = document.getElementById('chart-empty-revenue');
+    var emptyUnits       = document.getElementById('chart-empty-units');
+
+    /* Has any data at all? */
+    var hasRevenue = revenueData.some(function (v) { return v > 0; });
+    var hasUnits   = unitsData.some(function (v) { return v > 0; });
+
+    if (!hasRevenue && !hasUnits) {
+        wrapper.style.display = 'none';
+        emptyRevenue.classList.remove('hidden');
+        return;
+    }
+
+    var salesChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Revenue (₹)',
                     data: revenueData,
-                    backgroundColor: 'rgba(168, 132, 44, 0.8)',
-                    borderColor: 'rgba(168, 132, 44, 1)',
+                    backgroundColor: BAR_COLOR,
+                    hoverBackgroundColor: BAR_HOVER,
+                    borderRadius: 2,
+                    borderSkipped: false,
+                    hidden: false,
+                },
+                {
+                    label: 'Units Sold',
+                    data: unitsData,
+                    backgroundColor: BAR_COLOR,
+                    hoverBackgroundColor: BAR_HOVER,
+                    borderRadius: 2,
+                    borderSkipped: false,
+                    hidden: true,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#E8E5DF',
                     borderWidth: 1,
-                    borderRadius: 4,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                return '₹' + context.parsed.y.toFixed(2);
+                    titleColor: '#141414',
+                    bodyColor: '#6E6A63',
+                    titleFont: { size: 10, weight: '600', family: 'inherit' },
+                    bodyFont: { size: 10, family: 'inherit' },
+                    padding: 12,
+                    cornerRadius: 2,
+                    callbacks: {
+                        label: function (context) {
+                            var v = context.parsed.y;
+                            if (context.dataset.label.indexOf('Revenue') !== -1) {
+                                return ' ' + v.toLocaleString('en-IN', {style:'currency', currency:'INR', maximumFractionDigits:0});
                             }
+                            return ' ' + v + ' units';
                         }
                     }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: GRID_COLOR, drawBorder: false },
+                    ticks: {
+                        color: TICK_COLOR,
+                        font: { size: 9, family: 'inherit' },
+                        maxRotation: 45,
+                        autoSkip: true,
+                        maxTicksLimit: 14,
+                    }
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function (value) {
-                                return '₹' + value.toFixed(0);
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Collected Revenue (INR)',
-                            font: { size: 11, weight: 'bold' },
-                            color: '#6E6A63'
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Order Date',
-                            font: { size: 11, weight: 'bold' },
-                            color: '#6E6A63'
+                y: {
+                    grid: { color: GRID_COLOR, drawBorder: false },
+                    beginAtZero: true,
+                    ticks: {
+                        color: TICK_COLOR,
+                        font: { size: 9, family: 'inherit' },
+                        callback: function (v) {
+                            if (v >= 100000) return '₹' + (v / 100000).toFixed(1) + 'L';
+                            if (v >= 1000)   return '₹' + (v / 1000).toFixed(1) + 'k';
+                            return v;
                         }
                     }
                 }
             }
+        }
+    });
+
+    /* Revenue / Units client-side toggle */
+    var activeMetric = 'revenue';
+
+    function showMetricEmptyState(mode) {
+        /* Show the per-metric empty state when that metric has no data */
+        emptyRevenue.classList.add('hidden');
+        emptyUnits.classList.add('hidden');
+        if (mode === 'revenue') {
+            emptyRevenue.classList.remove('hidden');
+        } else {
+            emptyUnits.classList.remove('hidden');
+        }
+    }
+
+    document.querySelectorAll('.chart-metric-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var mode = this.getAttribute('data-chart-toggle');
+            if (mode === activeMetric) return;
+            activeMetric = mode;
+
+            var modeHasData = mode === 'revenue' ? hasRevenue : hasUnits;
+
+            if (!modeHasData) {
+                /* Hide chart, show metric-specific empty state */
+                wrapper.style.display = 'none';
+                showMetricEmptyState(mode);
+            } else {
+                /* Restore chart if previously hidden by empty state */
+                wrapper.style.display = '';
+                emptyRevenue.classList.add('hidden');
+                emptyUnits.classList.add('hidden');
+
+                salesChart.data.datasets[0].hidden = (mode !== 'revenue');
+                salesChart.data.datasets[1].hidden = (mode !== 'units');
+
+                /* Y-axis tick format */
+                salesChart.options.scales.y.ticks.callback = mode === 'units'
+                    ? function (v) { return v; }
+                    : function (v) {
+                        if (v >= 100000) return '₹' + (v / 100000).toFixed(1) + 'L';
+                        if (v >= 1000)   return '₹' + (v / 1000).toFixed(1) + 'k';
+                        return v;
+                      };
+
+                salesChart.update();
+            }
+
+            /* Update active button styling */
+            document.querySelectorAll('.chart-metric-btn').forEach(function (b) {
+                var active = b.getAttribute('data-chart-toggle') === mode;
+                b.classList.toggle('text-[#141414]', active);
+                b.classList.toggle('border-b',       active);
+                b.classList.toggle('border-auraGold', active);
+                b.classList.toggle('text-auraMuted',  !active);
+                b.classList.toggle('hover:text-[#141414]', !active);
+            });
         });
     });
+
+})();
 </script>
+
 {% endblock %}
