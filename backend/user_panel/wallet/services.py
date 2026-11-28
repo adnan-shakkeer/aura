@@ -200,6 +200,7 @@ def _create_transaction(
     balance_after,
     dedupe_key,
     description="",
+    description_detail="",
     order=None,
     order_item=None,
     topup=None,
@@ -218,6 +219,7 @@ def _create_transaction(
                 topup=topup,
                 dedupe_key=dedupe_key,
                 description=(description or "").strip(),
+                description_detail=(description_detail or "").strip(),
             )
     except IntegrityError as exc:
         raise WalletDuplicateTransactionError(
@@ -233,6 +235,7 @@ def credit_wallet(
     kind,
     dedupe_key,
     description="",
+    description_detail="",
     order=None,
     order_item=None,
     topup=None,
@@ -274,6 +277,7 @@ def credit_wallet(
         balance_after=new_balance,
         dedupe_key=dedupe_key,
         description=description,
+        description_detail=description_detail,
         order=order,
         order_item=order_item,
         topup=topup,
@@ -288,6 +292,7 @@ def debit_wallet(
     kind,
     dedupe_key,
     description="",
+    description_detail="",
     order=None,
     order_item=None,
     topup=None,
@@ -334,6 +339,7 @@ def debit_wallet(
         balance_after=new_balance,
         dedupe_key=dedupe_key,
         description=description,
+        description_detail=description_detail,
         order=order,
         order_item=order_item,
         topup=topup,

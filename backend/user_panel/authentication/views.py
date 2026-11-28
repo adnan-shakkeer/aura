@@ -15,6 +15,15 @@ from django.db import transaction
 from django.views.decorators.cache import never_cache
 
 from .models import SignupOTP, PasswordResetOTP
+from user_panel.referrals.exceptions import (
+    InvalidReferralCodeError,
+    ReferralError,
+)
+from user_panel.referrals.services import (
+    create_referral_for_signup,
+    normalize_referral_code,
+    resolve_referral_code,
+)
 from user_panel.user_profile.models import UserProfile
 
 from .validators.signup_validator import (
@@ -125,6 +134,9 @@ def signup_otp(request):
     Display and process the signup OTP verification page.
     """
 
+    if request.user.is_authenticated:
+        return redirect("account_dashboard")
+
     signup_data = request.session.get("signup_data")
 
     if not signup_data:
@@ -187,42 +199,51 @@ def signup_otp(request):
 
                 else:
 
-                    with transaction.atomic():
+                    try:
+                        with transaction.atomic():
 
-                        user = User.objects.create_user(
-                            username=signup_data["email"],
-                            email=signup_data["email"],
-                            password=signup_data["password"],
+                            user = User.objects.create_user(
+                                username=signup_data["email"],
+                                email=signup_data["email"],
+                                password=signup_data["password"],
+                            )
+
+                            UserProfile.objects.create(
+                                user=user,
+                                full_name=signup_data["full_name"],
+                            )
+
+                            EmailAddress.objects.create(
+                                user=user,
+                                email=user.email,
+                                verified=True,
+                                primary=True
+                            )
+
+                            create_referral_for_signup(
+                                user,
+                                signup_data.get("referral_code", ""),
+                            )
+
+                            otp_record.is_verified = True
+                            otp_record.save()
+
+                            otp_record.delete()
+
+                    except (InvalidReferralCodeError, ReferralError) as exc:
+                        error = str(exc)
+                    else:
+                        messages.success(
+                            request,
+                            "Your account has been successfully created. Please log in to continue.",
                         )
 
-                        UserProfile.objects.create(
-                            user=user,
-                            full_name=signup_data["full_name"],
+                        request.session.pop(
+                            "signup_data",
+                            None,
                         )
 
-                        EmailAddress.objects.create(
-                            user=user,
-                            email=user.email,
-                            verified=True,
-                            primary=True
-                        )
-
-                        otp_record.is_verified = True
-                        otp_record.save()
-
-                        otp_record.delete()
-
-                    messages.success(
-                        request,
-                        "Your account has been successfully created. Please log in to continue.",
-                    )    
-
-                    request.session.pop(
-                        "signup_data",
-                        None,
-                    )
-
-                    return redirect("user_auth:login")
+                        return redirect("user_auth:login")
 
     context = {
         "email": email,
@@ -241,6 +262,9 @@ def resend_signup_otp(request):
     """
     Generate and send a new OTP for signup email verification.
     """
+
+    if request.user.is_authenticated:
+        return redirect("account_dashboard")
 
     signup_data = request.session.get("signup_data")
 
@@ -267,6 +291,9 @@ def signup(request):
     Display and process the user signup page.
     """
 
+    if request.user.is_authenticated:
+        return redirect("account_dashboard")
+
     context = {
         "signup_data": {},
         "errors": {},
@@ -279,6 +306,7 @@ def signup(request):
             "email": request.POST.get("email", "").strip().lower(),
             "password": request.POST.get("password", ""),
             "confirm_password": request.POST.get("confirm_password", ""),
+            "referral_code": request.POST.get("referral_code", "").strip(),
             "terms": request.POST.get("terms"),
         }
         errors = {}
@@ -303,6 +331,14 @@ def signup(request):
         if confirm_password_error:
             errors["confirm_password"] = confirm_password_error
 
+        try:
+            resolve_referral_code(
+                signup_data["referral_code"],
+                referred_email=signup_data["email"],
+            )
+        except InvalidReferralCodeError as exc:
+            errors["referral_code"] = str(exc)
+
         terms_error = validate_terms(signup_data["terms"])
         if terms_error:
             errors["terms"] = terms_error
@@ -322,6 +358,7 @@ def signup(request):
                 "signup_data": {
                     "full_name": signup_data["full_name"],
                     "email": signup_data["email"],
+                    "referral_code": signup_data["referral_code"],
                     "terms": signup_data["terms"],
                 },
                 "errors": errors,
@@ -338,6 +375,9 @@ def signup(request):
             "full_name": signup_data["full_name"],
             "email": signup_data["email"],
             "password": signup_data["password"],
+            "referral_code": normalize_referral_code(
+                signup_data["referral_code"]
+            ),
         }
 
         generate_signup_otp(

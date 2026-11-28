@@ -6,6 +6,8 @@ urlpatterns = [
 
     path("",views.profile, name = "profile"),
 
+    path("dashboard/",views.account_dashboard, name = "account_dashboard"),
+
     path("edit/",views.edit_profile, name = "edit_profile"),
 
     path("change-email/send-otp/",views.send_email_change_otp, name = "send_email_change_otp"),

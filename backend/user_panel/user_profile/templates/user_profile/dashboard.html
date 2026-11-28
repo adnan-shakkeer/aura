@@ -1,0 +1,327 @@
+{% extends "user_panel/account_base.html" %}
+
+{% block title %}My Account | AURA{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="Breadcrumb" class="flex items-center flex-wrap gap-2 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-auraMuted mb-6 sm:mb-8">
+    <a href="{% url 'home' %}" class="hover:text-auraBlack transition-colors">Home</a>
+    <span class="text-auraBorder select-none">/</span>
+    <span class="text-auraBlack font-semibold">My Account</span>
+</nav>
+{% endblock %}
+
+{% block page_header %}
+<div class="mb-6 sm:mb-8">
+    <h1 class="font-serif text-3xl sm:text-4xl lg:text-[2.6rem] font-normal text-auraBlack tracking-tight leading-tight">
+        My Account
+    </h1>
+    <p class="text-xs sm:text-sm text-auraMuted font-light mt-2 max-w-2xl leading-relaxed">
+        Welcome back. Manage your profile, orders, wallet and rewards from one place.
+    </p>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .order-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        border-radius: 9999px;
+        padding: 0.28rem 0.6rem;
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        line-height: 1.2;
+        text-transform: uppercase;
+    }
+
+    .order-status::before {
+        content: "";
+        width: 5px;
+        height: 5px;
+        flex-shrink: 0;
+        border-radius: 9999px;
+        background: currentColor;
+    }
+
+    .order-status--pending {
+        background: #F4EFE6;
+        color: #8A6A42;
+    }
+
+    .order-status--shipped {
+        background: #EAF2FE;
+        color: #2C5FA8;
+    }
+
+    .order-status--out_for_delivery {
+        background: #FBF3E4;
+        color: #8A5A22;
+    }
+
+    .order-status--delivered {
+        background: #E9F8F0;
+        color: #247A4A;
+    }
+
+    .order-status--cancelled {
+        background: #FDECEC;
+        color: #B3261E;
+    }
+</style>
+{% endblock %}
+
+{% block account_content %}
+
+<!-- ========================================================= -->
+<!-- A. PROFILE OVERVIEW BANNER -->
+<!-- ========================================================= -->
+<section class="overflow-hidden rounded-2xl bg-auraBlack px-6 py-7 sm:px-9 sm:py-9 lg:px-10">
+    <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+
+        <div class="flex flex-col items-center gap-5 text-center sm:flex-row sm:items-center sm:gap-7 sm:text-left">
+            <!-- Avatar -->
+            <div class="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-[#2A2A2A] sm:h-28 sm:w-28">
+                {% if profile and profile.profile_image %}
+                    <img src="{{ profile.profile_image.url }}" alt="{{ display_name }}" class="h-full w-full object-cover">
+                {% else %}
+                    <span class="select-none font-serif text-4xl text-auraIvory/80">{{ display_name|first|upper }}</span>
+                {% endif %}
+            </div>
+
+            <!-- Identity -->
+            <div class="min-w-0">
+                <h2 class="break-words font-serif text-2xl font-normal tracking-tight text-white sm:text-3xl">
+                    {{ display_name }}
+                </h2>
+                <p class="mt-1 break-all text-xs font-light text-white/70 sm:text-sm">
+                    {{ user.email }}
+                </p>
+                <p class="mt-4 text-[10px] uppercase tracking-[0.2em] text-white/60 sm:text-[11px]">
+                    Member Since
+                    <span class="ml-1 font-semibold text-white">{{ user.date_joined|date:"F Y"|upper }}</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- View Profile -->
+        <div class="flex-shrink-0 sm:self-center">
+            <a
+                href="{% url 'profile' %}"
+                class="inline-flex w-full items-center justify-center bg-white px-7 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-auraBlack transition-colors duration-200 hover:bg-auraIvory sm:w-auto"
+            >
+                View Profile
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ========================================================= -->
+<!-- B. ACCOUNT STATISTICS -->
+<!-- ========================================================= -->
+<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+    <!-- Total Orders -->
+    <div class="rounded-xl border border-auraBorder bg-white p-6 shadow-aura-subtle sm:p-7">
+        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-auraMuted">Total Orders</p>
+        <p class="mt-4 font-serif text-3xl font-medium text-auraBlack">{{ total_orders }}</p>
+    </div>
+
+    <!-- Wallet Balance -->
+    <div class="rounded-xl border border-auraBorder bg-white p-6 shadow-aura-subtle sm:p-7">
+        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-auraMuted">Wallet Balance</p>
+        <p class="mt-4 font-serif text-3xl font-medium text-auraBlack">₹{{ wallet_balance|floatformat:2 }}</p>
+    </div>
+
+    <!-- Saved Addresses -->
+    <div class="rounded-xl border border-auraBorder bg-white p-6 shadow-aura-subtle sm:p-7">
+        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-auraMuted">Saved Addresses</p>
+        <p class="mt-4 font-serif text-3xl font-medium text-auraBlack">{{ saved_addresses_count }}</p>
+    </div>
+
+    <!-- Wishlist Items -->
+    <div class="rounded-xl border border-auraBorder bg-white p-6 shadow-aura-subtle sm:p-7">
+        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-auraMuted">Wishlist Items</p>
+        <p class="mt-4 font-serif text-3xl font-medium text-auraBlack">{{ wishlist_count|default:0 }}</p>
+    </div>
+</div>
+
+<!-- ========================================================= -->
+<!-- C. REFERRAL INVITATION -->
+<!-- ========================================================= -->
+<section class="mt-6 rounded-2xl border border-auraBorder bg-white p-6 shadow-aura-subtle sm:p-8">
+    <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div class="max-w-2xl">
+            <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.24em] text-auraChampagneDark">
+                Referral Programme
+            </p>
+            <h2 class="font-serif text-2xl font-normal tracking-tight text-auraBlack sm:text-[1.7rem]">
+                Invite Friends &amp; Earn Rewards
+            </h2>
+            <p class="mt-2 text-xs font-light leading-relaxed text-auraMuted sm:text-sm">
+                Share your referral code. Your friend receives ₹{{ referred_reward|floatformat:0 }} after their first qualifying order, and you receive ₹{{ referrer_reward|floatformat:0 }}.
+            </p>
+            <p class="mt-2 text-[10px] uppercase tracking-[0.16em] text-auraMuted">
+                Rewards are credited to your AURA Wallet.
+            </p>
+        </div>
+
+        <div class="w-full max-w-sm lg:flex-shrink-0">
+            {% if referral_code %}
+            <label for="referralCodeValue" class="block text-[10px] font-semibold uppercase tracking-[0.2em] text-auraMuted">
+                Your Referral Code
+            </label>
+            <div class="mt-2 flex flex-col gap-2 sm:flex-row">
+                <input
+                    id="referralCodeValue"
+                    type="text"
+                    value="{{ referral_code }}"
+                    readonly
+                    class="h-12 w-full border border-auraBorder bg-auraCream px-4 font-serif text-lg tracking-[0.12em] text-auraBlack outline-none focus:border-auraBlack"
+                >
+                <button
+                    id="copyReferralCode"
+                    type="button"
+                    data-referral-code="{{ referral_code }}"
+                    class="inline-flex h-12 flex-shrink-0 items-center justify-center bg-auraBlack px-5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-auraDark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-auraBlack"
+                >
+                    Copy Code
+                </button>
+            </div>
+            <p id="referralCopyFeedback" class="mt-2 min-h-[1rem] text-[10px] uppercase tracking-[0.16em] text-auraMuted" role="status" aria-live="polite"></p>
+            {% else %}
+            <div class="border border-dashed border-auraBorder bg-auraCream/60 px-4 py-5 text-xs leading-relaxed text-auraMuted">
+                Your referral code is temporarily unavailable. Please try again later.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- ========================================================= -->
+<!-- D. RECENT ORDERS -->
+<!-- ========================================================= -->
+<section class="mt-8">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="font-serif text-xl font-normal tracking-tight text-auraBlack sm:text-2xl">Recent Orders</h2>
+        <a
+            href="{% url 'orders:my_orders' %}"
+            class="text-[10px] font-semibold uppercase tracking-[0.18em] text-auraMuted transition-colors hover:text-auraBlack"
+        >
+            View All Orders
+        </a>
+    </div>
+
+    {% if recent_orders %}
+    <div class="overflow-hidden rounded-2xl border border-auraBorder bg-white shadow-aura-subtle">
+        <ul class="divide-y divide-auraBorder/70">
+            {% for order in recent_orders %}
+            <li class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-5">
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                        <p class="break-words text-sm font-semibold text-auraBlack">{{ order.order_number }}</p>
+                        <span class="order-status order-status--{{ order.status|lower }}">
+                            {{ order.get_status_display }}
+                        </span>
+                    </div>
+                    <p class="mt-1.5 text-[10px] uppercase tracking-[0.14em] text-auraMuted">
+                        {{ order.created_at|date:"M j, Y" }}
+                    </p>
+                </div>
+
+                <div class="flex items-center justify-between gap-4 sm:justify-end">
+                    <p class="font-serif text-lg font-medium text-auraBlack">₹{{ order.total|floatformat:2 }}</p>
+                    <a
+                        href="{% url 'orders:order_detail' order.order_number %}"
+                        class="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border border-auraBlack bg-auraBlack px-4 py-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-white transition-colors duration-200 hover:bg-auraDark"
+                    >
+                        View Order
+                    </a>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% else %}
+    <div class="rounded-2xl border border-dashed border-auraBorder bg-white/50 px-6 py-12 text-center sm:px-10">
+        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-auraBorder bg-auraCream text-auraMuted">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+            </svg>
+        </div>
+        <h3 class="mt-4 font-serif text-xl font-normal text-auraBlack sm:text-2xl">No orders yet</h3>
+        <p class="mx-auto mt-2 max-w-md text-xs leading-relaxed text-auraMuted sm:text-sm">
+            Your AURA orders will appear here once you place your first order.
+        </p>
+        <a
+            href="{% url 'shop:shop_list' %}"
+            class="mt-5 inline-flex items-center justify-center rounded-full bg-auraBlack px-6 py-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-auraDark"
+        >
+            Continue Shopping
+        </a>
+    </div>
+    {% endif %}
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const button = document.getElementById("copyReferralCode");
+        const feedback = document.getElementById("referralCopyFeedback");
+        if (!button || !feedback) return;
+
+        const code = button.dataset.referralCode || "";
+        let feedbackTimer = null;
+
+        function showFeedback(message) {
+            feedback.textContent = message;
+            if (feedbackTimer) clearTimeout(feedbackTimer);
+            feedbackTimer = setTimeout(function () {
+                feedback.textContent = "";
+            }, 2200);
+        }
+
+        function fallbackCopy() {
+            const textarea = document.createElement("textarea");
+            textarea.value = code;
+            textarea.setAttribute("readonly", "");
+            textarea.style.position = "fixed";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.select();
+            const copied = document.execCommand("copy");
+            document.body.removeChild(textarea);
+            if (!copied) throw new Error("copy failed");
+        }
+
+        button.addEventListener("click", function () {
+            if (!code) return;
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(code)
+                    .then(function () {
+                        showFeedback("Copied to clipboard");
+                    })
+                    .catch(function () {
+                        try {
+                            fallbackCopy();
+                            showFeedback("Copied to clipboard");
+                        } catch (error) {
+                            showFeedback("Unable to copy");
+                        }
+                    });
+                return;
+            }
+
+            try {
+                fallbackCopy();
+                showFeedback("Copied to clipboard");
+            } catch (error) {
+                showFeedback("Unable to copy");
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -10,6 +10,10 @@ from django.utils import timezone
 from user_panel.orders.cancellation import cancel_order_for_expiry
 from user_panel.orders.financials import _item_paid_amount
 from user_panel.orders.models import Order
+from user_panel.referrals.services import (
+    lock_pending_referral_for_user,
+    schedule_referral_reward,
+)
 
 from . import gateway
 from .exceptions import (
@@ -373,8 +377,11 @@ def record_payment_success(attempt_id, payment, *, via):
         )
         return order
 
+    lock_pending_referral_for_user(order.user)
+    payment_now = timezone.now()
+
     order.payment_status = Order.PaymentStatus.PAID
-    order.payment_collected_at = now
+    order.payment_collected_at = payment_now
     order.payment_collected_amount = order.total
     order.payment_collected_by = None
     order.save(
@@ -386,6 +393,8 @@ def record_payment_success(attempt_id, payment, *, via):
             "updated_at",
         ]
     )
+
+    schedule_referral_reward(order)
 
     if order.status == Order.OrderStatus.CANCELLED:
         record_refund_obligation(

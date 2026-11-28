@@ -53,6 +53,10 @@ from user_panel.orders.coupons import (
     validate_coupon,
 )
 from user_panel.pricing import services as pricing
+from user_panel.referrals.services import (
+    lock_pending_referral_for_user,
+    schedule_referral_reward,
+)
 
 from .exceptions import (
     CouponError,
@@ -950,6 +954,12 @@ def _place_order_atomic(
             "This checkout review is not valid. Please review your bag again."
         )
 
+    if payment_method in (
+        Order.PaymentMethod.COD,
+        Order.PaymentMethod.WALLET,
+    ):
+        lock_pending_referral_for_user(user)
+
     submission_id = payload["sid"]
 
     existing = _find_existing_order(submission_id, user)
@@ -1055,6 +1065,8 @@ def _place_order_atomic(
             discount_amount=totals["coupon_discount_total"],
         )
 
+    schedule_referral_reward(order)
+
     return OrderPlacementResult(status=STATUS_CREATED, order=order)
 
 
@@ -1116,6 +1128,12 @@ def _place_direct_order_atomic(
 
     if _token_source(payload) != SOURCE_DIRECT:
         raise InvalidReviewTokenError(_DIRECT_INVALID_TOKEN_MESSAGE)
+
+    if payment_method in (
+        Order.PaymentMethod.COD,
+        Order.PaymentMethod.WALLET,
+    ):
+        lock_pending_referral_for_user(user)
 
     submission_id = payload["sid"]
 
@@ -1243,6 +1261,8 @@ def _place_direct_order_atomic(
             user=user,
             discount_amount=totals["coupon_discount_total"],
         )
+
+    schedule_referral_reward(order)
 
     return OrderPlacementResult(status=STATUS_CREATED, order=order)
 

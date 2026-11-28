@@ -48,6 +48,8 @@ def _wallet_transaction_description(tx):
     """Return a customer-friendly description for a wallet transaction."""
     if (tx.description or "").strip():
         return tx.description
+    if (tx.description_detail or "").strip():
+        return tx.description_detail
     kind = tx.kind
     if kind == WalletTransaction.Kind.TOPUP:
         return "Wallet Top-up"
@@ -57,16 +59,23 @@ def _wallet_transaction_description(tx):
         return "Return Refund"
     if kind == WalletTransaction.Kind.PURCHASE:
         return "Order Payment"
+    if kind == WalletTransaction.Kind.REFERRAL:
+        return "Referral Reward"
     return (kind or "Transaction").title()
 
 
 def _wallet_transaction_reference(tx):
-    """Return the most relevant order or top-up reference for display."""
+    """Return the display reference and whether it is descriptive text."""
     if tx.order:
-        return tx.order.order_number
+        return tx.order.order_number, False
     if tx.topup:
-        return tx.topup.receipt
-    return ""
+        return tx.topup.receipt, False
+
+    detail = (tx.description_detail or "").strip()
+    if detail:
+        return detail, True
+
+    return "", False
 
 
 def _build_transaction_rows(transactions):
@@ -76,17 +85,29 @@ def _build_transaction_rows(transactions):
         if tx.amount > ZERO:
             sign = "+"
             amount_class = "text-[#2F9E6B]"
+            direction = "CREDIT"
+            direction_class = (
+                "border-[#CBEBD9] bg-[#E9F8F0] text-[#247A4A]"
+            )
         else:
             sign = "−"
             amount_class = "text-[#B3261E]"
+            direction = "DEBIT"
+            direction_class = (
+                "border-[#F3C9C9] bg-[#FDECEC] text-[#B3261E]"
+            )
+        reference, reference_is_detail = _wallet_transaction_reference(tx)
         rows.append(
             {
                 "tx": tx,
                 "sign": sign,
                 "amount_class": amount_class,
                 "amount": abs(tx.amount),
+                "direction": direction,
+                "direction_class": direction_class,
                 "description": _wallet_transaction_description(tx),
-                "reference": _wallet_transaction_reference(tx),
+                "reference": reference,
+                "reference_is_detail": reference_is_detail,
             }
         )
     return rows

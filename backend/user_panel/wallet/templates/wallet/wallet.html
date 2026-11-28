@@ -70,12 +70,12 @@
                     <td class="px-6 py-4 text-xs text-auraBlack">
                         <p class="font-medium">{{ row.description }}</p>
                         {% if row.reference %}
-                        <p class="mt-0.5 text-[9px] uppercase tracking-[0.14em] text-auraMuted">{{ row.reference }}</p>
+                        <p class="mt-0.5 {% if row.reference_is_detail %}text-[10px] leading-relaxed tracking-normal{% else %}text-[9px] uppercase tracking-[0.14em]{% endif %} text-auraMuted">{{ row.reference }}</p>
                         {% endif %}
                     </td>
                     <td class="px-6 py-4">
-                        <span class="inline-flex items-center gap-1.5 rounded-full border border-auraBorder bg-auraCream px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-auraMuted">
-                            {{ row.tx.get_status_display }}
+                        <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] {{ row.direction_class }}">
+                            {{ row.direction }}
                         </span>
                     </td>
                     <td class="px-6 py-4 text-right text-xs font-medium {{ row.amount_class }}">

@@ -1,3 +1,4 @@
+import logging
 import random
 import re
 from datetime import timedelta
@@ -32,6 +33,18 @@ from django.http import JsonResponse
 from django.db import DatabaseError
 from smtplib import SMTPException
 
+from user_panel.address.models import Address
+from user_panel.orders.models import Order
+from user_panel.referrals.services import (
+    REFERRED_REWARD_AMOUNT,
+    REFERRER_REWARD_AMOUNT,
+    get_or_create_referral_code,
+)
+from user_panel.wallet.services import ZERO, get_wallet
+
+
+logger = logging.getLogger(__name__)
+
 
 @login_required
 @never_cache
@@ -52,6 +65,63 @@ def profile(request):
         "user_profile/profile.html",
         context
     )
+
+
+@login_required
+@never_cache
+def account_dashboard(request):
+    """Render the authenticated customer's My Account dashboard."""
+
+    profile = UserProfile.objects.filter(user=request.user).first()
+
+    if profile and profile.full_name:
+        display_name = profile.full_name
+    else:
+        display_name = (
+            request.user.get_full_name().strip()
+            or request.user.email.split("@")[0]
+        )
+
+    wallet = get_wallet(request.user)
+    wallet_balance = wallet.balance if wallet is not None else ZERO
+
+    recent_orders = (
+        Order.objects.filter(user=request.user)
+        .only("order_number", "created_at", "total", "status")[:3]
+    )
+
+    referral_code = ""
+    try:
+        referral_code = get_or_create_referral_code(request.user).code
+    except Exception:
+        logger.exception(
+            "Could not load the referral code for user %s.",
+            request.user.pk,
+        )
+
+    context = {
+        "profile": profile,
+        "display_name": display_name,
+        "user": request.user,
+        "total_orders": Order.objects.filter(user=request.user).count(),
+        "wallet_balance": wallet_balance,
+        "saved_addresses_count": Address.objects.filter(
+            user=request.user,
+            is_deleted=False,
+        ).count(),
+        "recent_orders": recent_orders,
+        "referral_code": referral_code,
+        "referrer_reward": REFERRER_REWARD_AMOUNT,
+        "referred_reward": REFERRED_REWARD_AMOUNT,
+        "active_nav": "dashboard",
+    }
+
+    return render(
+        request,
+        "user_profile/dashboard.html",
+        context,
+    )
+
 
 @login_required
 def send_email_change_otp(request):

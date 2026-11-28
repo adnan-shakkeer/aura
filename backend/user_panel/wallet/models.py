@@ -143,6 +143,7 @@ class WalletTransaction(models.Model):
         REFUND_ORDER = "REFUND_ORDER", "Order refund"
         REFUND_RETURN = "REFUND_RETURN", "Return refund"
         PURCHASE = "PURCHASE", "Purchase"
+        REFERRAL = "REFERRAL", "Referral reward"
 
     class Status(models.TextChoices):
         COMPLETED = "COMPLETED", "Completed"
@@ -211,6 +212,12 @@ class WalletTransaction(models.Model):
 
     description = models.CharField(
         max_length=255,
+        blank=True,
+        default="",
+    )
+
+    description_detail = models.CharField(
+        max_length=512,
         blank=True,
         default="",
     )

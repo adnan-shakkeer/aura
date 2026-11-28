@@ -142,6 +142,28 @@ AURA | Create Account
         {% endif %}
     </div>
 
+    <!-- Referral Code Field -->
+    <div>
+        <label for="referral_code" class="block text-[11px] uppercase tracking-[0.16em] font-medium text-auraBlack mb-2">
+            Referral Code <span class="text-auraMuted font-normal normal-case tracking-normal">(Optional)</span>
+        </label>
+        <input
+            type="text"
+            id="referral_code"
+            name="referral_code"
+            value="{{ signup_data.referral_code|default:'' }}"
+            autocomplete="off"
+            maxlength="16"
+            placeholder="Enter a referral code"
+            class="w-full h-12 px-4 bg-white/70 border {% if errors.referral_code %}border-red-400 focus:border-red-500 focus:ring-red-200{% else %}border-auraBorder focus:border-auraBlack focus:ring-auraBlack/5{% endif %} rounded-lg text-sm text-auraBlack placeholder:text-auraMuted/50 outline-none transition-all duration-200 focus:ring-2 focus:bg-white"
+        >
+        {% if errors.referral_code %}
+            <p class="mt-1.5 text-xs text-red-600 font-medium tracking-wide">
+                {{ errors.referral_code }}
+            </p>
+        {% endif %}
+    </div>
+
     <!-- Terms & Conditions Checkbox -->
     <div class="pt-1">
         <label class="flex items-start gap-2.5 cursor-pointer select-none">

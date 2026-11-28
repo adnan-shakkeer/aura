@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     "user_panel.checkout",
     "user_panel.payments",
     "user_panel.wallet",
+    "user_panel.referrals",
 ]
 
 MIDDLEWARE = [
